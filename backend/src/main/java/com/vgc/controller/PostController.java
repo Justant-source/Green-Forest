@@ -63,6 +63,7 @@ public class PostController {
             @RequestParam("content") String content,
             @RequestParam("category") String category,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam(value = "existingImageUrls", required = false) List<String> existingImageUrls,
             Authentication authentication) throws Exception {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -70,7 +71,7 @@ public class PostController {
         request.setTitle(title);
         request.setContent(content);
         request.setCategory(category);
-        return postService.updatePost(id, request, images, user);
+        return postService.updatePost(id, request, images, existingImageUrls, user);
     }
 
     @PatchMapping("/{id}/status")

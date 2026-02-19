@@ -19,6 +19,7 @@ export default function EditPostPage() {
   const [content, setContent] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -47,8 +48,10 @@ export default function EditPostPage() {
         setContent(post.content);
         setCategory(post.category);
         if (post.imageUrls && post.imageUrls.length > 0) {
+          setExistingImageUrls(post.imageUrls);
           setImagePreviews(post.imageUrls.map((url) => `${IMAGE_BASE_URL}${url}`));
         } else if (post.imageUrl) {
+          setExistingImageUrls([post.imageUrl]);
           setImagePreviews([`${IMAGE_BASE_URL}${post.imageUrl}`]);
         }
       })
@@ -58,7 +61,8 @@ export default function EditPostPage() {
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length + imageFiles.length > 5) {
+    const totalCount = existingImageUrls.length + imageFiles.length + files.length;
+    if (totalCount > 5) {
       alert("이미지는 최대 5장까지 업로드할 수 있습니다.");
       e.target.value = "";
       return;
@@ -67,20 +71,34 @@ export default function EditPostPage() {
     const compressed = await Promise.all(files.map((f) => compressImage(f)));
     const newFiles = [...imageFiles, ...compressed];
     setImageFiles(newFiles);
-    setImagePreviews([]);
 
-    newFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setImagePreviews((prev) => [...prev, event.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+    const existingPreviews = existingImageUrls.map((url) => `${IMAGE_BASE_URL}${url}`);
+    const filePreviews: string[] = [];
+    await Promise.all(
+      newFiles.map(
+        (file) =>
+          new Promise<void>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              filePreviews.push(event.target?.result as string);
+              resolve();
+            };
+            reader.readAsDataURL(file);
+          })
+      )
+    );
+    setImagePreviews([...existingPreviews, ...filePreviews]);
     e.target.value = "";
   };
 
   const removeImage = (index: number) => {
-    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    const existingCount = existingImageUrls.length;
+    if (index < existingCount) {
+      setExistingImageUrls((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      const fileIndex = index - existingCount;
+      setImageFiles((prev) => prev.filter((_, i) => i !== fileIndex));
+    }
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -94,6 +112,9 @@ export default function EditPostPage() {
       formData.append("title", title.trim());
       formData.append("content", content.trim());
       formData.append("category", category);
+      existingImageUrls.forEach((url) => {
+        formData.append("existingImageUrls", url);
+      });
       imageFiles.forEach((file) => {
         formData.append("images", file);
       });

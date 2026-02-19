@@ -145,7 +145,7 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponse updatePost(Long id, PostRequest request, List<MultipartFile> images, User user) throws IOException {
+    public PostResponse updatePost(Long id, PostRequest request, List<MultipartFile> images, List<String> existingImageUrls, User user) throws IOException {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
@@ -160,12 +160,39 @@ public class PostService {
         }
         post.setCategory(request.getCategory());
 
-        if (images != null && !images.isEmpty() && images.stream().anyMatch(f -> f != null && !f.isEmpty())) {
-            post.getImages().clear();
-            post.setImageUrl(null);
-            postRepository.saveAndFlush(post);
-            saveImages(post, images);
+        boolean hasNewImages = images != null && !images.isEmpty() && images.stream().anyMatch(f -> f != null && !f.isEmpty());
+        List<String> keepUrls = existingImageUrls != null ? existingImageUrls : List.of();
+
+        // 프론트가 보낸 유지 목록에 없는 기존 이미지만 제거
+        post.getImages().removeIf(img -> !keepUrls.contains(img.getImageUrl()));
+
+        // 유지된 이미지 순서 재정렬
+        int order = 0;
+        for (String url : keepUrls) {
+            for (PostImage img : post.getImages()) {
+                if (img.getImageUrl().equals(url)) {
+                    img.setSortOrder(order++);
+                    break;
+                }
+            }
         }
+
+        // 새 이미지 추가
+        if (hasNewImages) {
+            for (MultipartFile image : images) {
+                if (image == null || image.isEmpty()) continue;
+                String url = imageStorageService.upload(image);
+                PostImage postImage = new PostImage(post, url, order++);
+                post.getImages().add(postImage);
+            }
+        }
+
+        // 썸네일 갱신
+        post.setImageUrl(post.getImages().isEmpty() ? null : post.getImages().stream()
+                .min((a, b) -> Integer.compare(a.getSortOrder(), b.getSortOrder()))
+                .map(PostImage::getImageUrl).orElse(null));
+
+        postRepository.save(post);
 
         Post saved = postRepository.findById(id).orElseThrow();
         return PostResponse.from(saved, commentRepository.countByPostId(saved.getId()));
