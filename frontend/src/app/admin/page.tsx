@@ -263,7 +263,7 @@ export default function AdminPage() {
                       <span className="font-semibold text-lg">{req.name}</span>
                     </div>
                     <div className="text-sm text-gray-500">
-                      요청자: {req.requesterNickname} | {new Date(req.createdAt).toLocaleDateString("ko-KR")}
+                      요청자: {req.requesterNickname} | {new Date(req.createdAt.endsWith("Z") ? req.createdAt : req.createdAt + "Z").toLocaleDateString("ko-KR")}
                     </div>
                   </div>
                   <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800">

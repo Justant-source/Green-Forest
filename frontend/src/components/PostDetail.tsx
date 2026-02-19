@@ -175,7 +175,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
         <div className="flex gap-4 text-sm text-gray-500 mt-2">
           <span>조회 {post.viewCount}</span>
           <span>좋아요 {post.likeCount}</span>
-          <span>{new Date(post.createdAt).toLocaleDateString("ko-KR")}</span>
+          <span>{new Date(post.createdAt.endsWith("Z") ? post.createdAt : post.createdAt + "Z").toLocaleDateString("ko-KR")}</span>
         </div>
       </div>
 
