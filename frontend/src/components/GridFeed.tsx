@@ -185,7 +185,7 @@ export default function GridFeed() {
         <SkeletonGrid />
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+          <div className="grid grid-cols-3 gap-0.5 sm:gap-1 -mx-[14px] sm:-mx-[15px]">
             {posts.map((post) => (
               <GridItem key={post.id} post={post} />
             ))}
