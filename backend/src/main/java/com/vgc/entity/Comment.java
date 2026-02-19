@@ -8,7 +8,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "comments")
+@Table(name = "comments", indexes = {
+    @Index(name = "idx_comments_post_parent", columnList = "post_id, parent_id"),
+    @Index(name = "idx_comments_post_created", columnList = "post_id, createdAt DESC"),
+    @Index(name = "idx_comments_author", columnList = "author_id"),
+    @Index(name = "idx_comments_parent", columnList = "parent_id")
+})
 public class Comment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

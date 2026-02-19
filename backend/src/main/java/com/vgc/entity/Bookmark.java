@@ -6,6 +6,9 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "bookmarks", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"user_id", "post_id"})
+}, indexes = {
+    @Index(name = "idx_bookmarks_post", columnList = "post_id"),
+    @Index(name = "idx_bookmarks_user_created", columnList = "user_id, createdAt DESC")
 })
 public class Bookmark {
     @Id

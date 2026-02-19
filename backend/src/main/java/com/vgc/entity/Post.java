@@ -6,7 +6,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "posts")
+@Table(name = "posts", indexes = {
+    @Index(name = "idx_posts_category_status", columnList = "category, status"),
+    @Index(name = "idx_posts_author_created", columnList = "author_id, createdAt DESC"),
+    @Index(name = "idx_posts_created", columnList = "createdAt DESC")
+})
 public class Post {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

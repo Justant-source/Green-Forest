@@ -3,7 +3,9 @@ package com.vgc.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "post_images")
+@Table(name = "post_images", indexes = {
+    @Index(name = "idx_post_images_post_sort", columnList = "post_id, sortOrder")
+})
 public class PostImage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
