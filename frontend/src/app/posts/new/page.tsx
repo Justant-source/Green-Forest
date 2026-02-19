@@ -6,6 +6,7 @@ import { createPost, getCategories } from "@/lib/api";
 import { CategoryInfo } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import CategoryRequestModal from "@/components/CategoryRequestModal";
+import { compressImage } from "@/lib/imageCompression";
 
 export default function NewPostPage() {
   const router = useRouter();
@@ -39,17 +40,19 @@ export default function NewPostPage() {
     if (!category) setCategory(saved || "HUMOR");
   }, []);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + imageFiles.length > 5) {
       alert("이미지는 최대 5장까지 업로드할 수 있습니다.");
       e.target.value = "";
       return;
     }
-    const newFiles = [...imageFiles, ...files];
+
+    const compressed = await Promise.all(files.map((f) => compressImage(f)));
+    const newFiles = [...imageFiles, ...compressed];
     setImageFiles(newFiles);
 
-    files.forEach((file) => {
+    compressed.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         setImagePreviews((prev) => [...prev, event.target?.result as string]);
