@@ -5,7 +5,6 @@ interface TitleCardProps {
   postId: number;
   category: string;
   likeCount: number;
-  viewCount: number;
 }
 
 const colorMap: Record<string, { bg: string; text: string }> = {
@@ -23,7 +22,7 @@ const colorMap: Record<string, { bg: string; text: string }> = {
 
 const fallback = { bg: "#F3F4F6", text: "#374151" };
 
-export default function TitleCard({ title, category, likeCount, viewCount }: TitleCardProps) {
+export default function TitleCard({ title, category, likeCount }: TitleCardProps) {
   const catColor = getCategoryColor(category);
   const colors = (catColor && colorMap[catColor]) || fallback;
 
@@ -39,11 +38,10 @@ export default function TitleCard({ title, category, likeCount, viewCount }: Tit
         {title}
       </p>
       <div
-        className="absolute bottom-2 right-2 flex gap-2 text-[10px] sm:text-xs opacity-70"
+        className="absolute bottom-2 right-2 text-[10px] sm:text-xs opacity-70"
         style={{ color: colors.text }}
       >
         <span>♥ {likeCount}</span>
-        <span>👁 {viewCount}</span>
       </div>
     </div>
   );

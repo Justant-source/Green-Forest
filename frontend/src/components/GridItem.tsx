@@ -64,14 +64,13 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
           {post.status === "COMPLETE" && (
             <div className="absolute inset-0 bg-black/40" />
           )}
-          <div className="absolute bottom-2 right-2 flex gap-2 text-[10px] sm:text-xs text-white bg-black/50 rounded-full px-2 py-0.5">
+          <div className="absolute bottom-2 right-2 text-[10px] sm:text-xs text-white bg-black/50 rounded-full px-2 py-0.5">
             <span>♥ {post.likeCount}</span>
-            <span>👁 {post.viewCount}</span>
           </div>
         </div>
       ) : (
         <div className="relative">
-          <TitleCard title={post.title} postId={post.id} category={post.category} likeCount={post.likeCount} viewCount={post.viewCount} />
+          <TitleCard title={post.title} postId={post.id} category={post.category} likeCount={post.likeCount} />
           {post.status === "COMPLETE" && (
             <div className="absolute inset-0 bg-black/40" />
           )}
