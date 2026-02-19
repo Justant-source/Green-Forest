@@ -40,4 +40,23 @@ public class CommentController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return commentService.addComment(postId, request, user);
     }
+
+    @PutMapping("/{commentId}")
+    public Comment updateComment(@PathVariable Long postId,
+                                 @PathVariable Long commentId,
+                                 @RequestBody CommentRequest request,
+                                 Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return commentService.updateComment(commentId, request.getContent(), user);
+    }
+
+    @DeleteMapping("/{commentId}")
+    public Comment deleteComment(@PathVariable Long postId,
+                                 @PathVariable Long commentId,
+                                 Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return commentService.deleteComment(commentId, user);
+    }
 }

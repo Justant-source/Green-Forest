@@ -121,6 +121,32 @@ export async function addComment(
   return res.json();
 }
 
+export async function updateComment(
+  postId: number,
+  commentId: number,
+  content: string
+): Promise<Comment> {
+  const res = await fetch(`${BASE_URL}/posts/${postId}/comments/${commentId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new Error("Failed to update comment");
+  return res.json();
+}
+
+export async function deleteComment(
+  postId: number,
+  commentId: number
+): Promise<Comment> {
+  const res = await fetch(`${BASE_URL}/posts/${postId}/comments/${commentId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to delete comment");
+  return res.json();
+}
+
 export async function getCommentCount(
   postId: number
 ): Promise<number> {

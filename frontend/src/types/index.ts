@@ -28,6 +28,8 @@ export interface Comment {
   content: string;
   authorName: string;
   createdAt: string;
+  updatedAt: string | null;
+  deleted: boolean;
   parentId: number | null;
   replies: Comment[];
 }

@@ -58,6 +58,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/posts/*/bookmark").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/posts/*/bookmark").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/posts/*/comments").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/posts/*/comments/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/posts/*/comments/*").authenticated()
 
                         // 4. 개별 포스트 조회 - 공개
                         .requestMatchers(HttpMethod.GET, "/api/posts/*").permitAll()

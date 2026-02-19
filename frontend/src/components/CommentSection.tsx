@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Comment } from "@/types";
-import { getComments, addComment, getCommentCount } from "@/lib/api";
+import { getComments, addComment, getCommentCount, updateComment, deleteComment } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 
@@ -43,13 +43,32 @@ interface CommentItemProps {
   postId: number;
   isLoggedIn: boolean;
   nickname: string | null;
+  ancestorDeleted: boolean;
   onReplyAdded: (parentId: number, newReply: Comment) => void;
+  onCommentUpdated: (commentId: number, updated: Comment) => void;
+  onCommentDeleted: (commentId: number, updated: Comment) => void;
 }
 
-function CommentItem({ comment, depth, postId, isLoggedIn, nickname, onReplyAdded }: CommentItemProps) {
+function CommentItem({
+  comment,
+  depth,
+  postId,
+  isLoggedIn,
+  nickname,
+  ancestorDeleted,
+  onReplyAdded,
+  onCommentUpdated,
+  onCommentDeleted,
+}: CommentItemProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
+  const [editing, setEditing] = useState(false);
+
+  const isOwner = isLoggedIn && nickname === comment.authorName;
+  const replyBlocked = comment.deleted || ancestorDeleted;
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,27 +87,103 @@ function CommentItem({ comment, depth, postId, isLoggedIn, nickname, onReplyAdde
     }
   };
 
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editContent.trim()) return;
+
+    setEditing(true);
+    try {
+      const updated = await updateComment(postId, comment.id, editContent.trim());
+      onCommentUpdated(comment.id, updated);
+      setShowEditForm(false);
+    } catch (error) {
+      console.error("Failed to update comment:", error);
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("댓글을 삭제하시겠습니까?")) return;
+    try {
+      const updated = await deleteComment(postId, comment.id);
+      onCommentDeleted(comment.id, updated);
+    } catch (error) {
+      console.error("Failed to delete comment:", error);
+    }
+  };
+
   return (
     <div className={getDepthMargin(depth)}>
-      <div className="bg-gray-50 rounded-lg p-4">
+      <div className={`rounded-lg p-4 ${comment.deleted ? "bg-gray-100" : "bg-gray-50"}`}>
         <div className="flex items-center justify-between mb-2">
-          <span className="font-medium text-sm text-gray-900">
-            {comment.authorName}
+          <span className={`font-medium text-sm ${comment.deleted ? "text-gray-400" : "text-gray-900"}`}>
+            {comment.deleted ? "" : comment.authorName}
           </span>
           <span className="text-xs text-gray-400">
             {getRelativeTime(comment.createdAt)}
+            {!comment.deleted && comment.updatedAt && " (수정됨)"}
           </span>
         </div>
-        <p className="text-sm text-gray-700">{comment.content}</p>
-        {isLoggedIn && (
-          <button
-            onClick={() => setShowReplyForm(!showReplyForm)}
-            className="mt-2 text-xs text-gray-500 hover:text-orange-600 transition-colors"
-          >
-            {showReplyForm ? "취소" : "답글"}
-          </button>
+        <p className={`text-sm ${comment.deleted ? "text-gray-400 italic" : "text-gray-700"}`}>
+          {comment.content}
+        </p>
+        {!comment.deleted && (
+          <div className="flex gap-3 mt-2">
+            {isLoggedIn && !replyBlocked && (
+              <button
+                onClick={() => { setShowReplyForm(!showReplyForm); setShowEditForm(false); }}
+                className="text-xs text-gray-500 hover:text-orange-600 transition-colors"
+              >
+                {showReplyForm ? "취소" : "답글"}
+              </button>
+            )}
+            {isOwner && (
+              <>
+                <button
+                  onClick={() => { setShowEditForm(!showEditForm); setShowReplyForm(false); setEditContent(comment.content); }}
+                  className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                >
+                  {showEditForm ? "취소" : "수정"}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                >
+                  삭제
+                </button>
+              </>
+            )}
+          </div>
         )}
       </div>
+
+      {showEditForm && (
+        <form onSubmit={handleEditSubmit} className="mt-2 ml-4 space-y-2">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={2}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowEditForm(false)}
+              className="px-3 py-1.5 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              disabled={editing || !editContent.trim()}
+              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {editing ? "수정 중..." : "수정 완료"}
+            </button>
+          </div>
+        </form>
+      )}
 
       {showReplyForm && (
         <form onSubmit={handleReplySubmit} className="mt-2 ml-4 space-y-2">
@@ -122,7 +217,10 @@ function CommentItem({ comment, depth, postId, isLoggedIn, nickname, onReplyAdde
               postId={postId}
               isLoggedIn={isLoggedIn}
               nickname={nickname}
+              ancestorDeleted={replyBlocked}
               onReplyAdded={onReplyAdded}
+              onCommentUpdated={onCommentUpdated}
+              onCommentDeleted={onCommentDeleted}
             />
           ))}
         </div>
@@ -149,6 +247,21 @@ function addReplyToTree(comments: Comment[], parentId: number, newReply: Comment
   });
 }
 
+function updateCommentInTree(comments: Comment[], commentId: number, updated: Comment): Comment[] {
+  return comments.map((comment) => {
+    if (comment.id === commentId) {
+      return { ...updated, replies: comment.replies };
+    }
+    if (comment.replies && comment.replies.length > 0) {
+      return {
+        ...comment,
+        replies: updateCommentInTree(comment.replies, commentId, updated),
+      };
+    }
+    return comment;
+  });
+}
+
 export default function CommentSection({ postId }: CommentSectionProps) {
   const { isLoggedIn, nickname } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -164,6 +277,14 @@ export default function CommentSection({ postId }: CommentSectionProps) {
   const handleReplyAdded = (parentId: number, newReply: Comment) => {
     setComments((prev) => addReplyToTree(prev, parentId, { ...newReply, replies: newReply.replies || [] }));
     setTotalCount((prev) => prev + 1);
+  };
+
+  const handleCommentUpdated = (commentId: number, updated: Comment) => {
+    setComments((prev) => updateCommentInTree(prev, commentId, updated));
+  };
+
+  const handleCommentDeleted = (commentId: number, updated: Comment) => {
+    setComments((prev) => updateCommentInTree(prev, commentId, updated));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -227,7 +348,10 @@ export default function CommentSection({ postId }: CommentSectionProps) {
             postId={postId}
             isLoggedIn={isLoggedIn}
             nickname={nickname}
+            ancestorDeleted={false}
             onReplyAdded={handleReplyAdded}
+            onCommentUpdated={handleCommentUpdated}
+            onCommentDeleted={handleCommentDeleted}
           />
         ))}
 

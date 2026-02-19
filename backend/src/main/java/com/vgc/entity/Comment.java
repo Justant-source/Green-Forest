@@ -39,11 +39,20 @@ public class Comment {
     @OrderBy("createdAt ASC")
     private List<Comment> replies = new ArrayList<>();
 
+    @Column(nullable = false)
+    private boolean deleted = false;
+
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     // Getters and setters
@@ -63,4 +72,8 @@ public class Comment {
     public void setParent(Comment parent) { this.parent = parent; }
     public List<Comment> getReplies() { return replies; }
     public void setReplies(List<Comment> replies) { this.replies = replies; }
+    public boolean isDeleted() { return deleted; }
+    public void setDeleted(boolean deleted) { this.deleted = deleted; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

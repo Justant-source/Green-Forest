@@ -42,9 +42,47 @@ public class CommentService {
         if (request.getParentId() != null) {
             Comment parent = commentRepository.findById(request.getParentId())
                     .orElseThrow(() -> new RuntimeException("Parent comment not found"));
+            if (isAncestorDeleted(parent)) {
+                throw new RuntimeException("Cannot reply to a deleted comment thread");
+            }
             comment.setParent(parent);
         }
 
         return commentRepository.save(comment);
+    }
+
+    @Transactional
+    public Comment updateComment(Long commentId, String content, User currentUser) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comment not found"));
+        if (!comment.getAuthor().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Not authorized to update this comment");
+        }
+        if (comment.isDeleted()) {
+            throw new RuntimeException("Cannot update a deleted comment");
+        }
+        comment.setContent(content);
+        return commentRepository.save(comment);
+    }
+
+    @Transactional
+    public Comment deleteComment(Long commentId, User currentUser) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comment not found"));
+        if (!comment.getAuthor().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Not authorized to delete this comment");
+        }
+        comment.setDeleted(true);
+        comment.setContent("삭제된 메시지입니다");
+        return commentRepository.save(comment);
+    }
+
+    private boolean isAncestorDeleted(Comment comment) {
+        Comment current = comment;
+        while (current != null) {
+            if (current.isDeleted()) return true;
+            current = current.getParent();
+        }
+        return false;
     }
 }
