@@ -121,32 +121,31 @@ export default function PostDetail({ postId }: PostDetailProps) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${colorClass}`}
-          >
-            {catInfo?.label || post.category}
-          </span>
-          {post.status && (
-            isLoggedIn && nickname === post.authorNickname ? (
-              <select
-                value={post.status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColorMap[post.status] || "bg-gray-100 text-gray-700"}`}
-              >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            ) : (
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusColorMap[post.status] || "bg-gray-100 text-gray-700"}`}>
-                {statusLabelMap[post.status] || post.status}
-              </span>
-            )
-          )}
-        </div>
-        <div className="flex items-center justify-between mt-3">
-          <h1 className="text-2xl font-bold">{post.title}</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${colorClass}`}
+            >
+              {catInfo?.label || post.category}
+            </span>
+            {post.status && (
+              isLoggedIn && nickname === post.authorNickname ? (
+                <select
+                  value={post.status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColorMap[post.status] || "bg-gray-100 text-gray-700"}`}
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusColorMap[post.status] || "bg-gray-100 text-gray-700"}`}>
+                  {statusLabelMap[post.status] || post.status}
+                </span>
+              )
+            )}
+          </div>
           {isLoggedIn && nickname === post.authorNickname && (
             <div className="flex gap-2">
               <Link
@@ -172,6 +171,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
             </div>
           )}
         </div>
+        <h1 className="text-2xl font-bold mt-3">{post.title}</h1>
         <div className="flex gap-4 text-sm text-gray-500 mt-2">
           <span>조회 {post.viewCount}</span>
           <span>좋아요 {post.likeCount}</span>
