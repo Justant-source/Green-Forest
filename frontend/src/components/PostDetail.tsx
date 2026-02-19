@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Post, CategoryInfo } from "@/types";
@@ -33,6 +33,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
   const [bookmarked, setBookmarked] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const { isLoggedIn, nickname } = useAuth();
+  const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
     getCategories()
@@ -185,7 +186,19 @@ export default function PostDetail({ postId }: PostDetailProps) {
           : post.imageUrl ? [post.imageUrl] : [];
         if (urls.length === 0) return null;
         return (
-          <div className="relative w-full rounded-xl overflow-hidden">
+          <div
+            className="relative w-full rounded-xl overflow-hidden"
+            onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+            onTouchEnd={(e) => {
+              if (touchStartX.current === null) return;
+              const diff = touchStartX.current - e.changedTouches[0].clientX;
+              if (Math.abs(diff) > 50) {
+                if (diff > 0) setCarouselIndex((prev) => (prev + 1) % urls.length);
+                else setCarouselIndex((prev) => (prev - 1 + urls.length) % urls.length);
+              }
+              touchStartX.current = null;
+            }}
+          >
             <img
               src={`${IMAGE_BASE_URL}${urls[carouselIndex]}`}
               alt={`${post.title} ${carouselIndex + 1}`}
