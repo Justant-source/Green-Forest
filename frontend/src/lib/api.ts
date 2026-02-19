@@ -107,15 +107,29 @@ export async function getComments(postId: number): Promise<Comment[]> {
 
 export async function addComment(
   postId: number,
-  content: string
+  content: string,
+  parentId?: number
 ): Promise<Comment> {
+  const body: { content: string; parentId?: number } = { content };
+  if (parentId !== undefined) body.parentId = parentId;
   const res = await fetch(`${BASE_URL}/posts/${postId}/comments`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Failed to add comment");
   return res.json();
+}
+
+export async function getCommentCount(
+  postId: number
+): Promise<number> {
+  const res = await fetch(`${BASE_URL}/posts/${postId}/comments/count`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch comment count");
+  const data = await res.json();
+  return data.count;
 }
 
 export async function toggleBookmark(

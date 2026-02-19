@@ -28,6 +28,8 @@ export interface Comment {
   content: string;
   authorName: string;
   createdAt: string;
+  parentId: number | null;
+  replies: Comment[];
 }
 
 export interface PageResponse<T> {

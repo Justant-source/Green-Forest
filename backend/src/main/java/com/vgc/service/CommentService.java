@@ -22,7 +22,11 @@ public class CommentService {
     }
 
     public List<Comment> getComments(Long postId) {
-        return commentRepository.findByPostIdOrderByCreatedAtDesc(postId);
+        return commentRepository.findByPostIdAndParentIsNullOrderByCreatedAtDesc(postId);
+    }
+
+    public int getCommentCount(Long postId) {
+        return commentRepository.countByPostId(postId);
     }
 
     @Transactional
@@ -34,6 +38,13 @@ public class CommentService {
         comment.setContent(request.getContent());
         comment.setAuthorName(author.getNickname());
         comment.setAuthor(author);
+
+        if (request.getParentId() != null) {
+            Comment parent = commentRepository.findById(request.getParentId())
+                    .orElseThrow(() -> new RuntimeException("Parent comment not found"));
+            comment.setParent(parent);
+        }
+
         return commentRepository.save(comment);
     }
 }
