@@ -18,7 +18,8 @@ function saveCache(data: { posts: Post[]; category: string | null; sort: string;
 
 function loadCache(): { posts: Post[]; category: string | null; sort: string; status: string | null; page: number; hasMore: boolean; scrollY: number } | null {
   try {
-    const navType = (typeof performance !== "undefined" && performance.getEntriesByType?.("navigation")?.[0] as PerformanceNavigationTiming)?.type;
+    const navEntry = typeof performance !== "undefined" ? performance.getEntriesByType?.("navigation")?.[0] as PerformanceNavigationTiming | undefined : undefined;
+    const navType = navEntry?.type;
     if (navType === "reload") {
       sessionStorage.removeItem(CACHE_KEY);
       return null;
