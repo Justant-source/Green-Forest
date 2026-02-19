@@ -12,6 +12,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 @Service
 public class BookmarkService {
     private final BookmarkRepository bookmarkRepository;
@@ -45,12 +49,17 @@ public class BookmarkService {
     }
 
     public Page<PostResponse> getBookmarkedPosts(Long userId, Pageable pageable) {
-        return bookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(bookmark -> {
-                    Post post = bookmark.getPost();
-                    PostResponse response = PostResponse.from(post, commentRepository.countByPostId(post.getId()));
-                    response.setBookmarked(true);
-                    return response;
-                });
+        Page<Bookmark> bookmarks = bookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+        List<Long> postIds = bookmarks.getContent().stream()
+                .map(bookmark -> bookmark.getPost().getId()).collect(Collectors.toList());
+        Map<Long, Long> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+
+        return bookmarks.map(bookmark -> {
+            Post post = bookmark.getPost();
+            PostResponse response = PostResponse.from(post, commentCountMap.getOrDefault(post.getId(), 0L).intValue());
+            response.setBookmarked(true);
+            return response;
+        });
     }
 }

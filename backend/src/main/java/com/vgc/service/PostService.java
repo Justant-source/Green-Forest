@@ -22,6 +22,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class PostService {
@@ -64,7 +66,11 @@ public class PostService {
             posts = postRepository.findAll(pageRequest);
         }
 
-        return posts.map(post -> PostResponse.from(post, commentRepository.countByPostId(post.getId())));
+        List<Long> postIds = posts.getContent().stream().map(Post::getId).collect(Collectors.toList());
+        Map<Long, Long> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+
+        return posts.map(post -> PostResponse.from(post, commentCountMap.getOrDefault(post.getId(), 0L).intValue()));
     }
 
     public PostResponse getPost(Long id) {
