@@ -13,7 +13,6 @@ import com.vgc.repository.CommentRepository;
 import com.vgc.repository.PostImageRepository;
 import com.vgc.repository.PostLikeRepository;
 import com.vgc.repository.PostRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -22,11 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class PostService {
@@ -36,17 +31,16 @@ public class PostService {
     private final PostImageRepository postImageRepository;
     private final BookmarkRepository bookmarkRepository;
     private final CategoryRepository categoryRepository;
+    private final ImageStorageService imageStorageService;
 
-    @Value("${file.upload-dir}")
-    private String uploadDir;
-
-    public PostService(PostRepository postRepository, CommentRepository commentRepository, PostLikeRepository postLikeRepository, PostImageRepository postImageRepository, BookmarkRepository bookmarkRepository, CategoryRepository categoryRepository) {
+    public PostService(PostRepository postRepository, CommentRepository commentRepository, PostLikeRepository postLikeRepository, PostImageRepository postImageRepository, BookmarkRepository bookmarkRepository, CategoryRepository categoryRepository, ImageStorageService imageStorageService) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.postLikeRepository = postLikeRepository;
         this.postImageRepository = postImageRepository;
         this.bookmarkRepository = bookmarkRepository;
         this.categoryRepository = categoryRepository;
+        this.imageStorageService = imageStorageService;
     }
 
     public Page<PostResponse> getAllPosts(String category, String sort, String status, int page, int size) {
@@ -105,15 +99,10 @@ public class PostService {
     private void saveImages(Post post, List<MultipartFile> images) throws IOException {
         if (images == null || images.isEmpty()) return;
 
-        Path uploadPath = Paths.get(uploadDir);
-        Files.createDirectories(uploadPath);
-
         int order = 0;
         for (MultipartFile image : images) {
             if (image == null || image.isEmpty()) continue;
-            String fileName = UUID.randomUUID() + "_" + image.getOriginalFilename();
-            Files.copy(image.getInputStream(), uploadPath.resolve(fileName));
-            String url = "/uploads/" + fileName;
+            String url = imageStorageService.upload(image);
 
             PostImage postImage = new PostImage(post, url, order);
             post.getImages().add(postImage);
