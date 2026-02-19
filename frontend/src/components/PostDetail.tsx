@@ -208,13 +208,13 @@ export default function PostDetail({ postId }: PostDetailProps) {
               <>
                 <button
                   onClick={() => setCarouselIndex((prev) => (prev - 1 + urls.length) % urls.length)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center text-lg"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full hidden md:flex items-center justify-center text-lg"
                 >
                   &lt;
                 </button>
                 <button
                   onClick={() => setCarouselIndex((prev) => (prev + 1) % urls.length)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center text-lg"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full hidden md:flex items-center justify-center text-lg"
                 >
                   &gt;
                 </button>
