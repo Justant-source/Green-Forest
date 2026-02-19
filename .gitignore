@@ -11,3 +11,6 @@ bin/
 
 # System files
 .DS_Store
+
+# Environment
+.env

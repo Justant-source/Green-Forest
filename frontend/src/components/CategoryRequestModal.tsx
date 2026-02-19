@@ -3,41 +3,26 @@
 import { useState } from "react";
 import { requestCategory } from "@/lib/api";
 
-const COLOR_OPTIONS = [
-  { value: "yellow", label: "노랑" },
-  { value: "blue", label: "파랑" },
-  { value: "orange", label: "주황" },
-  { value: "purple", label: "보라" },
-  { value: "green", label: "초록" },
-  { value: "red", label: "빨강" },
-  { value: "pink", label: "분홍" },
-  { value: "indigo", label: "남색" },
-  { value: "orange", label: "청록" },
-  { value: "gray", label: "회색" },
-];
-
 interface CategoryRequestModalProps {
   onClose: () => void;
 }
 
 export default function CategoryRequestModal({ onClose }: CategoryRequestModalProps) {
   const [name, setName] = useState("");
-  const [label, setLabel] = useState("");
-  const [color, setColor] = useState("blue");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !label.trim()) return;
+    if (!name.trim()) return;
 
     setSubmitting(true);
     try {
-      await requestCategory({ name: name.trim().toUpperCase(), label: label.trim(), color });
+      await requestCategory({ name: name.trim() });
       setSuccess(true);
     } catch (error) {
       console.error("Failed to request category:", error);
-      alert("카테고리 요청에 실패했습니다.");
+      alert("게시판 요청에 실패했습니다.");
     } finally {
       setSubmitting(false);
     }
@@ -46,12 +31,12 @@ export default function CategoryRequestModal({ onClose }: CategoryRequestModalPr
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
       <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-bold">카테고리 요청</h2>
+        <h2 className="text-lg font-bold">게시판 요청</h2>
 
         {success ? (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              카테고리 요청이 등록되었습니다. 관리자 승인 후 사용할 수 있습니다.
+              게시판 요청이 등록되었습니다. 관리자 승인 후 사용할 수 있습니다.
             </p>
             <button
               onClick={onClose}
@@ -64,45 +49,17 @@ export default function CategoryRequestModal({ onClose }: CategoryRequestModalPr
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                카테고리 코드 (영문)
+                게시판 이름
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="예: TRAVEL"
+                placeholder="예: 여행, 맛집, 입양"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 required
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                표시 이름 (한글)
-              </label>
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="예: 여행"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                색상
-              </label>
-              <select
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-              >
-                {COLOR_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              <p className="text-xs text-gray-400 mt-1">관리자가 검토 후 게시판 설정을 완료합니다.</p>
             </div>
             <div className="flex gap-3 pt-2">
               <button
@@ -114,7 +71,7 @@ export default function CategoryRequestModal({ onClose }: CategoryRequestModalPr
               </button>
               <button
                 type="submit"
-                disabled={submitting || !name.trim() || !label.trim()}
+                disabled={submitting || !name.trim()}
                 className="flex-1 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {submitting ? "요청 중..." : "요청하기"}

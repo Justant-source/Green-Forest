@@ -1,7 +1,10 @@
 package com.vgc.dto;
 
 import com.vgc.entity.Post;
+import com.vgc.entity.PostImage;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class PostResponse {
     private Long id;
@@ -16,6 +19,8 @@ public class PostResponse {
     private String authorNickname;
     private boolean bookmarked;
     private boolean liked;
+    private String status;
+    private List<String> imageUrls;
 
     public static PostResponse from(Post post, int commentCount) {
         PostResponse response = new PostResponse();
@@ -29,6 +34,10 @@ public class PostResponse {
         response.createdAt = post.getCreatedAt();
         response.commentCount = commentCount;
         response.authorNickname = post.getAuthor() != null ? post.getAuthor().getNickname() : null;
+        response.status = post.getStatus() != null ? post.getStatus().name() : null;
+        response.imageUrls = post.getImages() != null
+                ? post.getImages().stream().map(PostImage::getImageUrl).collect(Collectors.toList())
+                : List.of();
         return response;
     }
 
@@ -47,4 +56,8 @@ public class PostResponse {
     public void setBookmarked(boolean bookmarked) { this.bookmarked = bookmarked; }
     public boolean isLiked() { return liked; }
     public void setLiked(boolean liked) { this.liked = liked; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public List<String> getImageUrls() { return imageUrls; }
+    public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
 }

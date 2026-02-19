@@ -38,11 +38,18 @@ export default function AdminPage() {
   const [requests, setRequests] = useState<CategoryRequestInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 카테고리 생성 폼
+  // 게시판 생성 폼
   const [newName, setNewName] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [newColor, setNewColor] = useState("blue");
+  const [newHasStatus, setNewHasStatus] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // 승인 폼
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [approveLabel, setApproveLabel] = useState("");
+  const [approveColor, setApproveColor] = useState("blue");
+  const [approveHasStatus, setApproveHasStatus] = useState(false);
 
   // 거절 사유
   const [rejectingId, setRejectingId] = useState<number | null>(null);
@@ -81,35 +88,49 @@ export default function AdminPage() {
         name: newName.trim().toUpperCase(),
         label: newLabel.trim(),
         color: newColor,
+        hasStatus: newHasStatus,
       });
       setCategories((prev) => [...prev, created]);
       setNewName("");
       setNewLabel("");
       setNewColor("blue");
+      setNewHasStatus(false);
     } catch (error) {
       console.error("Failed to create category:", error);
-      alert("카테고리 생성에 실패했습니다. 이미 존재하는 이름일 수 있습니다.");
+      alert("게시판 생성에 실패했습니다. 이미 존재하는 이름일 수 있습니다.");
     } finally {
       setCreating(false);
     }
   };
 
   const handleDelete = async (id: number, label: string) => {
-    if (!confirm(`"${label}" 카테고리를 삭제하시겠습니까?`)) return;
+    if (!confirm(`"${label}" 게시판를 삭제하시겠습니까?`)) return;
     try {
       await deleteAdminCategory(id);
       setCategories((prev) => prev.filter((c) => c.id !== id));
     } catch (error) {
       console.error("Failed to delete category:", error);
-      alert("카테고리 삭제에 실패했습니다.");
+      alert("게시판 삭제에 실패했습니다.");
     }
   };
 
   const handleApprove = async (id: number) => {
+    if (!approveLabel.trim()) {
+      alert("표시 이름을 입력하세요.");
+      return;
+    }
     try {
-      const created = await approveCategoryRequest(id);
+      const created = await approveCategoryRequest(id, {
+        label: approveLabel.trim(),
+        color: approveColor,
+        hasStatus: approveHasStatus,
+      });
       setRequests((prev) => prev.filter((r) => r.id !== id));
       setCategories((prev) => [...prev, created]);
+      setApprovingId(null);
+      setApproveLabel("");
+      setApproveColor("blue");
+      setApproveHasStatus(false);
     } catch (error) {
       console.error("Failed to approve:", error);
       alert("승인에 실패했습니다.");
@@ -140,9 +161,9 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-10">
-      {/* 카테고리 관리 */}
+      {/* 게시판 관리 */}
       <section>
-        <h1 className="text-2xl font-bold mb-6">카테고리 관리</h1>
+        <h1 className="text-2xl font-bold mb-6">게시판 관리</h1>
 
         {/* 생성 폼 */}
         <form onSubmit={handleCreate} className="flex flex-wrap gap-2 mb-6">
@@ -173,6 +194,15 @@ export default function AdminPage() {
               </option>
             ))}
           </select>
+          <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={newHasStatus}
+              onChange={(e) => setNewHasStatus(e.target.checked)}
+              className="w-4 h-4 accent-orange-500"
+            />
+            상태관리
+          </label>
           <button
             type="submit"
             disabled={creating || !newName.trim() || !newLabel.trim()}
@@ -182,9 +212,9 @@ export default function AdminPage() {
           </button>
         </form>
 
-        {/* 카테고리 목록 */}
+        {/* 게시판 목록 */}
         {categories.length === 0 ? (
-          <p className="text-center text-gray-400 py-8">등록된 카테고리가 없습니다.</p>
+          <p className="text-center text-gray-400 py-8">등록된 게시판가 없습니다.</p>
         ) : (
           <div className="space-y-2">
             {categories.map((cat) => (
@@ -196,6 +226,9 @@ export default function AdminPage() {
                   <span className={`w-3 h-3 rounded-full ${colorClsMap[cat.color] || "bg-gray-400"}`} />
                   <span className="font-medium text-sm">{cat.label}</span>
                   <span className="text-xs text-gray-400">{cat.name}</span>
+                  {cat.hasStatus && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 font-medium">상태</span>
+                  )}
                 </div>
                 <button
                   onClick={() => handleDelete(cat.id, cat.label)}
@@ -209,9 +242,9 @@ export default function AdminPage() {
         )}
       </section>
 
-      {/* 카테고리 요청 관리 */}
+      {/* 게시판 요청 관리 */}
       <section>
-        <h2 className="text-2xl font-bold mb-6">카테고리 요청 관리</h2>
+        <h2 className="text-2xl font-bold mb-6">게시판 요청 관리</h2>
 
         {requests.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
@@ -227,12 +260,7 @@ export default function AdminPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-lg">{req.label}</span>
-                      <span className="text-sm text-gray-500">({req.name})</span>
-                      <span
-                        className="inline-block w-4 h-4 rounded-full"
-                        style={{ backgroundColor: req.color }}
-                      />
+                      <span className="font-semibold text-lg">{req.name}</span>
                     </div>
                     <div className="text-sm text-gray-500">
                       요청자: {req.requesterNickname} | {new Date(req.createdAt).toLocaleDateString("ko-KR")}
@@ -270,10 +298,61 @@ export default function AdminPage() {
                       </button>
                     </div>
                   </div>
+                ) : approvingId === req.id ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <input
+                        type="text"
+                        value={approveLabel}
+                        onChange={(e) => setApproveLabel(e.target.value)}
+                        placeholder="표시 이름 (한글)"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-32 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      <select
+                        value={approveColor}
+                        onChange={(e) => setApproveColor(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      >
+                        {COLOR_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={approveHasStatus}
+                          onChange={(e) => setApproveHasStatus(e.target.checked)}
+                          className="w-4 h-4 accent-orange-500"
+                        />
+                        상태관리
+                      </label>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApprove(req.id)}
+                        className="px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
+                      >
+                        승인 확인
+                      </button>
+                      <button
+                        onClick={() => {
+                          setApprovingId(null);
+                          setApproveLabel("");
+                          setApproveColor("blue");
+                          setApproveHasStatus(false);
+                        }}
+                        className="px-4 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex gap-2 mt-4">
                     <button
-                      onClick={() => handleApprove(req.id)}
+                      onClick={() => setApprovingId(req.id)}
                       className="px-4 py-1.5 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
                     >
                       승인

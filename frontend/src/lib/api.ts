@@ -1,8 +1,8 @@
 import { Post, Comment, PageResponse, CategoryInfo, CategoryRequestInfo } from "@/types";
 import { getToken } from "@/lib/auth";
 
-const BASE_URL = "http://localhost:8080/api";
-export const IMAGE_BASE_URL = "http://localhost:8080";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+export const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_IMAGE_BASE_URL || "http://localhost:8080";
 
 function authHeaders(): HeadersInit {
   const token = getToken();
@@ -16,11 +16,13 @@ export async function getPosts(
   category?: string,
   sort?: string,
   page?: number,
-  size?: number
+  size?: number,
+  status?: string
 ): Promise<PageResponse<Post>> {
   const params = new URLSearchParams();
   if (category) params.set("category", category);
   if (sort) params.set("sort", sort);
+  if (status) params.set("status", status);
   if (page !== undefined) params.set("page", String(page));
   if (size !== undefined) params.set("size", String(size));
 
@@ -47,6 +49,16 @@ export async function createPost(formData: FormData): Promise<Post> {
   return res.json();
 }
 
+export async function updatePostStatus(id: number, status: string): Promise<Post> {
+  const res = await fetch(`${BASE_URL}/posts/${id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error("Failed to update post status");
+  return res.json();
+}
+
 export async function updatePost(id: number, formData: FormData): Promise<Post> {
   const res = await fetch(`${BASE_URL}/posts/${id}`, {
     method: "PUT",
@@ -55,6 +67,14 @@ export async function updatePost(id: number, formData: FormData): Promise<Post> 
   });
   if (!res.ok) throw new Error("Failed to update post");
   return res.json();
+}
+
+export async function deletePost(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/posts/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to delete post");
 }
 
 export async function toggleLike(id: number): Promise<Post> {
@@ -152,8 +172,6 @@ export async function getCategories(): Promise<CategoryInfo[]> {
 
 export async function requestCategory(data: {
   name: string;
-  label: string;
-  color: string;
 }): Promise<CategoryRequestInfo> {
   const res = await fetch(`${BASE_URL}/categories/request`, {
     method: "POST",
@@ -177,6 +195,7 @@ export async function createAdminCategory(data: {
   name: string;
   label: string;
   color: string;
+  hasStatus?: boolean;
 }): Promise<CategoryInfo> {
   const res = await fetch(`${BASE_URL}/admin/categories`, {
     method: "POST",
@@ -207,11 +226,13 @@ export async function getPendingCategoryRequests(): Promise<
 }
 
 export async function approveCategoryRequest(
-  id: number
+  id: number,
+  data: { label: string; color: string; hasStatus: boolean }
 ): Promise<CategoryInfo> {
   const res = await fetch(`${BASE_URL}/admin/category-requests/${id}/approve`, {
     method: "POST",
-    headers: authHeaders(),
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to approve category request");
   return res.json();

@@ -32,13 +32,11 @@ public class CategoryService {
 
     public CategoryRequestResponse requestCategory(CategoryRequestDto dto, User user) {
         if (categoryRepository.existsByName(dto.getName())) {
-            throw new RuntimeException("이미 존재하는 카테고리입니다.");
+            throw new RuntimeException("이미 존재하는 게시판입니다.");
         }
 
         CategoryRequest request = new CategoryRequest();
         request.setName(dto.getName());
-        request.setLabel(dto.getLabel());
-        request.setColor(dto.getColor());
         request.setRequester(user);
 
         CategoryRequest saved = categoryRequestRepository.save(request);
@@ -52,7 +50,7 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryResponse approveRequest(Long id) {
+    public CategoryResponse approveRequest(Long id, String label, String color, boolean hasStatus) {
         CategoryRequest request = categoryRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("요청을 찾을 수 없습니다."));
 
@@ -63,16 +61,16 @@ public class CategoryService {
         request.setStatus("APPROVED");
         categoryRequestRepository.save(request);
 
-        Category category = new Category(request.getName(), request.getLabel(), request.getColor());
+        Category category = new Category(request.getName(), label, color, hasStatus);
         Category saved = categoryRepository.save(category);
         return CategoryResponse.from(saved);
     }
 
-    public CategoryResponse createCategory(String name, String label, String color) {
+    public CategoryResponse createCategory(String name, String label, String color, boolean hasStatus) {
         if (categoryRepository.existsByName(name)) {
-            throw new RuntimeException("이미 존재하는 카테고리입니다.");
+            throw new RuntimeException("이미 존재하는 게시판입니다.");
         }
-        Category category = new Category(name, label, color);
+        Category category = new Category(name, label, color, hasStatus);
         Category saved = categoryRepository.save(category);
         return CategoryResponse.from(saved);
     }
@@ -80,7 +78,7 @@ public class CategoryService {
     @Transactional
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("카테고리를 찾을 수 없습니다."));
+                .orElseThrow(() -> new RuntimeException("게시판를 찾을 수 없습니다."));
         categoryRepository.delete(category);
     }
 

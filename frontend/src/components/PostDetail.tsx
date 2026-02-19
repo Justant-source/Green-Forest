@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Post, CategoryInfo } from "@/types";
-import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, IMAGE_BASE_URL } from "@/lib/api";
+import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, updatePostStatus, deletePost, IMAGE_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import CommentSection from "./CommentSection";
 import PostContent from "./PostContent";
@@ -25,19 +26,13 @@ const colorClassMap: Record<string, string> = {
   gray: "bg-gray-100 text-gray-800",
 };
 
-const FALLBACK_CATEGORIES: CategoryInfo[] = [
-  { id: 0, name: "HUMOR", label: "유머", color: "yellow" },
-  { id: 0, name: "NEWS", label: "시사", color: "blue" },
-  { id: 0, name: "DOG", label: "강아지", color: "orange" },
-  { id: 0, name: "CAT", label: "고양이", color: "purple" },
-  { id: 0, name: "CHAT", label: "잡담", color: "green" },
-];
-
 export default function PostDetail({ postId }: PostDetailProps) {
+  const router = useRouter();
   const [post, setPost] = useState<Post | null>(null);
-  const [categories, setCategories] = useState<CategoryInfo[]>(FALLBACK_CATEGORIES);
+  const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
   const { isLoggedIn, nickname } = useAuth();
 
   useEffect(() => {
@@ -102,23 +97,80 @@ export default function PostDetail({ postId }: PostDetailProps) {
   const catInfo = getCategoryInfo(post.category);
   const colorClass = catInfo ? (colorClassMap[catInfo.color] || "bg-gray-100 text-gray-800") : "bg-gray-100 text-gray-800";
 
+  const STATUS_OPTIONS = [
+    { value: "REGISTERED", label: "등록" },
+    { value: "ING", label: "진행중" },
+    { value: "COMPLETE", label: "완료" },
+  ];
+  const statusLabelMap: Record<string, string> = { REGISTERED: "등록", ING: "진행중", COMPLETE: "완료" };
+  const statusColorMap: Record<string, string> = {
+    REGISTERED: "bg-blue-100 text-blue-700",
+    ING: "bg-yellow-100 text-yellow-700",
+    COMPLETE: "bg-green-100 text-green-700",
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      const updated = await updatePostStatus(post.id, newStatus);
+      setPost(updated);
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      alert("상태 변경에 실패했습니다.");
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <span
-          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${colorClass}`}
-        >
-          {catInfo?.label || post.category}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${colorClass}`}
+          >
+            {catInfo?.label || post.category}
+          </span>
+          {post.status && (
+            isLoggedIn && nickname === post.authorNickname ? (
+              <select
+                value={post.status}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${statusColorMap[post.status] || "bg-gray-100 text-gray-700"}`}
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            ) : (
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusColorMap[post.status] || "bg-gray-100 text-gray-700"}`}>
+                {statusLabelMap[post.status] || post.status}
+              </span>
+            )
+          )}
+        </div>
         <div className="flex items-center justify-between mt-3">
           <h1 className="text-2xl font-bold">{post.title}</h1>
           {isLoggedIn && nickname === post.authorNickname && (
-            <Link
-              href={`/posts/${post.id}/edit`}
-              className="px-4 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              수정
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href={`/posts/${post.id}/edit`}
+                className="px-4 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                수정
+              </Link>
+              <button
+                onClick={async () => {
+                  if (!confirm("정말 삭제하시겠습니까?")) return;
+                  try {
+                    await deletePost(post.id);
+                    router.push("/");
+                  } catch {
+                    alert("삭제에 실패했습니다.");
+                  }
+                }}
+                className="px-4 py-1.5 border border-red-300 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              >
+                삭제
+              </button>
+            </div>
           )}
         </div>
         <div className="flex gap-4 text-sm text-gray-500 mt-2">
@@ -128,15 +180,48 @@ export default function PostDetail({ postId }: PostDetailProps) {
         </div>
       </div>
 
-      {post.imageUrl && (
-        <div className="w-full rounded-xl overflow-hidden">
-          <img
-            src={`${IMAGE_BASE_URL}${post.imageUrl}`}
-            alt={post.title}
-            className="w-full rounded-xl"
-          />
-        </div>
-      )}
+      {(() => {
+        const urls = post.imageUrls && post.imageUrls.length > 0
+          ? post.imageUrls
+          : post.imageUrl ? [post.imageUrl] : [];
+        if (urls.length === 0) return null;
+        return (
+          <div className="relative w-full rounded-xl overflow-hidden">
+            <img
+              src={`${IMAGE_BASE_URL}${urls[carouselIndex]}`}
+              alt={`${post.title} ${carouselIndex + 1}`}
+              className="w-full rounded-xl"
+            />
+            {urls.length > 1 && (
+              <>
+                <button
+                  onClick={() => setCarouselIndex((prev) => (prev - 1 + urls.length) % urls.length)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center text-lg"
+                >
+                  &lt;
+                </button>
+                <button
+                  onClick={() => setCarouselIndex((prev) => (prev + 1) % urls.length)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center text-lg"
+                >
+                  &gt;
+                </button>
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                  {urls.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCarouselIndex(i)}
+                      className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                        i === carouselIndex ? "bg-white" : "bg-white/50"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       <PostContent content={post.content} />
 

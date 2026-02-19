@@ -7,6 +7,7 @@ public class CategoryResponse {
     private String name;
     private String label;
     private String color;
+    private boolean hasStatus;
 
     public static CategoryResponse from(Category category) {
         CategoryResponse response = new CategoryResponse();
@@ -14,6 +15,7 @@ public class CategoryResponse {
         response.name = category.getName();
         response.label = category.getLabel();
         response.color = category.getColor();
+        response.hasStatus = category.isHasStatus();
         return response;
     }
 
@@ -21,4 +23,5 @@ public class CategoryResponse {
     public String getName() { return name; }
     public String getLabel() { return label; }
     public String getColor() { return color; }
+    public boolean isHasStatus() { return hasStatus; }
 }

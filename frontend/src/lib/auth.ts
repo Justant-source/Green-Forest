@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -38,8 +38,12 @@ export async function login(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "로그인에 실패했습니다.");
+    let msg = "아이디/비밀번호를 확인해주세요.";
+    try {
+      const body = await res.json();
+      if (body.message) msg = body.message;
+    } catch {}
+    throw new Error(msg);
   }
   const data = await res.json();
   saveAuth(data.token, data.nickname, data.role || "USER");

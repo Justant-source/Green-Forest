@@ -13,17 +13,11 @@ export default function NewPostPage() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [categories, setCategories] = useState<CategoryInfo[]>([
-    { id: 0, name: "HUMOR", label: "유머", color: "yellow" },
-    { id: 0, name: "NEWS", label: "시사", color: "blue" },
-    { id: 0, name: "DOG", label: "강아지", color: "orange" },
-    { id: 0, name: "CAT", label: "고양이", color: "purple" },
-    { id: 0, name: "CHAT", label: "잡담", color: "green" },
-  ]);
+  const [categories, setCategories] = useState<CategoryInfo[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -32,29 +26,42 @@ export default function NewPostPage() {
   }, [isLoggedIn, router]);
 
   useEffect(() => {
+    const saved = sessionStorage.getItem("selectedCategory");
     getCategories()
       .then((cats) => {
         if (cats.length > 0) {
           setCategories(cats);
-          if (!category) setCategory(cats[0].name);
+          const valid = saved && cats.some((c) => c.name === saved);
+          setCategory(valid ? saved : cats[0].name);
         }
       })
       .catch(console.error);
-    if (!category) setCategory("HUMOR");
+    if (!category) setCategory(saved || "HUMOR");
   }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setImageFile(file);
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    if (files.length + imageFiles.length > 5) {
+      alert("이미지는 최대 5장까지 업로드할 수 있습니다.");
+      e.target.value = "";
+      return;
+    }
+    const newFiles = [...imageFiles, ...files];
+    setImageFiles(newFiles);
+
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setImagePreview(event.target?.result as string);
+        setImagePreviews((prev) => [...prev, event.target?.result as string]);
       };
       reader.readAsDataURL(file);
-    } else {
-      setImagePreview(null);
-    }
+    });
+    e.target.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,9 +74,9 @@ export default function NewPostPage() {
       formData.append("title", title.trim());
       formData.append("content", content.trim());
       formData.append("category", category);
-      if (imageFile) {
-        formData.append("image", imageFile);
-      }
+      imageFiles.forEach((file) => {
+        formData.append("images", file);
+      });
 
       const newPost = await createPost(formData);
       router.push(`/posts/${newPost.id}`);
@@ -104,7 +111,7 @@ export default function NewPostPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            카테고리
+            게시판
           </label>
           <div className="flex gap-2">
             <select
@@ -144,21 +151,38 @@ export default function NewPostPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            이미지 (선택)
+            이미지 (선택, 최대 5장)
           </label>
           <input
             type="file"
             accept=".png,.jpg,.jpeg"
+            multiple
             onChange={handleImageChange}
             className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
           />
-          {imagePreview && (
-            <div className="mt-3 w-full max-w-sm rounded-xl overflow-hidden">
-              <img
-                src={imagePreview}
-                alt="미리보기"
-                className="w-full rounded-xl object-cover"
-              />
+          {imagePreviews.length > 0 && (
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+              {imagePreviews.map((preview, index) => (
+                <div key={index} className="relative flex-shrink-0 w-32 h-32 rounded-xl overflow-hidden">
+                  <img
+                    src={preview}
+                    alt={`미리보기 ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center text-xs hover:bg-black/80"
+                  >
+                    X
+                  </button>
+                  {index === 0 && (
+                    <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-orange-600 text-white text-[10px] rounded">
+                      썸네일
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

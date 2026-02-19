@@ -40,13 +40,14 @@ public class AdminController {
 
     @PostMapping("/categories")
     public ResponseEntity<CategoryResponse> createCategory(
-            @RequestBody Map<String, String> body,
+            @RequestBody Map<String, Object> body,
             Authentication authentication) {
         getAdminUser(authentication);
-        String name = body.get("name");
-        String label = body.get("label");
-        String color = body.get("color");
-        return ResponseEntity.ok(categoryService.createCategory(name, label, color));
+        String name = (String) body.get("name");
+        String label = (String) body.get("label");
+        String color = (String) body.get("color");
+        boolean hasStatus = Boolean.TRUE.equals(body.get("hasStatus"));
+        return ResponseEntity.ok(categoryService.createCategory(name, label, color, hasStatus));
     }
 
     @DeleteMapping("/categories/{id}")
@@ -67,9 +68,13 @@ public class AdminController {
     @PostMapping("/category-requests/{id}/approve")
     public ResponseEntity<CategoryResponse> approveRequest(
             @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
             Authentication authentication) {
         getAdminUser(authentication);
-        return ResponseEntity.ok(categoryService.approveRequest(id));
+        String label = (String) body.get("label");
+        String color = (String) body.get("color");
+        boolean hasStatus = Boolean.TRUE.equals(body.get("hasStatus"));
+        return ResponseEntity.ok(categoryService.approveRequest(id, label, color, hasStatus));
     }
 
     @PostMapping("/category-requests/{id}/reject")

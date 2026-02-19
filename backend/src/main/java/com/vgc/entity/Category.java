@@ -18,6 +18,8 @@ public class Category {
 
     private String color;
 
+    private boolean hasStatus = false;
+
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -27,10 +29,11 @@ public class Category {
 
     public Category() {}
 
-    public Category(String name, String label, String color) {
+    public Category(String name, String label, String color, boolean hasStatus) {
         this.name = name;
         this.label = label;
         this.color = color;
+        this.hasStatus = hasStatus;
     }
 
     public Long getId() { return id; }
@@ -41,6 +44,8 @@ public class Category {
     public void setLabel(String label) { this.label = label; }
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
+    public boolean isHasStatus() { return hasStatus; }
+    public void setHasStatus(boolean hasStatus) { this.hasStatus = hasStatus; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

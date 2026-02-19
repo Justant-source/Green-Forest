@@ -40,26 +40,35 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. 가장 구체적인 경로를 맨 위로 (인증 필요)
-                        .requestMatchers("/api/profile/**").authenticated()
-                        .requestMatchers("/api/admin/**").authenticated()
+                        // 1. 인증 불필요 - 공개 API
                         .requestMatchers("/api/auth/**").permitAll()
-
-                        // 2. 카테고리 (카테고리 조회가 우선순위가 높아야 함)
                         .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/categories/request").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/posts/*/comments").permitAll()
 
-                        // 3. 포스트 관련 인증이 필요한 동작들 (경로 패턴을 단순화하거나 명확히 함)
+                        // 2. 인증 필요 - 포스트 CUD
                         .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/posts/*").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/posts/*/comments").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/posts/*/bookmark", "/api/posts/*/like", "/api/posts/*/comments").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/posts/*").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/posts/*/status").authenticated()
 
-                        // 4. 포스트 조회 관련 (가장 넓은 범위이므로 아래쪽으로)
-                        .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+                        // 3. 인증 필요 - 좋아요, 북마크, 댓글 작성
+                        .requestMatchers(HttpMethod.GET, "/api/posts/*/like").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/posts/*/like").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/posts/*/bookmark").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/posts/*/bookmark").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/posts/*/comments").authenticated()
 
-                        // 5. 그 외 모든 요청
-                        .anyRequest().permitAll()
+                        // 4. 개별 포스트 조회 - 공개
+                        .requestMatchers(HttpMethod.GET, "/api/posts/*").permitAll()
+
+                        // 5. 카테고리 요청, 프로필, 관리자
+                        .requestMatchers(HttpMethod.POST, "/api/categories/request").authenticated()
+                        .requestMatchers("/api/profile/**").authenticated()
+                        .requestMatchers("/api/admin/**").authenticated()
+
+                        // 6. 그 외 모든 요청 - 인증 필요
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

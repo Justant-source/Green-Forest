@@ -1,7 +1,7 @@
-# 📄 Project Specification: Visual Grid Community (VGC)
+# 📄 Project Specification: 냐옹스
 
 ## 1. 개요 (Overview)
-본 프로젝트는 기존의 텍스트 리스트형 커뮤니티 구조를 탈피하여, 9분할 격자(Grid) 이미지를 메인 인터페이스로 사용하는 시각 중심 커뮤니티 플랫폼입니다. 인스타그램의 레이아웃과 기존 커뮤니티(게시판)의 깊이감을 결합한 형태입니다.
+본 프로젝트는 기존의 텍스트 리스트형 커뮤니티 구조를 탈피하여, 분할 격자 이미지를 메인 인터페이스로 사용하는 시각 중심 커뮤니티 플랫폼입니다. 인스타그램의 레이아웃과 기존 커뮤니티(게시판)의 깊이감을 결합한 형태입니다.
 
 ## 2. 핵심 컨셉 (Core Concept)
 Visual Title: 게시글 제목 대신 썸네일(이미지 또는 생성된 타이틀 카드)이 격자 형태로 노출됩니다.
@@ -13,12 +13,12 @@ Hybrid Content: 썸네일을 클릭하면 상세 게시글(글, 사진, 영상, 
 ## 3. 상세 요구사항 (Detailed Requirements)
 
 ### A. 메인 피드 및 탐색 (Main Feed & Discovery)
-Grid Layout: 3x3 격자 형태의 9개 이미지 피드 제공.
+Grid Layout: 3x4 격자 형태의 9개 이미지 피드 제공.(인스타그램과 동일하게 4x5비율 이미지 그리드 생성)
 
 Initial Page (Trend): 전체 카테고리 중 '좋아요' 및 '댓글' 수가 많은 트렌드 게시글 우선 노출.
 
 Filtering & Sorting:
-* 카테고리 필터: 유머 / 시사 / 강아지 / 고양이 (초기 세팅).
+* 카테고리 필터: 자랑 / 입양 / 임보 / 정보 / 잡담 / 추모
 * 정렬 조건: 최신순 / 좋아요순 / 댓글순.
 
 Recommendation: 사용자의 활동 데이터에 기반한 개인화된 추천 알고리즘 적용 (9개 격자 구성 시 반영).
@@ -48,7 +48,7 @@ My Page:
 * 북마크한 글 모음.
 
 ### E. 반응형 레이아웃 (Responsive Grid UI)
-Desktop (1024px 이상): 한 줄에 3개씩, 총 3줄(3x3)을 기본 단위로 하는 그리드 노출.
+Desktop (1024px 이상): 한 줄에 3개씩 그리드 노출.
 
 Tablet (768px ~ 1023px): 한 줄에 2개 또는 3개 유지 (화면 폭에 따라 최적화).
 
@@ -70,9 +70,9 @@ No-Image fallback: 사진이 없는 게시글의 경우, 아래 규칙에 따라
 * 효과: CSS Grid와 Flexbox를 활용해 텍스트가 항상 정사각형 중앙에 오도록 처리.
 
 ## 4. 기술 스택 제안 (Technical Stack Suggestion)
-Frontend: React.js 또는 Next.js (SEO 및 빠른 렌더링).
+Frontend: next.js
 
-Backend: Spring Boot 또는 Node.js (Express).
+Backend: Spring Boot
 
 Database: MySQL.
 
@@ -91,3 +91,23 @@ Image Processing: Canvas API 또는 외부 라이브러리 (텍스트-이미지 
 * **Backend:** Spring Boot (Java, **Gradle** 기반)
 * **Frontend:** Next.js (App Router)
 * **Database:** **MySQL**
+
+## 6. 추가 업데이트 사항 (Latest Updates)
+
+### A. 게시글 상태 관리 (Post Status)
+* **상태 값 도입:** 특정 카테고리(입양, 임보)의 게시글은 현재 진행 상황을 나타내는 '상태' 값을 가진다.
+    * 예: `진행중` / `완료`.
+* **권한:** 해당 상태 값은 게시글 작성자가 상세 페이지 또는 수정 페이지에서 자유롭게 변경할 수 있다.
+* **UI 반영:** 메인 그리드 썸네일 상단이나 상세 페이지 제목 옆에 상태 뱃지(Badge)를 노출한다.
+
+### B. 다중 이미지 업로드 (Multi-Image Upload)
+* **수량 제한:** 게시글 하나당 최대 **5장**까지 이미지를 등록할 수 있다.
+* **대표 이미지:** 업로드된 이미지 중 첫 번째 이미지를 메인 피드의 썸네일로 사용한다. 텍스트카드인경우 배경색은 게시판 대표색으로 지정한다
+* **상세 페이지 UI:** 상세 페이지에서는 슬라이더(Carousel) 또는 리스트 형태로 5장의 사진을 모두 보여준다.
+
+### C. 인증 보안 설정 (Security & Auth)
+* **JWT 만료 시간:** 사용자 보안을 위해 JWT(JSON Web Token)의 세션 만료 시간을 생성 후 **1시간**으로 제한한다.
+* **만료 동작:** 토큰 만료 시 사용자는 자동으로 로그아웃 처리되거나, 재로그인이 필요하도록 설계한다.
+
+### D. post 조회시 페이징 처리
+* **최초 24개 조회 그 이후 스크롤 발생시 계속 가져오는 형식으로 페이징처리하여 가져오도록 구현한다

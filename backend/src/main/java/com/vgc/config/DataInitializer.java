@@ -15,12 +15,5 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (categoryRepository.count() == 0) {
-            categoryRepository.save(new Category("HUMOR", "유머", "yellow"));
-            categoryRepository.save(new Category("NEWS", "시사", "blue"));
-            categoryRepository.save(new Category("DOG", "강아지", "orange"));
-            categoryRepository.save(new Category("CAT", "고양이", "purple"));
-            categoryRepository.save(new Category("CHAT", "잡담", "green"));
-        }
     }
 }

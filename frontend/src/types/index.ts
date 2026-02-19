@@ -3,6 +3,7 @@ export interface CategoryInfo {
   name: string;
   label: string;
   color: string;
+  hasStatus?: boolean;
 }
 
 export interface Post {
@@ -16,6 +17,8 @@ export interface Post {
   createdAt: string;
   commentCount: number;
   authorNickname: string | null;
+  status?: string | null;
+  imageUrls?: string[];
   bookmarked?: boolean;
   liked?: boolean;
 }

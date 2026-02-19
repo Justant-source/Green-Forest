@@ -33,6 +33,15 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
       href={`/posts/${post.id}`}
       className="group block overflow-hidden transition-transform duration-200 hover:scale-105 relative"
     >
+      {post.status && (
+        <span className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+          post.status === "COMPLETE" ? "bg-green-500 text-white" :
+          post.status === "ING" ? "bg-yellow-400 text-gray-900" :
+          "bg-blue-500 text-white"
+        }`}>
+          {{ REGISTERED: "등록", ING: "진행중", COMPLETE: "완료" }[post.status] || post.status}
+        </span>
+      )}
       {isLoggedIn && (
         <button
           onClick={handleBookmarkClick}
@@ -52,13 +61,21 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
             alt={post.title}
             className="w-full h-full object-cover"
           />
+          {post.status === "COMPLETE" && (
+            <div className="absolute inset-0 bg-black/40" />
+          )}
           <div className="absolute bottom-2 right-2 flex gap-2 text-[10px] sm:text-xs text-white bg-black/50 rounded-full px-2 py-0.5">
             <span>♥ {post.likeCount}</span>
             <span>👁 {post.viewCount}</span>
           </div>
         </div>
       ) : (
-        <TitleCard title={post.title} postId={post.id} likeCount={post.likeCount} viewCount={post.viewCount} />
+        <div className="relative">
+          <TitleCard title={post.title} postId={post.id} category={post.category} likeCount={post.likeCount} viewCount={post.viewCount} />
+          {post.status === "COMPLETE" && (
+            <div className="absolute inset-0 bg-black/40" />
+          )}
+        </div>
       )}
     </Link>
   );

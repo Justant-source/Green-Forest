@@ -2,6 +2,8 @@ package com.vgc.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "posts")
@@ -24,6 +26,13 @@ public class Post {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id")
     private User author;
+
+    @Enumerated(EnumType.STRING)
+    private PostStatus status;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    private List<PostImage> images = new ArrayList<>();
 
     private int likeCount = 0;
     private int viewCount = 0;
@@ -52,6 +61,10 @@ public class Post {
     public void setViewCount(int viewCount) { this.viewCount = viewCount; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public PostStatus getStatus() { return status; }
+    public void setStatus(PostStatus status) { this.status = status; }
     public User getAuthor() { return author; }
     public void setAuthor(User author) { this.author = author; }
+    public List<PostImage> getImages() { return images; }
+    public void setImages(List<PostImage> images) { this.images = images; }
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Post } from "@/types";
-import { getPosts } from "@/lib/api";
+import { Post, CategoryInfo } from "@/types";
+import { getPosts, getCategories } from "@/lib/api";
 import CategoryFilter from "./CategoryFilter";
 import SortSelector from "./SortSelector";
 import GridItem from "./GridItem";
@@ -10,13 +10,13 @@ import SkeletonGrid from "./SkeletonGrid";
 
 const CACHE_KEY = "gridFeedCache";
 
-function saveCache(data: { posts: Post[]; category: string | null; sort: string; page: number; hasMore: boolean; scrollY: number }) {
+function saveCache(data: { posts: Post[]; category: string | null; sort: string; status: string | null; page: number; hasMore: boolean; scrollY: number }) {
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
   } catch {}
 }
 
-function loadCache(): { posts: Post[]; category: string | null; sort: string; page: number; hasMore: boolean; scrollY: number } | null {
+function loadCache(): { posts: Post[]; category: string | null; sort: string; status: string | null; page: number; hasMore: boolean; scrollY: number } | null {
   try {
     const raw = sessionStorage.getItem(CACHE_KEY);
     if (!raw) return null;
@@ -31,17 +31,23 @@ export default function GridFeed() {
   const [posts, setPosts] = useState<Post[]>(cache.current?.posts ?? []);
   const [category, setCategory] = useState<string | null>(cache.current?.category ?? null);
   const [sort, setSort] = useState<string>(cache.current?.sort ?? "latest");
+  const [status, setStatus] = useState<string | null>(cache.current?.status ?? null);
+  const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [page, setPage] = useState<number>(cache.current?.page ?? 0);
   const [loading, setLoading] = useState<boolean>(!cache.current);
   const [hasMore, setHasMore] = useState<boolean>(cache.current?.hasMore ?? true);
   const [restored, setRestored] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    getCategories().then(setCategories).catch(console.error);
+  }, []);
+
   const fetchPosts = useCallback(
     async (pageNum: number, append: boolean) => {
       setLoading(true);
       try {
-        const data = await getPosts(category ?? undefined, sort, pageNum, 12);
+        const data = await getPosts(category ?? undefined, sort, pageNum, 24, status ?? undefined);
         if (append) {
           setPosts((prev) => [...prev, ...data.content]);
         } else {
@@ -54,8 +60,17 @@ export default function GridFeed() {
         setLoading(false);
       }
     },
-    [category, sort]
+    [category, sort, status]
   );
+
+  // Save selected category for new post page
+  useEffect(() => {
+    if (category) {
+      sessionStorage.setItem("selectedCategory", category);
+    } else {
+      sessionStorage.removeItem("selectedCategory");
+    }
+  }, [category]);
 
   // Reset when category or sort changes (skip if restoring from cache)
   useEffect(() => {
@@ -89,11 +104,11 @@ export default function GridFeed() {
   // Save state before navigating away
   useEffect(() => {
     const handleBeforeUnload = () => {
-      saveCache({ posts, category, sort, page, hasMore, scrollY: window.scrollY });
+      saveCache({ posts, category, sort, status, page, hasMore, scrollY: window.scrollY });
     };
 
     const handleClick = () => {
-      saveCache({ posts, category, sort, page, hasMore, scrollY: window.scrollY });
+      saveCache({ posts, category, sort, status, page, hasMore, scrollY: window.scrollY });
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -102,7 +117,7 @@ export default function GridFeed() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("click", handleClick);
     };
-  }, [posts, category, sort, page, hasMore]);
+  }, [posts, category, sort, status, page, hasMore]);
 
   // Infinite scroll
   useEffect(() => {
@@ -129,9 +144,42 @@ export default function GridFeed() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <CategoryFilter selected={category} onSelect={setCategory} />
-        <SortSelector value={sort} onChange={setSort} />
+        <CategoryFilter selected={category} onSelect={(cat) => { setCategory(cat); setStatus(null); if (!cat) setSort("latest"); }} />
       </div>
+
+      {category && (() => {
+        const catInfo = categories.find((c) => c.name === category);
+        if (catInfo?.hasStatus) {
+          const STATUS_OPTIONS = [
+            { value: null, label: "전체" },
+            { value: "REGISTERED", label: "등록" },
+            { value: "ING", label: "진행중" },
+            { value: "COMPLETE", label: "완료" },
+          ];
+          return (
+            <div className="flex gap-2">
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value ?? "all"}
+                  onClick={() => setStatus(opt.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    status === opt.value
+                      ? "bg-orange-400 text-white"
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          );
+        }
+        return (
+          <div className="flex justify-end">
+            <SortSelector value={sort} onChange={setSort} />
+          </div>
+        );
+      })()}
 
       {loading && posts.length === 0 ? (
         <SkeletonGrid />

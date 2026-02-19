@@ -1,25 +1,31 @@
+import { getCategoryColor } from "@/lib/categoryCache";
+
 interface TitleCardProps {
   title: string;
   postId: number;
+  category: string;
   likeCount: number;
   viewCount: number;
 }
 
-const palette = [
-  { bg: "#FFE4B5", text: "#8B6914" },
-  { bg: "#B0C4DE", text: "#2F4F4F" },
-  { bg: "#FFDAB9", text: "#8B4513" },
-  { bg: "#D8BFD8", text: "#4B0082" },
-  { bg: "#B5EAD7", text: "#2D6A4F" },
-  { bg: "#FCCDE2", text: "#8B2252" },
-  { bg: "#C1E1FF", text: "#1B4965" },
-  { bg: "#FFF3B0", text: "#7A6C00" },
-  { bg: "#E2C9FF", text: "#5B2C8B" },
-  { bg: "#FFD6D6", text: "#8B3A3A" },
-];
+const colorMap: Record<string, { bg: string; text: string }> = {
+  yellow: { bg: "#FFF3B0", text: "#7A6C00" },
+  blue: { bg: "#C1E1FF", text: "#1B4965" },
+  orange: { bg: "#FFE4B5", text: "#8B6914" },
+  purple: { bg: "#E2C9FF", text: "#5B2C8B" },
+  green: { bg: "#B5EAD7", text: "#2D6A4F" },
+  red: { bg: "#FFD6D6", text: "#8B3A3A" },
+  pink: { bg: "#FCCDE2", text: "#8B2252" },
+  indigo: { bg: "#B0C4DE", text: "#2F4F4F" },
+  teal: { bg: "#B2DFDB", text: "#00695C" },
+  gray: { bg: "#E0E0E0", text: "#424242" },
+};
 
-export default function TitleCard({ title, postId, likeCount, viewCount }: TitleCardProps) {
-  const colors = palette[postId % palette.length];
+const fallback = { bg: "#F3F4F6", text: "#374151" };
+
+export default function TitleCard({ title, category, likeCount, viewCount }: TitleCardProps) {
+  const catColor = getCategoryColor(category);
+  const colors = (catColor && colorMap[catColor]) || fallback;
 
   return (
     <div

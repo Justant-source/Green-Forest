@@ -13,7 +13,6 @@ public class CategoryRequest {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
     private String label;
 
     private String color;

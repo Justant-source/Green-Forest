@@ -2,6 +2,7 @@ package com.vgc.controller;
 
 import com.vgc.dto.PostRequest;
 import com.vgc.dto.PostResponse;
+import com.vgc.entity.PostStatus;
 import com.vgc.entity.User;
 import com.vgc.repository.UserRepository;
 import com.vgc.service.PostService;
@@ -10,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -27,9 +29,10 @@ public class PostController {
     public Page<PostResponse> getPosts(
             @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "latest") String sort,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "9") int size) {
-        return postService.getAllPosts(category, sort, page, size);
+            @RequestParam(defaultValue = "24") int size) {
+        return postService.getAllPosts(category, sort, status, page, size);
     }
 
     @GetMapping("/{id}")
@@ -42,7 +45,7 @@ public class PostController {
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam("category") String category,
-            @RequestParam(value = "image", required = false) MultipartFile image,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
             Authentication authentication) throws Exception {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -50,7 +53,7 @@ public class PostController {
         request.setTitle(title);
         request.setContent(content);
         request.setCategory(category);
-        return postService.createPost(request, image, user);
+        return postService.createPost(request, images, user);
     }
 
     @PutMapping("/{id}")
@@ -59,7 +62,7 @@ public class PostController {
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam("category") String category,
-            @RequestParam(value = "image", required = false) MultipartFile image,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
             Authentication authentication) throws Exception {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -67,7 +70,26 @@ public class PostController {
         request.setTitle(title);
         request.setContent(content);
         request.setCategory(category);
-        return postService.updatePost(id, request, image, user);
+        return postService.updatePost(id, request, images, user);
+    }
+
+    @PatchMapping("/{id}/status")
+    public PostResponse updatePostStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        PostStatus status = PostStatus.valueOf(body.get("status"));
+        return postService.updatePostStatus(id, status, user);
+    }
+
+    @DeleteMapping("/{id}")
+    public Map<String, String> deletePost(@PathVariable Long id, Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        postService.deletePost(id, user);
+        return Map.of("message", "삭제되었습니다.");
     }
 
     @GetMapping("/{id}/like")
