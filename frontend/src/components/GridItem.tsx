@@ -45,10 +45,10 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
       {isLoggedIn && (
         <button
           onClick={handleBookmarkClick}
-          className={`absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full text-sm ${
+          className={`absolute top-2 right-2 z-10 w-8 h-8 items-center justify-center rounded-full text-sm hidden [@media(hover:hover)]:flex ${
             bookmarked
-              ? "bg-orange-500 text-white"
-              : "bg-black/30 text-white"
+              ? "bg-orange-500 text-white [@media(hover:hover)]:flex"
+              : "bg-black/50 text-white opacity-0 group-hover:opacity-100"
           }`}
         >
           🔖
