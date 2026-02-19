@@ -27,9 +27,9 @@ function getRelativeTime(dateStr: string): string {
 
 const DEPTH_MARGIN: Record<number, string> = {
   0: "ml-0",
-  1: "ml-8",
-  2: "ml-16",
-  3: "ml-20",
+  1: "ml-4",
+  2: "ml-8",
+  3: "ml-10",
 };
 
 function getDepthMargin(depth: number): string {
