@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "@/types";
 import { getConversationMessages, sendChatMessage, leaveConversation, getConversations } from "@/lib/api";
-import { getStompClient, disconnectStomp } from "@/lib/websocket";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
+import { getToken } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 
 interface ChatRoomProps {
@@ -18,16 +20,17 @@ function formatTime(dateStr: string): string {
 
 export default function ChatRoom({ conversationId }: ChatRoomProps) {
   const router = useRouter();
-  const { isLoggedIn, nickname } = useAuth();
+  const { isLoggedIn, nickname, authLoaded } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [otherNickname, setOtherNickname] = useState("");
   const [otherLeft, setOtherLeft] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const stompRef = useRef<ReturnType<typeof getStompClient> | null>(null);
+  const stompRef = useRef<Client | null>(null);
 
   useEffect(() => {
+    if (!authLoaded) return;
     if (!isLoggedIn) {
       router.push("/login");
       return;
@@ -40,7 +43,6 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
     ])
       .then(([convList, msgs]) => {
         setMessages(msgs);
-        // 대화 목록에서 상대 닉네임, 나간 상태 추출
         const conv = convList.find((c) => c.id === conversationId);
         if (conv) {
           setOtherNickname(conv.otherNickname);
@@ -50,29 +52,33 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
       .catch(console.error)
       .finally(() => setLoading(false));
 
-    // STOMP 연결
-    const client = getStompClient();
-    stompRef.current = client;
-
-    client.onConnect = () => {
-      client.subscribe(`/topic/messages/${conversationId}`, (frame) => {
-        const msg: ChatMessage = JSON.parse(frame.body);
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
+    // STOMP 연결 — 매번 새 클라이언트 생성
+    const client = new Client({
+      webSocketFactory: () => new SockJS(process.env.NEXT_PUBLIC_WS_URL || "http://localhost:8080/ws"),
+      connectHeaders: {
+        Authorization: `Bearer ${getToken() || ""}`,
+      },
+      reconnectDelay: 5000,
+      onConnect: () => {
+        client.subscribe(`/topic/messages/${conversationId}`, (frame) => {
+          const msg: ChatMessage = JSON.parse(frame.body);
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+          if (msg.systemMessage && msg.content.includes("나갔습니다")) {
+            setOtherLeft(true);
+          }
         });
-        if (msg.systemMessage && msg.content.includes("나갔습니다")) {
-          setOtherLeft(true);
-        }
-      });
-    };
+      },
+    });
 
     client.activate();
 
     return () => {
-      disconnectStomp();
+      client.deactivate();
     };
-  }, [conversationId, isLoggedIn, nickname, router]);
+  }, [conversationId, authLoaded, isLoggedIn, nickname, router]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -24,11 +24,12 @@ function getRelativeTime(dateStr: string): string {
 
 export default function ConversationsPage() {
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, authLoaded } = useAuth();
   const [conversations, setConversations] = useState<ConversationInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!authLoaded) return;
     if (!isLoggedIn) {
       router.push("/login");
       return;
@@ -37,7 +38,7 @@ export default function ConversationsPage() {
       .then(setConversations)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [isLoggedIn, router]);
+  }, [authLoaded, isLoggedIn, router]);
 
   if (loading) {
     return (
@@ -49,7 +50,7 @@ export default function ConversationsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">대화목록</h1>
+      <h1 className="text-2xl font-bold mb-6">대화</h1>
       {conversations.length === 0 ? (
         <p className="text-center text-gray-400 py-12">아직 대화가 없습니다.</p>
       ) : (

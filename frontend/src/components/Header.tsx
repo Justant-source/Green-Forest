@@ -38,7 +38,7 @@ export default function Header() {
                 href="/conversations"
                 className="text-sm text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
               >
-                대화목록
+                대화
               </Link>
               {isAdmin && (
                 <Link
@@ -52,7 +52,7 @@ export default function Header() {
                 href="/posts/new"
                 className="bg-orange-400 hover:bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors"
               >
-                새 글 쓰기
+                새 글
               </Link>
               <button
                 onClick={handleLogout}

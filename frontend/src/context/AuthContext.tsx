@@ -8,6 +8,7 @@ interface AuthContextType {
   role: string | null;
   isLoggedIn: boolean;
   isAdmin: boolean;
+  authLoaded: boolean;
   refresh: () => void;
   handleLogout: () => void;
 }
@@ -17,14 +18,16 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   isLoggedIn: false,
   isAdmin: false,
+  authLoaded: false,
   refresh: () => {},
   handleLogout: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [nickname, setNickname] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [nickname, setNickname] = useState<string | null>(getNickname());
+  const [role, setRole] = useState<string | null>(getRole());
+  const [isLoggedIn, setIsLoggedIn] = useState(!!getToken());
+  const [authLoaded, setAuthLoaded] = useState(false);
 
   const refresh = () => {
     const token = getToken();
@@ -44,12 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refresh();
+    setAuthLoaded(true);
   }, []);
 
   const isAdmin = role === "ADMIN";
 
   return (
-    <AuthContext.Provider value={{ nickname, role, isLoggedIn, isAdmin, refresh, handleLogout }}>
+    <AuthContext.Provider value={{ nickname, role, isLoggedIn, isAdmin, authLoaded, refresh, handleLogout }}>
       {children}
     </AuthContext.Provider>
   );
