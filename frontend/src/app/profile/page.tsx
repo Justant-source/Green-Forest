@@ -10,7 +10,7 @@ import GridItem from "@/components/GridItem";
 type Tab = "posts" | "bookmarks";
 
 export default function ProfilePage() {
-  const { nickname, isLoggedIn } = useAuth();
+  const { nickname, isLoggedIn, handleLogout } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("posts");
   const [posts, setPosts] = useState<Post[]>([]);
@@ -61,9 +61,20 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">{nickname}</h1>
-        <p className="text-gray-500 text-sm mt-1">마이페이지</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold">{nickname}</h1>
+          <p className="text-gray-500 text-sm mt-1">마이페이지</p>
+        </div>
+        <button
+          onClick={() => {
+            handleLogout();
+            router.push("/");
+          }}
+          className="text-sm text-gray-400 hover:text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          로그아웃
+        </button>
       </div>
 
       <div className="flex gap-1 mb-6 border-b">

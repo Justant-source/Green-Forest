@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { jua } from "@/lib/fonts";
 
 export default function Header() {
-  const { nickname, isLoggedIn, isAdmin, handleLogout } = useAuth();
+  const { nickname, isLoggedIn, isAdmin } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/60">
@@ -28,18 +28,6 @@ export default function Header() {
         <div className="flex items-center gap-2">
           {isLoggedIn ? (
             <>
-              <Link
-                href="/profile"
-                className="text-sm text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                {nickname}
-              </Link>
-              <Link
-                href="/conversations"
-                className="text-sm text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                대화
-              </Link>
               {isAdmin && (
                 <Link
                   href="/admin"
@@ -54,12 +42,18 @@ export default function Header() {
               >
                 새 글
               </Link>
-              <button
-                onClick={handleLogout}
-                className="text-sm text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
+              <Link
+                href="/conversations"
+                className="text-sm text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
               >
-                로그아웃
-              </button>
+                대화
+              </Link>
+              <Link
+                href="/profile"
+                className="text-sm text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                {nickname}
+              </Link>
             </>
           ) : (
             <Link
