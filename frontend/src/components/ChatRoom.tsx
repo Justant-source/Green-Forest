@@ -4,8 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "@/types";
 import { getConversationMessages, sendChatMessage, leaveConversation, getConversations } from "@/lib/api";
-import { Client } from "@stomp/stompjs";
-import { getToken } from "@/lib/auth";
+import { StompClient } from "@/lib/websocket";
 import { useAuth } from "@/context/AuthContext";
 
 interface ChatRoomProps {
@@ -26,9 +25,7 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
   const [otherNickname, setOtherNickname] = useState("");
   const [otherLeft, setOtherLeft] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const stompConnected = useRef(false);
 
-  // 메시지 중복 없이 병합
   const mergeMessages = useCallback((prev: ChatMessage[], incoming: ChatMessage[]) => {
     const ids = new Set(prev.map((m) => m.id));
     const newMsgs = incoming.filter((m) => !ids.has(m.id));
@@ -59,55 +56,35 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
       .catch(console.error)
       .finally(() => setLoading(false));
 
-    // STOMP 연결 시도
-    let client: Client | null = null;
-    try {
-      client = new Client({
-        brokerURL: process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/ws",
-        connectHeaders: {
-          Authorization: `Bearer ${getToken() || ""}`,
-        },
-        reconnectDelay: 5000,
-        onConnect: () => {
-          stompConnected.current = true;
-          client!.subscribe(`/topic/messages/${conversationId}`, (frame) => {
-            const msg: ChatMessage = JSON.parse(frame.body);
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === msg.id)) return prev;
-              return [...prev, msg];
-            });
-            if (msg.systemMessage && msg.content.includes("나갔습니다")) {
-              setOtherLeft(true);
-            }
-          });
-        },
-        onDisconnect: () => { stompConnected.current = false; },
-        onStompError: () => { stompConnected.current = false; },
-        onWebSocketError: () => { stompConnected.current = false; },
-      });
-      client.activate();
-    } catch {
-      // WebSocket 지원 안 되면 폴링으로 동작
-    }
+    // WebSocket STOMP 연결
+    const stomp = new StompClient();
+    stomp.connect();
+    stomp.subscribe(`/topic/messages/${conversationId}`, (body) => {
+      try {
+        const msg: ChatMessage = JSON.parse(body);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+        if (msg.systemMessage && msg.content.includes("나갔습니다")) {
+          setOtherLeft(true);
+        }
+      } catch { /* ignore parse error */ }
+    });
 
-    // 폴링 — STOMP 연결 여부와 관계없이 3초마다 새 메시지 확인
+    // 폴링 fallback — WebSocket 연결 안 될 경우 대비
     const pollInterval = setInterval(() => {
+      if (stomp.isConnected()) return; // WebSocket 연결 중이면 폴링 스킵
       getConversationMessages(conversationId)
         .then((msgs) => {
           setMessages((prev) => mergeMessages(prev, msgs));
-          // 나간 상태 갱신
-          const leaveMsg = msgs.find(
-            (m) => m.systemMessage && m.content.includes("나갔습니다") && !m.content.startsWith(nickname || "")
-          );
-          if (leaveMsg) setOtherLeft(true);
         })
         .catch(() => {});
-    }, 3000);
+    }, 2000);
 
     return () => {
       clearInterval(pollInterval);
-      if (client) client.deactivate();
-      stompConnected.current = false;
+      stomp.disconnect();
     };
   }, [conversationId, authLoaded, isLoggedIn, nickname, router, mergeMessages]);
 
@@ -153,7 +130,6 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] max-w-2xl mx-auto">
-      {/* 상단 바 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-3">
           <button
@@ -177,7 +153,6 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
         </button>
       </div>
 
-      {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
         {messages.map((msg) => {
           if (msg.systemMessage) {
@@ -220,7 +195,6 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 입력 폼 */}
       <form
         onSubmit={handleSend}
         className="flex items-center gap-2 px-4 py-3 border-t border-gray-200 bg-white"
