@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "@/types";
 import { getConversationMessages, sendChatMessage, leaveConversation, getConversations } from "@/lib/api";
@@ -26,7 +26,15 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
   const [otherNickname, setOtherNickname] = useState("");
   const [otherLeft, setOtherLeft] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const stompRef = useRef<Client | null>(null);
+  const stompConnected = useRef(false);
+
+  // 메시지 중복 없이 병합
+  const mergeMessages = useCallback((prev: ChatMessage[], incoming: ChatMessage[]) => {
+    const ids = new Set(prev.map((m) => m.id));
+    const newMsgs = incoming.filter((m) => !ids.has(m.id));
+    if (newMsgs.length === 0) return prev;
+    return [...prev, ...newMsgs];
+  }, []);
 
   useEffect(() => {
     if (!authLoaded) return;
@@ -35,7 +43,7 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
       return;
     }
 
-    // 대화 정보 + 메시지 로드
+    // 초기 로드
     Promise.all([
       getConversations(),
       getConversationMessages(conversationId),
@@ -51,33 +59,57 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
       .catch(console.error)
       .finally(() => setLoading(false));
 
-    // STOMP 연결
-    const client = new Client({
-      brokerURL: process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/ws",
-      connectHeaders: {
-        Authorization: `Bearer ${getToken() || ""}`,
-      },
-      reconnectDelay: 5000,
-      onConnect: () => {
-        client.subscribe(`/topic/messages/${conversationId}`, (frame) => {
-          const msg: ChatMessage = JSON.parse(frame.body);
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === msg.id)) return prev;
-            return [...prev, msg];
+    // STOMP 연결 시도
+    let client: Client | null = null;
+    try {
+      client = new Client({
+        brokerURL: process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/ws",
+        connectHeaders: {
+          Authorization: `Bearer ${getToken() || ""}`,
+        },
+        reconnectDelay: 5000,
+        onConnect: () => {
+          stompConnected.current = true;
+          client!.subscribe(`/topic/messages/${conversationId}`, (frame) => {
+            const msg: ChatMessage = JSON.parse(frame.body);
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === msg.id)) return prev;
+              return [...prev, msg];
+            });
+            if (msg.systemMessage && msg.content.includes("나갔습니다")) {
+              setOtherLeft(true);
+            }
           });
-          if (msg.systemMessage && msg.content.includes("나갔습니다")) {
-            setOtherLeft(true);
-          }
-        });
-      },
-    });
+        },
+        onDisconnect: () => { stompConnected.current = false; },
+        onStompError: () => { stompConnected.current = false; },
+        onWebSocketError: () => { stompConnected.current = false; },
+      });
+      client.activate();
+    } catch {
+      // WebSocket 지원 안 되면 폴링으로 동작
+    }
 
-    client.activate();
+    // 폴링 — STOMP 연결 여부와 관계없이 3초마다 새 메시지 확인
+    const pollInterval = setInterval(() => {
+      getConversationMessages(conversationId)
+        .then((msgs) => {
+          setMessages((prev) => mergeMessages(prev, msgs));
+          // 나간 상태 갱신
+          const leaveMsg = msgs.find(
+            (m) => m.systemMessage && m.content.includes("나갔습니다") && !m.content.startsWith(nickname || "")
+          );
+          if (leaveMsg) setOtherLeft(true);
+        })
+        .catch(() => {});
+    }, 3000);
 
     return () => {
-      client.deactivate();
+      clearInterval(pollInterval);
+      if (client) client.deactivate();
+      stompConnected.current = false;
     };
-  }, [conversationId, authLoaded, isLoggedIn, nickname, router]);
+  }, [conversationId, authLoaded, isLoggedIn, nickname, router, mergeMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
