@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChatMessage } from "@/types";
-import { getConversationMessages, leaveConversation } from "@/lib/api";
+import { getConversationMessages, sendChatMessage, leaveConversation, getConversations } from "@/lib/api";
 import { getStompClient, disconnectStomp } from "@/lib/websocket";
 import { useAuth } from "@/context/AuthContext";
 
@@ -33,18 +33,19 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
       return;
     }
 
-    // 메시지 로드
-    getConversationMessages(conversationId)
-      .then((msgs) => {
+    // 대화 정보 + 메시지 로드
+    Promise.all([
+      getConversations(),
+      getConversationMessages(conversationId),
+    ])
+      .then(([convList, msgs]) => {
         setMessages(msgs);
-        // 상대 닉네임 추출
-        const otherMsg = msgs.find((m) => !m.systemMessage && m.senderNickname !== nickname);
-        if (otherMsg) setOtherNickname(otherMsg.senderNickname || "");
-        // 나간 상태 확인
-        const leaveMsg = msgs.find(
-          (m) => m.systemMessage && m.content.includes("나갔습니다") && !m.content.startsWith(nickname || "")
-        );
-        if (leaveMsg) setOtherLeft(true);
+        // 대화 목록에서 상대 닉네임, 나간 상태 추출
+        const conv = convList.find((c) => c.id === conversationId);
+        if (conv) {
+          setOtherNickname(conv.otherNickname);
+          setOtherLeft(conv.otherLeft);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -56,7 +57,10 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
     client.onConnect = () => {
       client.subscribe(`/topic/messages/${conversationId}`, (frame) => {
         const msg: ChatMessage = JSON.parse(frame.body);
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
         if (msg.systemMessage && msg.content.includes("나갔습니다")) {
           setOtherLeft(true);
         }
@@ -74,15 +78,22 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !stompRef.current?.active) return;
+    if (!input.trim()) return;
 
-    stompRef.current.publish({
-      destination: `/app/chat/${conversationId}`,
-      body: JSON.stringify({ content: input.trim() }),
-    });
+    const content = input.trim();
     setInput("");
+    try {
+      const msg = await sendChatMessage(conversationId, content);
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+    } catch {
+      alert("메시지 전송에 실패했습니다.");
+      setInput(content);
+    }
   };
 
   const handleLeave = async () => {
@@ -143,11 +154,6 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
           }
 
           const isMine = msg.senderNickname === nickname;
-
-          // 상대 닉네임 세팅
-          if (!isMine && msg.senderNickname && !otherNickname) {
-            setOtherNickname(msg.senderNickname);
-          }
 
           return (
             <div

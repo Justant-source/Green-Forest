@@ -38,7 +38,7 @@ export default function Header() {
                 href="/conversations"
                 className="text-sm text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
               >
-                쪽지함
+                대화목록
               </Link>
               {isAdmin && (
                 <Link

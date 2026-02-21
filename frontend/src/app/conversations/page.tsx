@@ -49,7 +49,7 @@ export default function ConversationsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">쪽지함</h1>
+      <h1 className="text-2xl font-bold mb-6">대화목록</h1>
       {conversations.length === 0 ? (
         <p className="text-center text-gray-400 py-12">아직 대화가 없습니다.</p>
       ) : (

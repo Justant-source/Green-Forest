@@ -320,6 +320,16 @@ export async function getConversationMessages(conversationId: number): Promise<C
   return res.json();
 }
 
+export async function sendChatMessage(conversationId: number, content: string): Promise<ChatMessage> {
+  const res = await fetch(`${BASE_URL}/conversations/${conversationId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new Error("Failed to send message");
+  return res.json();
+}
+
 export async function leaveConversation(conversationId: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/conversations/${conversationId}/leave`, {
     method: "POST",
