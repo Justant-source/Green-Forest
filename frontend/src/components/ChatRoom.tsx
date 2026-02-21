@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ChatMessage } from "@/types";
 import { getConversationMessages, sendChatMessage, leaveConversation, getConversations } from "@/lib/api";
 import { Client } from "@stomp/stompjs";
-import SockJS from "sockjs-client";
 import { getToken } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 
@@ -52,9 +51,9 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
       .catch(console.error)
       .finally(() => setLoading(false));
 
-    // STOMP 연결 — 매번 새 클라이언트 생성
+    // STOMP 연결
     const client = new Client({
-      webSocketFactory: () => new SockJS(process.env.NEXT_PUBLIC_WS_URL || "http://localhost:8080/ws"),
+      brokerURL: process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/ws",
       connectHeaders: {
         Authorization: `Bearer ${getToken() || ""}`,
       },
