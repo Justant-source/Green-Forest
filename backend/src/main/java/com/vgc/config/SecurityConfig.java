@@ -64,12 +64,18 @@ public class SecurityConfig {
                         // 4. 개별 포스트 조회 - 공개
                         .requestMatchers(HttpMethod.GET, "/api/posts/*").permitAll()
 
-                        // 5. 카테고리 요청, 프로필, 관리자
+                        // 5. 대화(쪽지) - 인증 필요
+                        .requestMatchers("/api/conversations/**").authenticated()
+
+                        // 6. WebSocket - STOMP 레벨에서 JWT 인증
+                        .requestMatchers("/ws/**").permitAll()
+
+                        // 7. 카테고리 요청, 프로필, 관리자
                         .requestMatchers(HttpMethod.POST, "/api/categories/request").authenticated()
                         .requestMatchers("/api/profile/**").authenticated()
                         .requestMatchers("/api/admin/**").authenticated()
 
-                        // 6. 그 외 모든 요청 - 인증 필요
+                        // 8. 그 외 모든 요청 - 인증 필요
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

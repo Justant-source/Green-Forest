@@ -47,6 +47,23 @@ export interface User {
   nickname: string;
 }
 
+export interface ConversationInfo {
+  id: number;
+  otherNickname: string;
+  lastMessage: string;
+  updatedAt: string;
+  otherLeft: boolean;
+}
+
+export interface ChatMessage {
+  id: number;
+  conversationId: number;
+  senderNickname: string | null;
+  content: string;
+  systemMessage: boolean;
+  createdAt: string;
+}
+
 export interface CategoryRequestInfo {
   id: number;
   name: string;

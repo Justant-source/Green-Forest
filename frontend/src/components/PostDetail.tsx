@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Post, CategoryInfo } from "@/types";
-import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, updatePostStatus, deletePost, IMAGE_BASE_URL } from "@/lib/api";
+import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, updatePostStatus, deletePost, startConversation, IMAGE_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import CommentSection from "./CommentSection";
 import PostContent from "./PostContent";
@@ -174,6 +174,25 @@ export default function PostDetail({ postId }: PostDetailProps) {
         </div>
         <h1 className="text-2xl font-bold mt-3">{post.title}</h1>
         <div className="flex gap-4 text-sm text-gray-500 mt-2">
+          {post.authorNickname && (
+            isLoggedIn && nickname !== post.authorNickname ? (
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await startConversation(post.authorNickname!);
+                    router.push(`/conversations/${res.conversationId}`);
+                  } catch {
+                    alert("대화를 시작할 수 없습니다.");
+                  }
+                }}
+                className="text-gray-700 font-medium hover:text-orange-600 transition-colors cursor-pointer"
+              >
+                {post.authorNickname}
+              </button>
+            ) : (
+              <span className="text-gray-700 font-medium">{post.authorNickname}</span>
+            )
+          )}
           <span>조회 {post.viewCount}</span>
           <span>좋아요 {post.likeCount}</span>
           <span>{new Date(post.createdAt.endsWith("Z") ? post.createdAt : post.createdAt + "Z").toLocaleDateString("ko-KR")}</span>

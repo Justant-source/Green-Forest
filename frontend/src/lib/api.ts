@@ -1,4 +1,4 @@
-import { Post, Comment, PageResponse, CategoryInfo, CategoryRequestInfo } from "@/types";
+import { Post, Comment, PageResponse, CategoryInfo, CategoryRequestInfo, ConversationInfo, ChatMessage } from "@/types";
 import { getToken } from "@/lib/auth";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -289,4 +289,41 @@ export async function rejectCategoryRequest(
   });
   if (!res.ok) throw new Error("Failed to reject category request");
   return res.json();
+}
+
+// 대화(쪽지) API
+export async function startConversation(nickname: string): Promise<{ conversationId: number }> {
+  const res = await fetch(`${BASE_URL}/conversations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ nickname }),
+  });
+  if (!res.ok) throw new Error("Failed to start conversation");
+  return res.json();
+}
+
+export async function getConversations(): Promise<ConversationInfo[]> {
+  const res = await fetch(`${BASE_URL}/conversations`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch conversations");
+  return res.json();
+}
+
+export async function getConversationMessages(conversationId: number): Promise<ChatMessage[]> {
+  const res = await fetch(`${BASE_URL}/conversations/${conversationId}/messages`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch messages");
+  return res.json();
+}
+
+export async function leaveConversation(conversationId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/conversations/${conversationId}/leave`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to leave conversation");
 }

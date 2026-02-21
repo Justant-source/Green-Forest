@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Comment } from "@/types";
-import { getComments, addComment, getCommentCount, updateComment, deleteComment } from "@/lib/api";
+import { getComments, addComment, getCommentCount, updateComment, deleteComment, startConversation } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface CommentSectionProps {
   postId: number;
@@ -117,9 +118,25 @@ function CommentItem({
     <div className={getDepthMargin(depth)}>
       <div className={`rounded-lg p-4 ${comment.deleted ? "bg-gray-100" : "bg-gray-50"}`}>
         <div className="flex items-center justify-between mb-2">
-          <span className={`font-medium text-sm ${comment.deleted ? "text-gray-400" : "text-gray-900"}`}>
-            {comment.deleted ? "" : comment.authorName}
-          </span>
+          {comment.deleted ? (
+            <span className="font-medium text-sm text-gray-400"></span>
+          ) : isLoggedIn && nickname !== comment.authorName ? (
+            <button
+              onClick={async () => {
+                try {
+                  const res = await startConversation(comment.authorName);
+                  window.location.href = `/conversations/${res.conversationId}`;
+                } catch {
+                  alert("대화를 시작할 수 없습니다.");
+                }
+              }}
+              className="font-medium text-sm text-gray-900 hover:text-orange-600 transition-colors cursor-pointer"
+            >
+              {comment.authorName}
+            </button>
+          ) : (
+            <span className="font-medium text-sm text-gray-900">{comment.authorName}</span>
+          )}
           <span className="text-xs text-gray-400">
             {getRelativeTime(comment.createdAt)}
             {!comment.deleted && comment.updatedAt && " (수정됨)"}
