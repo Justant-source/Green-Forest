@@ -43,7 +43,7 @@ export default function ConversationsPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-10 h-10 border-4 border-gray-300 border-t-orange-600 rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-gray-300 border-t-forest-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -59,7 +59,7 @@ export default function ConversationsPage() {
             <Link
               key={conv.id}
               href={`/conversations/${conv.id}`}
-              className="block p-4 bg-white border border-gray-200 rounded-xl hover:border-orange-300 hover:shadow-sm transition-all"
+              className="block p-4 bg-white border border-gray-200 rounded-xl hover:border-forest-300 hover:shadow-sm transition-all"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">

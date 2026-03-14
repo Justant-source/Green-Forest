@@ -24,6 +24,9 @@ public class AuthService {
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("이미 사용 중인 이메일입니다.");
         }
+        if (userRepository.existsByNickname(nickname)) {
+            throw new RuntimeException("이미 사용 중인 닉네임입니다.");
+        }
 
         User user = new User();
         user.setEmail(email);

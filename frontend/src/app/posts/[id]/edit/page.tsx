@@ -134,7 +134,7 @@ export default function EditPostPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-10 h-10 border-4 border-gray-300 border-t-orange-600 rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-gray-300 border-t-forest-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function EditPostPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="제목을 입력하세요"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500"
             required
           />
         </div>
@@ -166,7 +166,7 @@ export default function EditPostPage() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-forest-500"
             >
               {categories.map((cat) => (
                 <option key={cat.name} value={cat.name}>
@@ -193,7 +193,7 @@ export default function EditPostPage() {
             onChange={(e) => setContent(e.target.value)}
             placeholder="내용을 입력하세요"
             rows={8}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-forest-500"
             required
           />
         </div>
@@ -207,7 +207,7 @@ export default function EditPostPage() {
             accept=".png,.jpg,.jpeg"
             multiple
             onChange={handleImageChange}
-            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-forest-50 file:text-forest-600 hover:file:bg-forest-100"
           />
           {imagePreviews.length > 0 && (
             <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
@@ -226,7 +226,7 @@ export default function EditPostPage() {
                     X
                   </button>
                   {index === 0 && (
-                    <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-orange-600 text-white text-[10px] rounded">
+                    <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-forest-500 text-white text-[10px] rounded">
                       썸네일
                     </span>
                   )}
@@ -247,7 +247,7 @@ export default function EditPostPage() {
           <button
             type="submit"
             disabled={submitting || !title.trim() || !content.trim()}
-            className="px-6 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? "수정 중..." : "수정하기"}
           </button>

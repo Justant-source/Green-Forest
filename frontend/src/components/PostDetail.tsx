@@ -32,7 +32,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
   const [loading, setLoading] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
-  const { isLoggedIn, nickname } = useAuth();
+  const { isLoggedIn, nickname, isAdmin } = useAuth();
   const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-10 h-10 border-4 border-gray-300 border-t-orange-600 rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-gray-300 border-t-forest-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -147,14 +147,16 @@ export default function PostDetail({ postId }: PostDetailProps) {
               )
             )}
           </div>
-          {isLoggedIn && nickname === post.authorNickname && (
+          {isLoggedIn && (nickname === post.authorNickname || isAdmin) && (
             <div className="flex gap-2">
-              <Link
-                href={`/posts/${post.id}/edit`}
-                className="px-4 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                수정
-              </Link>
+              {nickname === post.authorNickname && (
+                <Link
+                  href={`/posts/${post.id}/edit`}
+                  className="px-4 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  수정
+                </Link>
+              )}
               <button
                 onClick={async () => {
                   if (!confirm("정말 삭제하시겠습니까?")) return;
@@ -185,7 +187,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
                     alert("대화를 시작할 수 없습니다.");
                   }
                 }}
-                className="text-gray-700 font-medium hover:text-orange-600 transition-colors cursor-pointer"
+                className="text-gray-700 font-medium hover:text-forest-500 transition-colors cursor-pointer"
               >
                 {post.authorNickname}
               </button>
@@ -278,7 +280,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
             onClick={handleBookmark}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium text-sm ${
               bookmarked
-                ? "bg-orange-50 text-orange-600"
+                ? "bg-forest-50 text-forest-500"
                 : "bg-gray-50 text-gray-500 hover:bg-gray-100"
             }`}
           >

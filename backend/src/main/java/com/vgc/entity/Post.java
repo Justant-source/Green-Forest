@@ -9,7 +9,9 @@ import java.util.List;
 @Table(name = "posts", indexes = {
     @Index(name = "idx_posts_category_status", columnList = "category, status"),
     @Index(name = "idx_posts_author_created", columnList = "author_id, createdAt DESC"),
-    @Index(name = "idx_posts_created", columnList = "createdAt DESC")
+    @Index(name = "idx_posts_created", columnList = "createdAt DESC"),
+    @Index(name = "idx_posts_quest", columnList = "quest_id"),
+    @Index(name = "idx_posts_category_created", columnList = "category, createdAt DESC")
 })
 public class Post {
     @Id
@@ -41,6 +43,16 @@ public class Post {
     private int likeCount = 0;
     private int viewCount = 0;
 
+    // --- 그린 포레스트 신규 필드 ---
+
+    @Column(name = "quest_id")
+    private Long questId;
+
+    @Column(name = "is_anonymous", nullable = false)
+    private boolean anonymous = false;
+
+    // --- 기존 필드 ---
+
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -48,7 +60,7 @@ public class Post {
         this.createdAt = LocalDateTime.now();
     }
 
-    // Getters and setters for all fields
+    // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getTitle() { return title; }
@@ -71,4 +83,9 @@ public class Post {
     public void setAuthor(User author) { this.author = author; }
     public List<PostImage> getImages() { return images; }
     public void setImages(List<PostImage> images) { this.images = images; }
+
+    public Long getQuestId() { return questId; }
+    public void setQuestId(Long questId) { this.questId = questId; }
+    public boolean isAnonymous() { return anonymous; }
+    public void setAnonymous(boolean anonymous) { this.anonymous = anonymous; }
 }

@@ -13,7 +13,7 @@ interface GridItemProps {
 }
 
 export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, authLoaded } = useAuth();
   const [bookmarked, setBookmarked] = useState(post.bookmarked ?? false);
 
   const handleBookmarkClick = async (e: React.MouseEvent) => {
@@ -42,12 +42,12 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
           {{ REGISTERED: "등록", ING: "진행중", COMPLETE: "완료" }[post.status] || post.status}
         </span>
       )}
-      {isLoggedIn && (
+      {authLoaded && isLoggedIn && (
         <button
           onClick={handleBookmarkClick}
           className={`absolute top-2 right-2 z-10 w-8 h-8 items-center justify-center rounded-full text-sm hidden [@media(hover:hover)]:flex ${
             bookmarked
-              ? "bg-orange-500 text-white [@media(hover:hover)]:flex"
+              ? "bg-forest-500 text-white [@media(hover:hover)]:flex"
               : "bg-black/50 text-white opacity-0 group-hover:opacity-100"
           }`}
         >

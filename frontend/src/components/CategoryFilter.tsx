@@ -30,7 +30,7 @@ export default function CategoryFilter({ selected, onSelect }: CategoryFilterPro
         onClick={() => onSelect(null)}
         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
           selected === null
-            ? "bg-orange-400 text-white"
+            ? "bg-forest-500 text-white"
             : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
         }`}
       >
@@ -44,7 +44,7 @@ export default function CategoryFilter({ selected, onSelect }: CategoryFilterPro
             onClick={() => onSelect(cat.name)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
               isActive
-                ? "bg-orange-400 text-white"
+                ? "bg-forest-500 text-white"
                 : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
             }`}
           >

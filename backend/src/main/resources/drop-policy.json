@@ -1,0 +1,52 @@
+{
+  "긍정문구": {
+    "baseDrops": 10,
+    "limitType": "DAILY",
+    "limitCount": 1,
+    "description": "긍정 문구 작성 보상 (1일 1회)"
+  },
+  "동료칭찬": {
+    "baseDrops": 30,
+    "limitType": "WEEKLY",
+    "limitCount": 1,
+    "description": "동료 칭찬 작성 보상 (주 1회)"
+  },
+  "퀘스트": {
+    "baseDrops": 50,
+    "limitType": "PER_QUEST",
+    "limitCount": 1,
+    "description": "퀘스트 인증 보상 (퀘스트별 설정)"
+  },
+  "태깅보너스": {
+    "baseDrops": 5,
+    "limitType": "PER_POST_PER_USER",
+    "limitCount": 1,
+    "description": "태깅 당한 사람에게 지급 (글당 1인 1회)"
+  },
+  "plantJobMap": {
+    "TABLE_PALM": {
+      "jobClass": "TANKER",
+      "element": "EARTH",
+      "difficulty": "EASY",
+      "expMultiplier": 1.00
+    },
+    "SPATHIPHYLLUM": {
+      "jobClass": "HEALER",
+      "element": "WATER",
+      "difficulty": "EASY",
+      "expMultiplier": 1.00
+    },
+    "HONG_KONG_PALM": {
+      "jobClass": "BUFFER",
+      "element": "WIND",
+      "difficulty": "NORMAL",
+      "expMultiplier": 1.10
+    },
+    "ORANGE_JASMINE": {
+      "jobClass": "DEALER",
+      "element": "FIRE",
+      "difficulty": "HARD",
+      "expMultiplier": 1.20
+    }
+  }
+}

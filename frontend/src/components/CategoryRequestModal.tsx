@@ -40,7 +40,7 @@ export default function CategoryRequestModal({ onClose }: CategoryRequestModalPr
             </p>
             <button
               onClick={onClose}
-              className="w-full py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
+              className="w-full py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 transition-colors"
             >
               확인
             </button>
@@ -56,7 +56,7 @@ export default function CategoryRequestModal({ onClose }: CategoryRequestModalPr
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="예: 여행, 맛집, 입양"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
                 required
               />
               <p className="text-xs text-gray-400 mt-1">관리자가 검토 후 게시판 설정을 완료합니다.</p>
@@ -72,7 +72,7 @@ export default function CategoryRequestModal({ onClose }: CategoryRequestModalPr
               <button
                 type="submit"
                 disabled={submitting || !name.trim()}
-                className="flex-1 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {submitting ? "요청 중..." : "요청하기"}
               </button>

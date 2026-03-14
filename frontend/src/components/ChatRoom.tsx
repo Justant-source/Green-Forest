@@ -123,7 +123,7 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-10 h-10 border-4 border-gray-300 border-t-orange-600 rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-gray-300 border-t-forest-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -179,7 +179,7 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
                 <div
                   className={`px-4 py-2.5 rounded-2xl text-sm break-words ${
                     isMine
-                      ? "bg-orange-400 text-white rounded-tr-md"
+                      ? "bg-forest-400 text-white rounded-tr-md"
                       : "bg-white text-gray-800 border border-gray-200 rounded-tl-md"
                   }`}
                 >
@@ -205,12 +205,12 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
           onChange={(e) => setInput(e.target.value)}
           placeholder={otherLeft ? "상대방이 나간 대화입니다" : "메시지를 입력하세요..."}
           disabled={otherLeft}
-          className="flex-1 px-4 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-gray-400"
+          className="flex-1 px-4 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 disabled:bg-gray-100 disabled:text-gray-400"
         />
         <button
           type="submit"
           disabled={!input.trim() || otherLeft}
-          className="px-5 py-2.5 bg-orange-400 text-white rounded-full text-sm font-medium hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-5 py-2.5 bg-forest-500 text-white rounded-full text-sm font-medium hover:bg-forest-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           전송
         </button>

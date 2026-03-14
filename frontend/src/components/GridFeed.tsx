@@ -32,17 +32,43 @@ function loadCache(): { posts: Post[]; category: string | null; sort: string; st
   }
 }
 
-export default function GridFeed() {
-  const cache = useRef(loadCache());
-  const [posts, setPosts] = useState<Post[]>(cache.current?.posts ?? []);
-  const [category, setCategory] = useState<string | null>(cache.current?.category ?? null);
-  const [sort, setSort] = useState<string>(cache.current?.sort ?? "latest");
-  const [status, setStatus] = useState<string | null>(cache.current?.status ?? null);
+interface GridFeedProps {
+  initialCategory?: string | null;
+}
+
+export default function GridFeed({ initialCategory }: GridFeedProps) {
+  const cache = useRef<ReturnType<typeof loadCache>>(null);
+  const [mounted, setMounted] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [category, setCategory] = useState<string | null>(initialCategory ?? null);
+  const [sort, setSort] = useState<string>("latest");
+  const [status, setStatus] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
-  const [page, setPage] = useState<number>(cache.current?.page ?? 0);
-  const [loading, setLoading] = useState<boolean>(!cache.current);
-  const [hasMore, setHasMore] = useState<boolean>(cache.current?.hasMore ?? true);
+  const [page, setPage] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [hasMore, setHasMore] = useState<boolean>(true);
   const [restored, setRestored] = useState(false);
+  const skipNextFetch = useRef(false);
+
+  useEffect(() => {
+    setCategory(initialCategory ?? null);
+  }, [initialCategory]);
+
+  useEffect(() => {
+    const cached = loadCache();
+    if (cached) {
+      cache.current = cached;
+      setPosts(cached.posts);
+      setCategory(cached.category);
+      setSort(cached.sort);
+      setStatus(cached.status);
+      setPage(cached.page);
+      setHasMore(cached.hasMore);
+      setLoading(false);
+      skipNextFetch.current = true;
+    }
+    setMounted(true);
+  }, []);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,16 +106,16 @@ export default function GridFeed() {
 
   // Reset when category or sort changes (skip if restoring from cache)
   useEffect(() => {
-    if (cache.current) {
-      setHasMore(cache.current.hasMore);
-      cache.current = null;
+    if (!mounted) return;
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false;
       return;
     }
     setPage(0);
     setPosts([]);
     setHasMore(true);
     fetchPosts(0, false);
-  }, [fetchPosts]);
+  }, [fetchPosts, mounted]);
 
   // Restore scroll position after cached posts render
   useEffect(() => {
@@ -149,10 +175,6 @@ export default function GridFeed() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <CategoryFilter selected={category} onSelect={(cat) => { setCategory(cat); setStatus(null); if (!cat) setSort("latest"); }} />
-      </div>
-
       {category && (() => {
         const catInfo = categories.find((c) => c.name === category);
         if (catInfo?.hasStatus) {
@@ -170,7 +192,7 @@ export default function GridFeed() {
                   onClick={() => setStatus(opt.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                     status === opt.value
-                      ? "bg-orange-400 text-white"
+                      ? "bg-forest-500 text-white"
                       : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
                   }`}
                 >
@@ -199,7 +221,7 @@ export default function GridFeed() {
 
           {loading && posts.length > 0 && (
             <div className="flex justify-center py-8">
-              <div className="w-8 h-8 border-4 border-gray-300 border-t-orange-600 rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-gray-300 border-t-forest-500 rounded-full animate-spin" />
             </div>
           )}
         </>

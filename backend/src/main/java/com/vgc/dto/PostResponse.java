@@ -21,6 +21,10 @@ public class PostResponse {
     private boolean liked;
     private String status;
     private List<String> imageUrls;
+    private Long questId;
+    private boolean anonymous;
+    private int dropsAwarded;
+    private List<String> taggedNicknames;
 
     public static PostResponse from(Post post, int commentCount) {
         PostResponse response = new PostResponse();
@@ -33,15 +37,23 @@ public class PostResponse {
         response.viewCount = post.getViewCount();
         response.createdAt = post.getCreatedAt();
         response.commentCount = commentCount;
-        response.authorNickname = post.getAuthor() != null ? post.getAuthor().getNickname() : null;
         response.status = post.getStatus() != null ? post.getStatus().name() : null;
         response.imageUrls = post.getImages() != null
                 ? post.getImages().stream().map(PostImage::getImageUrl).collect(Collectors.toList())
                 : List.of();
+        response.questId = post.getQuestId();
+        response.anonymous = post.isAnonymous();
+
+        if (post.isAnonymous()) {
+            response.authorNickname = "익명의 그린메이커";
+        } else {
+            response.authorNickname = post.getAuthor() != null ? post.getAuthor().getNickname() : null;
+        }
+
         return response;
     }
 
-    // All getters
+    // Getters
     public Long getId() { return id; }
     public String getTitle() { return title; }
     public String getContent() { return content; }
@@ -60,4 +72,10 @@ public class PostResponse {
     public void setStatus(String status) { this.status = status; }
     public List<String> getImageUrls() { return imageUrls; }
     public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
+    public Long getQuestId() { return questId; }
+    public boolean isAnonymous() { return anonymous; }
+    public int getDropsAwarded() { return dropsAwarded; }
+    public void setDropsAwarded(int dropsAwarded) { this.dropsAwarded = dropsAwarded; }
+    public List<String> getTaggedNicknames() { return taggedNicknames; }
+    public void setTaggedNicknames(List<String> taggedNicknames) { this.taggedNicknames = taggedNicknames; }
 }

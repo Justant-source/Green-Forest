@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/Header";
+import dynamic from "next/dynamic";
 import { AuthProvider } from "@/context/AuthContext";
+import { notoSansKR } from "@/lib/fonts";
+
+const Header = dynamic(() => import("@/components/Header"), { ssr: false });
+const BottomNav = dynamic(() => import("@/components/BottomNav"), { ssr: false });
 
 export const metadata: Metadata = {
-  title: "냐옹스 - 고양이 커뮤니티",
-  description: "고양이를 사랑하는 사람들의 커뮤니티",
+  title: "그린 포레스트 - 식물 RPG 커뮤니티",
+  description: "함께 성장하는 식물 RPG 커뮤니티",
 };
 
 export default function RootLayout({
@@ -14,11 +18,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
-      <body className="bg-orange-50/40 min-h-screen">
+    <html lang="ko" suppressHydrationWarning>
+      <body className={`${notoSansKR.className} bg-forest-50 min-h-screen pb-16 md:pb-0`} suppressHydrationWarning>
         <AuthProvider>
           <Header />
           <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
+          <BottomNav />
         </AuthProvider>
       </body>
     </html>

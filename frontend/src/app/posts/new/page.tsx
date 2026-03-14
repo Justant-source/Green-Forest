@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createPost, getCategories } from "@/lib/api";
-import { CategoryInfo } from "@/types";
+import { createPost, getCategories, getQuests } from "@/lib/api";
+import { CategoryInfo, Quest } from "@/types";
 import { useAuth } from "@/context/AuthContext";
-import CategoryRequestModal from "@/components/CategoryRequestModal";
 import { compressImage } from "@/lib/imageCompression";
 
 export default function NewPostPage() {
@@ -17,8 +16,11 @@ export default function NewPostPage() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
+  const [taggedNicknames, setTaggedNicknames] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
+  const [questId, setQuestId] = useState<number | null>(null);
+  const [quests, setQuests] = useState<Quest[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -28,16 +30,20 @@ export default function NewPostPage() {
 
   useEffect(() => {
     const saved = sessionStorage.getItem("selectedCategory");
+
     getCategories()
       .then((cats) => {
         if (cats.length > 0) {
           setCategories(cats);
           const valid = saved && cats.some((c) => c.name === saved);
-          setCategory(valid ? saved : cats[0].name);
+          setCategory(valid ? saved! : cats[0].name);
         }
       })
       .catch(console.error);
-    if (!category) setCategory(saved || "HUMOR");
+
+    getQuests()
+      .then(setQuests)
+      .catch(console.error);
   }, []);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,6 +83,13 @@ export default function NewPostPage() {
       formData.append("title", title.trim());
       formData.append("content", content.trim());
       formData.append("category", category);
+      formData.append("anonymous", String(anonymous));
+      if (taggedNicknames.trim()) {
+        formData.append("taggedNicknamesStr", taggedNicknames.trim());
+      }
+      if (category === "퀘스트" && questId) {
+        formData.append("questId", String(questId));
+      }
       imageFiles.forEach((file) => {
         formData.append("images", file);
       });
@@ -93,6 +106,8 @@ export default function NewPostPage() {
 
   if (!isLoggedIn) return null;
 
+  const activeQuests = quests.filter((q) => q.active);
+
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">새 글</h1>
@@ -107,7 +122,7 @@ export default function NewPostPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="제목을 입력하세요"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500"
             required
           />
         </div>
@@ -116,27 +131,54 @@ export default function NewPostPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             게시판
           </label>
-          <div className="flex gap-2">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-forest-500"
+          >
+            {categories.map((cat) => (
+              <option key={cat.name} value={cat.name}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {category === "퀘스트" && activeQuests.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              퀘스트 선택
+            </label>
             <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              value={questId ?? ""}
+              onChange={(e) => setQuestId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-forest-500"
             >
-              {categories.map((cat) => (
-                <option key={cat.name} value={cat.name}>
-                  {cat.label}
+              <option value="">퀘스트를 선택하세요</option>
+              {activeQuests.map((q) => (
+                <option key={q.id} value={q.id}>
+                  {q.title} (+{q.rewardDrops} 물방울)
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={() => setShowCategoryModal(true)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors whitespace-nowrap"
-            >
-              + 요청
-            </button>
           </div>
-        </div>
+        )}
+
+        {category === "동료칭찬" && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              태그할 동료 (닉네임, 쉼표로 구분)
+            </label>
+            <input
+              type="text"
+              value={taggedNicknames}
+              onChange={(e) => setTaggedNicknames(e.target.value)}
+              placeholder="예: 홍길동, 김철수"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">태그된 동료에게 물방울 보너스가 지급됩니다.</p>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -147,7 +189,7 @@ export default function NewPostPage() {
             onChange={(e) => setContent(e.target.value)}
             placeholder="내용을 입력하세요"
             rows={8}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-forest-500"
             required
           />
         </div>
@@ -161,7 +203,7 @@ export default function NewPostPage() {
             accept=".png,.jpg,.jpeg"
             multiple
             onChange={handleImageChange}
-            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-forest-50 file:text-forest-600 hover:file:bg-forest-100"
           />
           {imagePreviews.length > 0 && (
             <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
@@ -180,7 +222,7 @@ export default function NewPostPage() {
                     X
                   </button>
                   {index === 0 && (
-                    <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-orange-600 text-white text-[10px] rounded">
+                    <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-forest-600 text-white text-[10px] rounded">
                       썸네일
                     </span>
                   )}
@@ -188,6 +230,18 @@ export default function NewPostPage() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={anonymous}
+              onChange={(e) => setAnonymous(e.target.checked)}
+              className="w-4 h-4 accent-forest-500"
+            />
+            익명으로 작성
+          </label>
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
@@ -201,16 +255,12 @@ export default function NewPostPage() {
           <button
             type="submit"
             disabled={submitting || !title.trim() || !content.trim()}
-            className="px-6 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? "등록 중..." : "등록하기"}
           </button>
         </div>
       </form>
-
-      {showCategoryModal && (
-        <CategoryRequestModal onClose={() => setShowCategoryModal(false)} />
-      )}
     </div>
   );
 }

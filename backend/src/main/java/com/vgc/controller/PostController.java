@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -45,14 +46,30 @@ public class PostController {
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam("category") String category,
+            @RequestParam(value = "questId", required = false) Long questId,
+            @RequestParam(value = "anonymous", required = false, defaultValue = "false") boolean anonymous,
+            @RequestParam(value = "taggedNicknames", required = false) String taggedNicknamesStr,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             Authentication authentication) throws Exception {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
         PostRequest request = new PostRequest();
         request.setTitle(title);
         request.setContent(content);
         request.setCategory(category);
+        request.setQuestId(questId);
+        request.setAnonymous(anonymous);
+
+        if (taggedNicknamesStr != null && !taggedNicknamesStr.isBlank()) {
+            request.setTaggedNicknames(
+                Arrays.stream(taggedNicknamesStr.split(","))
+                      .map(String::trim)
+                      .filter(s -> !s.isEmpty())
+                      .toList()
+            );
+        }
+
         return postService.createPost(request, images, user);
     }
 

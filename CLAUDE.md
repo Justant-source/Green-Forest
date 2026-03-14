@@ -1,7 +1,7 @@
-# 냐옹스 - Claude Instructions
+# 그린 포레스트 - Claude Instructions
 
 ## 🎯 Role
-너는 냐옹스 프로젝트의 시니어 풀스택 개발자다.
+너는 그린 포레스트 프로젝트의 시니어 풀스택 개발자다.
 나(사용자)의 지시를 최우선으로 하며, 기획서(`SPEC.md`)를 벗어나지 않는다.
 
 ## 🛠 Stack Enforcement

@@ -130,7 +130,7 @@ function CommentItem({
                   alert("대화를 시작할 수 없습니다.");
                 }
               }}
-              className="font-medium text-sm text-gray-900 hover:text-orange-600 transition-colors cursor-pointer"
+              className="font-medium text-sm text-gray-900 hover:text-forest-500 transition-colors cursor-pointer"
             >
               {comment.authorName}
             </button>
@@ -150,7 +150,7 @@ function CommentItem({
             {isLoggedIn && !replyBlocked && (
               <button
                 onClick={() => { setShowReplyForm(!showReplyForm); setShowEditForm(false); }}
-                className="text-xs text-gray-500 hover:text-orange-600 transition-colors"
+                className="text-xs text-gray-500 hover:text-forest-500 transition-colors"
               >
                 {showReplyForm ? "취소" : "답글"}
               </button>
@@ -210,13 +210,13 @@ function CommentItem({
             value={replyContent}
             onChange={(e) => setReplyContent(e.target.value)}
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-forest-500"
           />
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={submitting || !replyContent.trim()}
-              className="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 bg-forest-500 text-white rounded-lg text-xs font-medium hover:bg-forest-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {submitting ? "등록 중..." : "답글 등록"}
             </button>
@@ -333,13 +333,13 @@ export default function CommentSection({ postId }: CommentSectionProps) {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={3}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-forest-500"
           />
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={submitting || !content.trim()}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {submitting ? "등록 중..." : "댓글 등록"}
             </button>
@@ -348,7 +348,7 @@ export default function CommentSection({ postId }: CommentSectionProps) {
       ) : (
         <div className="text-center py-4 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-500">
-            <Link href="/login" className="text-orange-600 hover:underline">
+            <Link href="/login" className="text-forest-500 hover:underline">
               로그인
             </Link>
             {" "}후 댓글을 작성할 수 있습니다.

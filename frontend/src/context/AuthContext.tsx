@@ -24,9 +24,9 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [nickname, setNickname] = useState<string | null>(getNickname());
-  const [role, setRole] = useState<string | null>(getRole());
-  const [isLoggedIn, setIsLoggedIn] = useState(!!getToken());
+  const [nickname, setNickname] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authLoaded, setAuthLoaded] = useState(false);
 
   const refresh = () => {
