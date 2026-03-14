@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import dynamic from "next/dynamic";
 import { AuthProvider } from "@/context/AuthContext";
+import { CategoryProvider } from "@/context/CategoryContext";
 import { notoSansKR } from "@/lib/fonts";
 
 const Header = dynamic(() => import("@/components/Header"), { ssr: false });
@@ -21,9 +22,11 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body className={`${notoSansKR.className} bg-forest-50 min-h-screen pb-16 md:pb-0`} suppressHydrationWarning>
         <AuthProvider>
-          <Header />
-          <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
-          <BottomNav />
+          <CategoryProvider>
+            <Header />
+            <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
+            <BottomNav />
+          </CategoryProvider>
         </AuthProvider>
       </body>
     </html>

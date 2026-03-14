@@ -1,4 +1,6 @@
-import { getCategoryColor } from "@/lib/categoryCache";
+"use client";
+
+import { useCategories } from "@/context/CategoryContext";
 
 interface TitleCardProps {
   title: string;
@@ -23,6 +25,7 @@ const colorMap: Record<string, { bg: string; text: string }> = {
 const fallback = { bg: "#F3F4F6", text: "#374151" };
 
 export default function TitleCard({ title, category, likeCount }: TitleCardProps) {
+  const { getCategoryColor } = useCategories();
   const catColor = getCategoryColor(category);
   const colors = (catColor && colorMap[catColor]) || fallback;
 

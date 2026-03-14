@@ -1,9 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { CategoryInfo } from "@/types";
-import { getCategories } from "@/lib/api";
-import { setCategoryCache } from "@/lib/categoryCache";
+import { useCategories } from "@/context/CategoryContext";
 
 interface CategoryFilterProps {
   selected: string | null;
@@ -11,18 +8,7 @@ interface CategoryFilterProps {
 }
 
 export default function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {
-  const [categories, setCategories] = useState<CategoryInfo[]>([]);
-
-  useEffect(() => {
-    getCategories()
-      .then((cats) => {
-        if (cats.length > 0) {
-          setCategories(cats);
-          setCategoryCache(cats);
-        }
-      })
-      .catch(console.error);
-  }, []);
+  const { categories } = useCategories();
 
   return (
     <div className="flex gap-2 overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
