@@ -31,11 +31,12 @@ public class UserController {
     @GetMapping("/search")
     public java.util.List<Map<String, Object>> searchUsers(@RequestParam String q) {
         if (q == null || q.trim().isEmpty()) return java.util.List.of();
-        return userRepository.findByNicknameContainingIgnoreCase(q.trim()).stream()
+        return userRepository.findByNameContainingIgnoreCase(q.trim()).stream()
                 .limit(10)
                 .map(u -> {
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("id", u.getId());
+                    m.put("name", u.getName());
                     m.put("nickname", u.getNickname());
                     return m;
                 })
@@ -159,6 +160,7 @@ public class UserController {
         map.put("id", user.getId());
         map.put("email", user.getEmail());
         map.put("nickname", user.getNickname());
+        map.put("name", user.getName());
         map.put("role", user.getRole());
         map.put("plantType", user.getPlantType() != null ? user.getPlantType().name() : null);
         map.put("plantTypeLabel", user.getPlantType() != null ? user.getPlantType().getLabel() : null);

@@ -20,7 +20,7 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
-    public AuthResponse register(String email, String password, String nickname) {
+    public AuthResponse register(String email, String password, String nickname, String name) {
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("이미 사용 중인 이메일입니다.");
         }
@@ -32,10 +32,11 @@ public class AuthService {
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password));
         user.setNickname(nickname);
+        user.setName(name);
         userRepository.save(user);
 
         String token = jwtUtil.generateToken(email);
-        return new AuthResponse(token, nickname, user.getRole());
+        return new AuthResponse(token, nickname, user.getName(), user.getRole());
     }
 
     public AuthResponse login(String email, String password) {
@@ -47,6 +48,6 @@ public class AuthService {
         }
 
         String token = jwtUtil.generateToken(email);
-        return new AuthResponse(token, user.getNickname(), user.getRole());
+        return new AuthResponse(token, user.getNickname(), user.getName(), user.getRole());
     }
 }

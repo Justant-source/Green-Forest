@@ -17,9 +17,9 @@ export default function NewPostPage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
-  const [taggedList, setTaggedList] = useState<string[]>([]);
+  const [taggedList, setTaggedList] = useState<{ name: string; nickname: string }[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [tagSuggestions, setTagSuggestions] = useState<{ id: number; nickname: string }[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<{ id: number; name: string; nickname: string }[]>([]);
   const [tagError, setTagError] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [questId, setQuestId] = useState<number | null>(null);
@@ -57,27 +57,27 @@ export default function NewPostPage() {
     }
     const timer = setTimeout(() => {
       searchUsers(tagInput.trim()).then((results) => {
-        setTagSuggestions(results.filter((u) => !taggedList.includes(u.nickname) && u.nickname !== nickname));
+        setTagSuggestions(results.filter((u) => !taggedList.some(t => t.nickname === u.nickname) && u.nickname !== nickname));
       });
     }, 300);
     return () => clearTimeout(timer);
   }, [tagInput, taggedList]);
 
-  const addTag = (tagNickname: string) => {
-    if (tagNickname === nickname) {
+  const addTag = (user: { name: string; nickname: string }) => {
+    if (user.nickname === nickname) {
       setTagError("자기 자신은 태그할 수 없습니다.");
       return;
     }
-    if (!taggedList.includes(tagNickname)) {
-      setTaggedList([...taggedList, tagNickname]);
+    if (!taggedList.some(t => t.nickname === user.nickname)) {
+      setTaggedList([...taggedList, user]);
     }
     setTagInput("");
     setTagSuggestions([]);
     setTagError("");
   };
 
-  const removeTag = (nickname: string) => {
-    setTaggedList(taggedList.filter((n) => n !== nickname));
+  const removeTag = (tagNickname: string) => {
+    setTaggedList(taggedList.filter((t) => t.nickname !== tagNickname));
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,7 +119,7 @@ export default function NewPostPage() {
       formData.append("category", category);
       formData.append("anonymous", String(anonymous));
       if (taggedList.length > 0) {
-        formData.append("taggedNicknames", taggedList.join(","));
+        formData.append("taggedNicknames", taggedList.map(t => t.nickname).join(","));
       }
       if (category === "퀘스트" && questId) {
         formData.append("questId", String(questId));
@@ -206,15 +206,15 @@ export default function NewPostPage() {
             </label>
             {taggedList.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
-                {taggedList.map((name) => (
+                {taggedList.map((tag) => (
                   <span
-                    key={name}
+                    key={tag.nickname}
                     className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-600"
                   >
-                    @{name}
+                    @{tag.name}({tag.nickname})
                     <button
                       type="button"
-                      onClick={() => removeTag(name)}
+                      onClick={() => removeTag(tag.nickname)}
                       className="ml-1 text-blue-400 hover:text-blue-700 text-xs"
                     >
                       X
@@ -235,13 +235,13 @@ export default function NewPostPage() {
                   if (e.key === "Enter") {
                     e.preventDefault();
                     if (tagInput.trim() && tagSuggestions.length > 0) {
-                      addTag(tagSuggestions[0].nickname);
+                      addTag({ name: tagSuggestions[0].name, nickname: tagSuggestions[0].nickname });
                     } else if (tagInput.trim()) {
-                      setTagError("올바른 닉네임을 입력해주세요.");
+                      setTagError("올바른 이름을 입력해주세요.");
                     }
                   }
                 }}
-                placeholder="닉네임을 검색하세요"
+                placeholder="이름을 검색하세요"
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500 ${
                   tagError ? "border-red-400" : "border-gray-300"
                 }`}
@@ -252,10 +252,10 @@ export default function NewPostPage() {
                     <li key={user.id}>
                       <button
                         type="button"
-                        onClick={() => addTag(user.nickname)}
+                        onClick={() => addTag({ name: user.name, nickname: user.nickname })}
                         className="w-full text-left px-4 py-2 hover:bg-forest-50 text-sm"
                       >
-                        {user.nickname}
+                        {user.name}({user.nickname})
                       </button>
                     </li>
                   ))}

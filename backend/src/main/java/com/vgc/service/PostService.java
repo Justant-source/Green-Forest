@@ -101,7 +101,7 @@ public class PostService {
         List<PostTag> tags = postTagRepository.findByPostId(id);
         if (!tags.isEmpty()) {
             response.setTaggedNicknames(
-                tags.stream().map(t -> t.getTaggedUser().getNickname()).collect(Collectors.toList())
+                tags.stream().map(t -> t.getTaggedUser().getName() + "(" + t.getTaggedUser().getNickname() + ")").collect(Collectors.toList())
             );
         }
 
@@ -141,7 +141,7 @@ public class PostService {
 
         if (!taggedUsers.isEmpty()) {
             response.setTaggedNicknames(
-                taggedUsers.stream().map(User::getNickname).collect(Collectors.toList())
+                taggedUsers.stream().map(u -> u.getName() + "(" + u.getNickname() + ")").collect(Collectors.toList())
             );
         }
 

@@ -24,6 +24,8 @@ public class User {
     @Column(nullable = false, unique = true)
     private String nickname;
 
+    private String name;
+
     private String role = "USER";
 
     // --- 그린 포레스트 신규 필드 ---
@@ -76,6 +78,8 @@ public class User {
     public void setPassword(String password) { this.password = password; }
     public String getNickname() { return nickname; }
     public void setNickname(String nickname) { this.nickname = nickname; }
+    public String getName() { return name != null ? name : nickname; }
+    public void setName(String name) { this.name = name; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
     public LocalDateTime getCreatedAt() { return createdAt; }

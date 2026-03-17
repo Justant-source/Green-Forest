@@ -244,7 +244,7 @@ export async function getMe(): Promise<User> {
   return res.json();
 }
 
-export async function searchUsers(q: string): Promise<{ id: number; nickname: string }[]> {
+export async function searchUsers(q: string): Promise<{ id: number; name: string; nickname: string }[]> {
   const res = await fetch(`${BASE_URL}/users/search?q=${encodeURIComponent(q)}`, {
     headers: authHeaders(),
     cache: "no-store",

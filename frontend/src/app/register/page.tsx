@@ -11,6 +11,7 @@ export default function RegisterPage() {
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -21,7 +22,7 @@ export default function RegisterPage() {
     setSubmitting(true);
 
     try {
-      await register(email, password, nickname);
+      await register(email, password, nickname, name);
       refresh();
       router.push("/");
     } catch (err: unknown) {
@@ -65,6 +66,20 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="비밀번호를 입력하세요"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            이름
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="이름을 입력하세요"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500"
             required
           />

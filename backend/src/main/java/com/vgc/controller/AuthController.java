@@ -23,7 +23,7 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody AuthRequest request) {
         try {
             AuthResponse response = authService.register(
-                    request.getEmail(), request.getPassword(), request.getNickname());
+                    request.getEmail(), request.getPassword(), request.getNickname(), request.getName());
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

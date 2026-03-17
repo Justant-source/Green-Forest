@@ -1,10 +1,11 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getToken, getNickname, getRole, logout as authLogout } from "@/lib/auth";
+import { getToken, getNickname, getName, getRole, logout as authLogout } from "@/lib/auth";
 
 interface AuthContextType {
   nickname: string | null;
+  name: string | null;
   role: string | null;
   isLoggedIn: boolean;
   isAdmin: boolean;
@@ -15,6 +16,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   nickname: null,
+  name: null,
   role: null,
   isLoggedIn: false,
   isAdmin: false,
@@ -25,22 +27,26 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [nickname, setNickname] = useState<string | null>(null);
+  const [name, setName] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authLoaded, setAuthLoaded] = useState(false);
 
   const refresh = () => {
     const token = getToken();
-    const name = getNickname();
+    const nick = getNickname();
+    const userName = getName();
     const userRole = getRole();
     setIsLoggedIn(!!token);
-    setNickname(name);
+    setNickname(nick);
+    setName(userName);
     setRole(userRole);
   };
 
   const handleLogout = () => {
     authLogout();
     setNickname(null);
+    setName(null);
     setRole(null);
     setIsLoggedIn(false);
   };
@@ -53,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = role === "ADMIN";
 
   return (
-    <AuthContext.Provider value={{ nickname, role, isLoggedIn, isAdmin, authLoaded, refresh, handleLogout }}>
+    <AuthContext.Provider value={{ nickname, name, role, isLoggedIn, isAdmin, authLoaded, refresh, handleLogout }}>
       {children}
     </AuthContext.Provider>
   );
