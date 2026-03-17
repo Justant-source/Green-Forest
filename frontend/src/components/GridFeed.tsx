@@ -16,11 +16,20 @@ function saveCache(data: { posts: Post[]; category: string | null; sort: string;
   } catch {}
 }
 
+function isPageReload(): boolean {
+  try {
+    const navEntry = typeof performance !== "undefined"
+      ? performance.getEntriesByType?.("navigation")?.[0] as PerformanceNavigationTiming | undefined
+      : undefined;
+    if (navEntry?.type === "reload") return true;
+    if (typeof performance !== "undefined" && (performance as unknown as { navigation?: { type: number } }).navigation?.type === 1) return true;
+  } catch {}
+  return false;
+}
+
 function loadCache(): { posts: Post[]; category: string | null; sort: string; status: string | null; page: number; hasMore: boolean; scrollY: number } | null {
   try {
-    const navEntry = typeof performance !== "undefined" ? performance.getEntriesByType?.("navigation")?.[0] as PerformanceNavigationTiming | undefined : undefined;
-    const navType = navEntry?.type;
-    if (navType === "reload") {
+    if (isPageReload()) {
       sessionStorage.removeItem(CACHE_KEY);
       return null;
     }
