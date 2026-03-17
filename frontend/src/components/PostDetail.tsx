@@ -256,6 +256,19 @@ export default function PostDetail({ postId }: PostDetailProps) {
         );
       })()}
 
+      {post.taggedNicknames && post.taggedNicknames.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {post.taggedNicknames.map((name) => (
+            <span
+              key={name}
+              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600"
+            >
+              @{name}
+            </span>
+          ))}
+        </div>
+      )}
+
       <PostContent content={post.content} />
 
       <div className="flex items-center gap-4 pt-4 border-t">

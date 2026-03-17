@@ -6,6 +6,7 @@ import com.vgc.entity.Post;
 import com.vgc.entity.PostImage;
 import com.vgc.entity.PostLike;
 import com.vgc.entity.PostStatus;
+import com.vgc.entity.PostTag;
 import com.vgc.entity.User;
 import com.vgc.repository.BookmarkRepository;
 import com.vgc.repository.CategoryRepository;
@@ -91,7 +92,16 @@ public class PostService {
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setViewCount(post.getViewCount() + 1);
         postRepository.save(post);
-        return PostResponse.from(post, commentRepository.countByPostId(post.getId()));
+        PostResponse response = PostResponse.from(post, commentRepository.countByPostId(post.getId()));
+
+        List<PostTag> tags = postTagRepository.findByPostId(id);
+        if (!tags.isEmpty()) {
+            response.setTaggedNicknames(
+                tags.stream().map(t -> t.getTaggedUser().getNickname()).collect(Collectors.toList())
+            );
+        }
+
+        return response;
     }
 
     @Transactional
