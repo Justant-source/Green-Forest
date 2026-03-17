@@ -28,6 +28,20 @@ public class UserController {
         this.dropService = dropService;
     }
 
+    @GetMapping("/search")
+    public java.util.List<Map<String, Object>> searchUsers(@RequestParam String q) {
+        if (q == null || q.trim().isEmpty()) return java.util.List.of();
+        return userRepository.findByNicknameContainingIgnoreCase(q.trim()).stream()
+                .limit(10)
+                .map(u -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", u.getId());
+                    m.put("nickname", u.getNickname());
+                    return m;
+                })
+                .toList();
+    }
+
     @GetMapping("/{id}")
     public Map<String, Object> getUser(@PathVariable Long id) {
         User user = userRepository.findById(id)

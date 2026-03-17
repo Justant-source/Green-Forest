@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createPost, getCategories, getQuests } from "@/lib/api";
+import { createPost, getCategories, getQuests, searchUsers } from "@/lib/api";
 import { CategoryInfo, Quest } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { compressImage } from "@/lib/imageCompression";
@@ -17,7 +17,10 @@ export default function NewPostPage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
-  const [taggedNicknames, setTaggedNicknames] = useState("");
+  const [taggedList, setTaggedList] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tagSuggestions, setTagSuggestions] = useState<{ id: number; nickname: string }[]>([]);
+  const [tagError, setTagError] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [questId, setQuestId] = useState<number | null>(null);
   const [quests, setQuests] = useState<Quest[]>([]);
@@ -46,6 +49,32 @@ export default function NewPostPage() {
       .then(setQuests)
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (tagInput.trim().length === 0) {
+      setTagSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      searchUsers(tagInput.trim()).then((results) => {
+        setTagSuggestions(results.filter((u) => !taggedList.includes(u.nickname)));
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [tagInput, taggedList]);
+
+  const addTag = (nickname: string) => {
+    if (!taggedList.includes(nickname)) {
+      setTaggedList([...taggedList, nickname]);
+    }
+    setTagInput("");
+    setTagSuggestions([]);
+    setTagError("");
+  };
+
+  const removeTag = (nickname: string) => {
+    setTaggedList(taggedList.filter((n) => n !== nickname));
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -85,8 +114,8 @@ export default function NewPostPage() {
       formData.append("content", content.trim());
       formData.append("category", category);
       formData.append("anonymous", String(anonymous));
-      if (taggedNicknames.trim()) {
-        formData.append("taggedNicknames", taggedNicknames.trim());
+      if (taggedList.length > 0) {
+        formData.append("taggedNicknames", taggedList.join(","));
       }
       if (category === "퀘스트" && questId) {
         formData.append("questId", String(questId));
@@ -168,15 +197,69 @@ export default function NewPostPage() {
         {category === "동료칭찬" && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              태그할 동료 (닉네임, 쉼표로 구분)
+              태그할 동료
             </label>
-            <input
-              type="text"
-              value={taggedNicknames}
-              onChange={(e) => setTaggedNicknames(e.target.value)}
-              placeholder="예: 홍길동, 김철수"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500"
-            />
+            {taggedList.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {taggedList.map((name) => (
+                  <span
+                    key={name}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-600"
+                  >
+                    @{name}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(name)}
+                      className="ml-1 text-blue-400 hover:text-blue-700 text-xs"
+                    >
+                      X
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="relative">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => {
+                  setTagInput(e.target.value);
+                  setTagError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (tagInput.trim() && tagSuggestions.length > 0) {
+                      addTag(tagSuggestions[0].nickname);
+                    } else if (tagInput.trim()) {
+                      setTagError("올바른 닉네임을 입력해주세요.");
+                    }
+                  }
+                }}
+                placeholder="닉네임을 검색하세요"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500 ${
+                  tagError ? "border-red-400" : "border-gray-300"
+                }`}
+              />
+              {tagSuggestions.length > 0 && (
+                <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {tagSuggestions.map((user) => (
+                    <li key={user.id}>
+                      <button
+                        type="button"
+                        onClick={() => addTag(user.nickname)}
+                        className="w-full text-left px-4 py-2 hover:bg-forest-50 text-sm"
+                      >
+                        {user.nickname}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {tagError && (
+              <p className="text-xs text-red-500 mt-1">{tagError}</p>
+            )}
             <p className="text-xs text-gray-400 mt-1">태그된 동료에게 물방울 보너스가 지급됩니다.</p>
           </div>
         )}
