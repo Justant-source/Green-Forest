@@ -16,4 +16,6 @@ public interface QuestCompletionRepository extends JpaRepository<QuestCompletion
     List<QuestCompletion> findByUserId(Long userId);
 
     List<QuestCompletion> findByQuestIdAndUserId(Long questId, Long userId);
+
+    void deleteByPostId(Long postId);
 }

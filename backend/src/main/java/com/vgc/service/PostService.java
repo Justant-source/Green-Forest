@@ -15,6 +15,7 @@ import com.vgc.repository.PostImageRepository;
 import com.vgc.repository.PostLikeRepository;
 import com.vgc.repository.PostRepository;
 import com.vgc.repository.PostTagRepository;
+import com.vgc.repository.QuestCompletionRepository;
 import com.vgc.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,12 +42,14 @@ public class PostService {
     private final DropService dropService;
     private final UserRepository userRepository;
     private final PostTagRepository postTagRepository;
+    private final QuestCompletionRepository questCompletionRepository;
 
     public PostService(PostRepository postRepository, CommentRepository commentRepository,
                        PostLikeRepository postLikeRepository, PostImageRepository postImageRepository,
                        BookmarkRepository bookmarkRepository, CategoryRepository categoryRepository,
                        ImageStorageService imageStorageService, DropService dropService,
-                       UserRepository userRepository, PostTagRepository postTagRepository) {
+                       UserRepository userRepository, PostTagRepository postTagRepository,
+                       QuestCompletionRepository questCompletionRepository) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.postLikeRepository = postLikeRepository;
@@ -57,6 +60,7 @@ public class PostService {
         this.dropService = dropService;
         this.userRepository = userRepository;
         this.postTagRepository = postTagRepository;
+        this.questCompletionRepository = questCompletionRepository;
     }
 
     public Page<PostResponse> getAllPosts(String category, String sort, String status, int page, int size) {
@@ -256,6 +260,7 @@ public class PostService {
             throw new RuntimeException("본인이 작성한 글만 삭제할 수 있습니다.");
         }
 
+        questCompletionRepository.deleteByPostId(id);
         postTagRepository.deleteByPostId(id);
         bookmarkRepository.deleteByPostId(id);
         postLikeRepository.deleteByPostId(id);
