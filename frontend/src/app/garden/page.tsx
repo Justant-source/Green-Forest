@@ -17,7 +17,7 @@ const PLANT_TYPES = [
 type Tab = "posts" | "bookmarks" | "drops";
 
 export default function GardenPage() {
-  const { isLoggedIn, handleLogout } = useAuth();
+  const { isLoggedIn, handleLogout, authLoaded } = useAuth();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +35,7 @@ export default function GardenPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!authLoaded) return;
     if (!isLoggedIn) {
       router.replace("/login");
       return;
@@ -47,7 +48,7 @@ export default function GardenPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [isLoggedIn, router]);
+  }, [authLoaded, isLoggedIn, router]);
 
   const fetchTabData = useCallback(async (tab: Tab, pageNum: number, append: boolean) => {
     setTabLoading(true);
@@ -158,12 +159,14 @@ export default function GardenPage() {
                   <span>경험치 배율: x{user.expMultiplier}</span>
                 </div>
               </div>
-              <button
-                onClick={() => setEditing(true)}
-                className="text-xs text-forest-500 hover:text-forest-600 px-3 py-1.5 rounded-lg hover:bg-forest-100 transition-colors"
-              >
-                편집
-              </button>
+              {!user.plantLocked && (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="text-xs text-forest-500 hover:text-forest-600 px-3 py-1.5 rounded-lg hover:bg-forest-100 transition-colors"
+                >
+                  편집
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -236,11 +239,11 @@ export default function GardenPage() {
             <div className="text-xs text-gray-400">물방울</div>
           </div>
           <div className="text-center p-3 bg-forest-50 rounded-xl">
-            <div className="text-2xl font-bold text-forest-500">{user.partyName || "-"}</div>
+            <div className="text-2xl font-bold text-forest-500 truncate">{user.partyName || "-"}</div>
             <div className="text-xs text-gray-400">파티</div>
           </div>
           <div className="text-center p-3 bg-gray-50 rounded-xl">
-            <div className="text-2xl font-bold text-gray-700">{user.jobClassLabelEn || "-"}</div>
+            <div className="text-2xl font-bold text-gray-700 truncate">{user.jobClassLabel || "-"}</div>
             <div className="text-xs text-gray-400">직업군</div>
           </div>
         </div>

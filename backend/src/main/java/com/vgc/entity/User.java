@@ -35,6 +35,9 @@ public class User {
     @Column(name = "plant_name", length = 50)
     private String plantName;
 
+    @Column(name = "plant_locked", nullable = false)
+    private boolean plantLocked = false;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "job_class")
     private JobClass jobClass;
@@ -94,4 +97,6 @@ public class User {
     public void setParty(Party party) { this.party = party; }
     public int getTotalDrops() { return totalDrops; }
     public void setTotalDrops(int totalDrops) { this.totalDrops = totalDrops; }
+    public boolean isPlantLocked() { return plantLocked; }
+    public void setPlantLocked(boolean plantLocked) { this.plantLocked = plantLocked; }
 }

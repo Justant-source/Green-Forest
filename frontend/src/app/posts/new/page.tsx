@@ -9,7 +9,7 @@ import { compressImage } from "@/lib/imageCompression";
 
 export default function NewPostPage() {
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, authLoaded } = useAuth();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
@@ -23,10 +23,11 @@ export default function NewPostPage() {
   const [quests, setQuests] = useState<Quest[]>([]);
 
   useEffect(() => {
+    if (!authLoaded) return;
     if (!isLoggedIn) {
       router.replace("/login");
     }
-  }, [isLoggedIn, router]);
+  }, [authLoaded, isLoggedIn, router]);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("selectedCategory");
@@ -85,7 +86,7 @@ export default function NewPostPage() {
       formData.append("category", category);
       formData.append("anonymous", String(anonymous));
       if (taggedNicknames.trim()) {
-        formData.append("taggedNicknamesStr", taggedNicknames.trim());
+        formData.append("taggedNicknames", taggedNicknames.trim());
       }
       if (category === "퀘스트" && questId) {
         formData.append("questId", String(questId));

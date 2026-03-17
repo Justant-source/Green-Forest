@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className={`${notoSansKR.className} bg-forest-50 min-h-screen pb-16 md:pb-0`} suppressHydrationWarning>
+      <body className={`${notoSansKR.className} bg-forest-50 min-h-screen pb-16`} suppressHydrationWarning>
         <AuthProvider>
           <CategoryProvider>
             <Header />

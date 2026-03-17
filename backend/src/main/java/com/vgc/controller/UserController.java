@@ -61,8 +61,12 @@ public class UserController {
         }
 
         if (body.containsKey("plantType") && body.get("plantType") != null) {
+            if (user.getPlantType() != null && user.isPlantLocked()) {
+                throw new RuntimeException("식물은 이미 선택되어 변경할 수 없습니다. 관리자에게 문의하세요.");
+            }
             PlantType plantType = PlantType.valueOf((String) body.get("plantType"));
             user.setPlantType(plantType);
+            user.setPlantLocked(true);
 
             // 식물 → 직업군 자동 매핑
             switch (plantType) {
@@ -145,6 +149,7 @@ public class UserController {
         map.put("plantType", user.getPlantType() != null ? user.getPlantType().name() : null);
         map.put("plantTypeLabel", user.getPlantType() != null ? user.getPlantType().getLabel() : null);
         map.put("plantName", user.getPlantName());
+        map.put("plantLocked", user.isPlantLocked());
         map.put("jobClass", user.getJobClass() != null ? user.getJobClass().name() : null);
         map.put("jobClassLabel", user.getJobClass() != null ? user.getJobClass().getLabel() : null);
         map.put("jobClassLabelEn", user.getJobClass() != null ? user.getJobClass().getLabelEn() : null);

@@ -20,10 +20,15 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody AuthRequest request) {
-        AuthResponse response = authService.register(
-                request.getEmail(), request.getPassword(), request.getNickname());
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> register(@RequestBody AuthRequest request) {
+        try {
+            AuthResponse response = authService.register(
+                    request.getEmail(), request.getPassword(), request.getNickname());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PostMapping("/login")

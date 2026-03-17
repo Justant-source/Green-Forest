@@ -12,7 +12,7 @@ export default function EditPostPage() {
   const router = useRouter();
   const params = useParams();
   const postId = Number(params.id);
-  const { isLoggedIn, nickname } = useAuth();
+  const { isLoggedIn, nickname, authLoaded } = useAuth();
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -26,6 +26,7 @@ export default function EditPostPage() {
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
 
   useEffect(() => {
+    if (!authLoaded) return;
     if (!isLoggedIn) {
       router.replace("/login");
       return;
@@ -57,7 +58,7 @@ export default function EditPostPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [postId, isLoggedIn, nickname, router]);
+  }, [authLoaded, postId, isLoggedIn, nickname, router]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);

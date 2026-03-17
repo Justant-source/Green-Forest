@@ -228,11 +228,22 @@ public class AdminController {
             }
         }
 
-        if (body.containsKey("plantType") && body.get("plantType") != null) {
-            PlantType plantType = PlantType.valueOf((String) body.get("plantType"));
-            user.setPlantType(plantType);
-            // 식물→직업군 자동 매핑
-            applyPlantJobMapping(user, plantType);
+        if (body.containsKey("plantType")) {
+            if (body.get("plantType") == null) {
+                // 관리자가 plantType을 null로 설정 → 잠금 해제 (유저가 재선택 가능)
+                user.setPlantType(null);
+                user.setPlantLocked(false);
+                user.setJobClass(null);
+                user.setElement(null);
+                user.setDifficulty(null);
+                user.setExpMultiplier(new java.math.BigDecimal("1.00"));
+            } else {
+                PlantType plantType = PlantType.valueOf((String) body.get("plantType"));
+                user.setPlantType(plantType);
+                user.setPlantLocked(true);
+                // 식물→직업군 자동 매핑
+                applyPlantJobMapping(user, plantType);
+            }
         }
 
         if (body.containsKey("nickname")) {

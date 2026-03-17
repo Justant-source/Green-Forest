@@ -8,19 +8,20 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, authLoaded } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
+    if (!authLoaded) return;
     if (!isLoggedIn) {
       router.replace("/login");
       return;
     }
     fetchNotifications(0, false);
-  }, [isLoggedIn, router]);
+  }, [authLoaded, isLoggedIn, router]);
 
   const fetchNotifications = async (pageNum: number, append: boolean) => {
     setLoading(true);

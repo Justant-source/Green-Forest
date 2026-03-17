@@ -8,11 +8,12 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function QuestsPage() {
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, authLoaded } = useAuth();
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!authLoaded) return;
     if (!isLoggedIn) {
       router.replace("/login");
       return;
@@ -21,7 +22,7 @@ export default function QuestsPage() {
       .then(setQuests)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [isLoggedIn, router]);
+  }, [authLoaded, isLoggedIn, router]);
 
   if (!isLoggedIn) return null;
 
