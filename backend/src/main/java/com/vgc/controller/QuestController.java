@@ -71,8 +71,8 @@ public class QuestController {
         map.put("targetType", quest.getTargetType());
         map.put("targetPartyId", quest.getTargetPartyId());
         map.put("maxCompletionsPerUser", quest.getMaxCompletionsPerUser());
-        map.put("isActive", quest.isActive());
-        map.put("isVoteType", quest.isVoteType());
+        map.put("active", quest.isActive());
+        map.put("voteType", quest.isVoteType());
         map.put("createdAt", quest.getCreatedAt().toString());
         map.put("completed", questService.isQuestCompletedByUser(quest.getId(), user.getId()));
         return map;
