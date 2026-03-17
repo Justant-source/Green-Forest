@@ -54,6 +54,7 @@ export interface User {
   plantType: string | null;
   plantTypeLabel: string | null;
   plantName: string | null;
+  plantLocked: boolean;
   jobClass: string | null;
   jobClassLabel: string | null;
   jobClassLabelEn: string | null;
