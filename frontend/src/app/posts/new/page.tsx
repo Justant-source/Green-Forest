@@ -9,7 +9,7 @@ import { compressImage } from "@/lib/imageCompression";
 
 export default function NewPostPage() {
   const router = useRouter();
-  const { isLoggedIn, authLoaded } = useAuth();
+  const { isLoggedIn, authLoaded, nickname } = useAuth();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
@@ -57,15 +57,19 @@ export default function NewPostPage() {
     }
     const timer = setTimeout(() => {
       searchUsers(tagInput.trim()).then((results) => {
-        setTagSuggestions(results.filter((u) => !taggedList.includes(u.nickname)));
+        setTagSuggestions(results.filter((u) => !taggedList.includes(u.nickname) && u.nickname !== nickname));
       });
     }, 300);
     return () => clearTimeout(timer);
   }, [tagInput, taggedList]);
 
-  const addTag = (nickname: string) => {
-    if (!taggedList.includes(nickname)) {
-      setTaggedList([...taggedList, nickname]);
+  const addTag = (tagNickname: string) => {
+    if (tagNickname === nickname) {
+      setTagError("자기 자신은 태그할 수 없습니다.");
+      return;
+    }
+    if (!taggedList.includes(tagNickname)) {
+      setTaggedList([...taggedList, tagNickname]);
     }
     setTagInput("");
     setTagSuggestions([]);
