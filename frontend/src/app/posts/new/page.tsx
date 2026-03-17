@@ -125,6 +125,7 @@ export default function NewPostPage() {
       });
 
       const newPost = await createPost(formData);
+      sessionStorage.removeItem("gridFeedCache");
       router.push(`/posts/${newPost.id}`);
     } catch (error) {
       console.error("Failed to create post:", error);

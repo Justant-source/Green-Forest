@@ -162,6 +162,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
                   if (!confirm("정말 삭제하시겠습니까?")) return;
                   try {
                     await deletePost(post.id);
+                    sessionStorage.removeItem("gridFeedCache");
                     router.push("/");
                   } catch {
                     alert("삭제에 실패했습니다.");
