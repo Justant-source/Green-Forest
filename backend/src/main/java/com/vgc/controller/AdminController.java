@@ -197,6 +197,7 @@ public class AdminController {
             map.put("id", u.getId());
             map.put("email", u.getEmail());
             map.put("nickname", u.getNickname());
+            map.put("name", u.getName());
             map.put("role", u.getRole());
             map.put("plantType", u.getPlantType() != null ? u.getPlantType().name() : null);
             map.put("plantName", u.getPlantName());

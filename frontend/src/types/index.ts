@@ -159,6 +159,7 @@ export interface AdminUser {
   id: number;
   email: string;
   nickname: string;
+  name: string;
   role: string;
   plantType: string | null;
   plantName: string | null;
