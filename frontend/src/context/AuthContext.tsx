@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { getToken, getNickname, getName, getRole, logout as authLogout } from "@/lib/auth";
+import { getMe } from "@/lib/api";
 
 interface AuthContextType {
   nickname: string | null;
@@ -53,7 +54,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refresh();
-    setAuthLoaded(true);
+    const token = getToken();
+    if (token) {
+      getMe()
+        .then(() => setAuthLoaded(true))
+        .catch(() => {
+          authLogout();
+          setNickname(null);
+          setName(null);
+          setRole(null);
+          setIsLoggedIn(false);
+          setAuthLoaded(true);
+        });
+    } else {
+      setAuthLoaded(true);
+    }
   }, []);
 
   const isAdmin = role === "ADMIN";
