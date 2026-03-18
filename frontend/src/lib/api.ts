@@ -4,7 +4,7 @@ import {
   LeaderboardEntry, PartyMember, DropTransaction,
   AdminUser, AdminParty, AdminStats,
 } from "@/types";
-import { getToken } from "@/lib/auth";
+import { getToken, logout } from "@/lib/auth";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 export const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_IMAGE_BASE_URL || "http://localhost:8080";
@@ -15,6 +15,13 @@ function authHeaders(): HeadersInit {
     return { Authorization: `Bearer ${token}` };
   }
   return {};
+}
+
+function handleUnauthorized(res: Response): void {
+  if (res.status === 401 && getToken()) {
+    logout();
+    window.location.href = "/login";
+  }
 }
 
 // ========== 포스트 ==========
@@ -52,7 +59,10 @@ export async function createPost(formData: FormData): Promise<Post> {
     headers: authHeaders(),
     body: formData,
   });
-  if (!res.ok) throw new Error("Failed to create post");
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error("Failed to create post");
+  }
   return res.json();
 }
 
@@ -240,7 +250,10 @@ export async function getMe(): Promise<User> {
     headers: authHeaders(),
     cache: "no-store",
   });
-  if (!res.ok) throw new Error("Failed to fetch user");
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error("Failed to fetch user");
+  }
   return res.json();
 }
 

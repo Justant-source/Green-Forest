@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { jua } from "@/lib/fonts";
 
 export default function Header() {
-  const { nickname, isLoggedIn, isAdmin, authLoaded } = useAuth();
+  const router = useRouter();
+  const { nickname, isLoggedIn, isAdmin, authLoaded, handleLogout } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/60">
@@ -57,6 +59,12 @@ export default function Header() {
               >
                 {nickname}
               </Link>
+              <button
+                onClick={() => { handleLogout(); router.push("/login"); }}
+                className="text-sm text-gray-400 hover:text-red-500 px-2 py-1.5 rounded-full hover:bg-gray-100 transition-colors hidden md:inline-flex"
+              >
+                로그아웃
+              </button>
             </>
           ) : (
             <Link
