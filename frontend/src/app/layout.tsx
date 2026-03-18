@@ -9,7 +9,7 @@ const Header = dynamic(() => import("@/components/Header"), { ssr: false });
 const BottomNav = dynamic(() => import("@/components/BottomNav"), { ssr: false });
 
 export const metadata: Metadata = {
-  title: "오피스 그린 메이커 - 식물 RPG 커뮤니티",
+  title: "그린메이커 - 식물 RPG 커뮤니티",
   description: "함께 성장하는 식물 RPG 커뮤니티",
 };
 

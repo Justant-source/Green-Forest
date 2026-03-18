@@ -23,7 +23,7 @@ export default function Header() {
             <circle cx="14" cy="8" r="0.5" fill="#F5F9F0" opacity="0.4" />
           </svg>
           <span className={`${jua.className} tracking-widest text-2xl text-gray-900 transition-colors`}>
-            오피스 그린 메이커
+            그린메이커
           </span>
         </Link>
         <div className="flex items-center gap-2">
