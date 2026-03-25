@@ -294,7 +294,7 @@ public class AdminController {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
 
-        String tempPassword = UUID.randomUUID().toString().substring(0, 8);
+        String tempPassword = String.format("%04d", new java.util.Random().nextInt(10000));
         user.setPassword(passwordEncoder.encode(tempPassword));
         userRepository.save(user);
 
