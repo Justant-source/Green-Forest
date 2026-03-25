@@ -215,40 +215,30 @@ public class DropService {
     }
 
     /**
-     * 좋아요 보너스 — 글 작성자에게 2 물방울
+     * 좋아요 보너스 — 좋아요 누른 사람에게 2 물방울
      */
     @Transactional
     public void awardDropsForLike(User liker, Post post) {
-        User postAuthor = post.getAuthor();
-        if (postAuthor.getId().equals(liker.getId())) {
-            return; // 자기 글에 좋아요는 보상 없음
-        }
-
         int drops = 2;
-        recordTransaction(postAuthor, drops, DropReasonType.LIKE_BONUS,
-                liker.getNickname() + "님이 좋아요", post.getId(), null);
+        recordTransaction(liker, drops, DropReasonType.LIKE_BONUS,
+                "좋아요 보너스", post.getId(), null);
 
-        notificationService.createNotification(postAuthor, NotificationType.DROP_AWARD,
-                "물방울 획득!", liker.getNickname() + "님이 좋아요를 눌러 💧" + drops + " 물방울을 획득했어요!",
+        notificationService.createNotification(liker, NotificationType.DROP_AWARD,
+                "물방울 획득!", "좋아요를 눌러 💧" + drops + " 물방울을 획득했어요!",
                 post.getId(), null);
     }
 
     /**
-     * 댓글 보너스 — 글 작성자에게 5 물방울
+     * 댓글 보너스 — 댓글 작성자에게 5 물방울
      */
     @Transactional
     public void awardDropsForComment(User commenter, Post post) {
-        User postAuthor = post.getAuthor();
-        if (postAuthor.getId().equals(commenter.getId())) {
-            return; // 자기 글에 댓글은 보상 없음
-        }
-
         int drops = 5;
-        recordTransaction(postAuthor, drops, DropReasonType.COMMENT_BONUS,
-                commenter.getNickname() + "님이 댓글", post.getId(), null);
+        recordTransaction(commenter, drops, DropReasonType.COMMENT_BONUS,
+                "댓글 보너스", post.getId(), null);
 
-        notificationService.createNotification(postAuthor, NotificationType.DROP_AWARD,
-                "물방울 획득!", commenter.getNickname() + "님이 댓글을 달아 💧" + drops + " 물방울을 획득했어요!",
+        notificationService.createNotification(commenter, NotificationType.DROP_AWARD,
+                "물방울 획득!", "댓글을 달아 💧" + drops + " 물방울을 획득했어요!",
                 post.getId(), null);
     }
 
