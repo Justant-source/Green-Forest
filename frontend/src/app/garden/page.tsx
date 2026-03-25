@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getMe, getMyPosts, getMyBookmarks, getMyDropHistory, updateMyProfile } from "@/lib/api";
+import { getMe, getMyPosts, getMyBookmarks, getMyDropHistory, updateMyProfile, changePassword } from "@/lib/api";
 import { User, Post, DropTransaction, PageResponse } from "@/types";
 import GridItem from "@/components/GridItem";
 
@@ -33,6 +33,13 @@ export default function GardenPage() {
   const [editPlantName, setEditPlantName] = useState("");
   const [editPlantType, setEditPlantType] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // 비밀번호 변경
+  const [showPwChange, setShowPwChange] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [newPwConfirm, setNewPwConfirm] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
 
   useEffect(() => {
     if (!authLoaded) return;
@@ -130,16 +137,84 @@ export default function GardenPage() {
             <h1 className="text-2xl font-bold text-gray-900">{user.nickname}</h1>
             <p className="text-sm text-gray-400 mt-0.5">마이 가든</p>
           </div>
-          <button
-            onClick={() => {
-              handleLogout();
-              router.push("/");
-            }}
-            className="text-sm text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            로그아웃
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowPwChange((v) => !v)}
+              className="text-sm text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              비밀번호 변경
+            </button>
+            <button
+              onClick={() => {
+                handleLogout();
+                router.push("/");
+              }}
+              className="text-sm text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
+
+        {/* 비밀번호 변경 */}
+        {showPwChange && (
+          <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">비밀번호 변경</h3>
+            <input
+              type="password"
+              value={currentPw}
+              onChange={(e) => setCurrentPw(e.target.value)}
+              placeholder="현재 비밀번호"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+            />
+            <input
+              type="password"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              placeholder="새 비밀번호"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+            />
+            <input
+              type="password"
+              value={newPwConfirm}
+              onChange={(e) => setNewPwConfirm(e.target.value)}
+              placeholder="새 비밀번호 확인"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+            />
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={async () => {
+                  if (!currentPw || !newPw || !newPwConfirm) { alert("모든 항목을 입력해주세요."); return; }
+                  if (newPw !== newPwConfirm) { alert("새 비밀번호가 일치하지 않습니다."); return; }
+                  if (newPw.length < 4) { alert("새 비밀번호는 4자 이상이어야 합니다."); return; }
+                  setPwSaving(true);
+                  try {
+                    await changePassword(currentPw, newPw);
+                    alert("비밀번호가 변경되었습니다.");
+                    setShowPwChange(false);
+                    setCurrentPw("");
+                    setNewPw("");
+                    setNewPwConfirm("");
+                  } catch {
+                    alert("현재 비밀번호가 올바르지 않습니다.");
+                  } finally {
+                    setPwSaving(false);
+                  }
+                }}
+                disabled={pwSaving}
+                className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 disabled:opacity-50 transition-colors"
+              >
+                {pwSaving ? "변경 중..." : "변경"}
+              </button>
+              <button
+                onClick={() => { setShowPwChange(false); setCurrentPw(""); setNewPw(""); setNewPwConfirm(""); }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 식물 정보 */}
         {user.plantType ? (

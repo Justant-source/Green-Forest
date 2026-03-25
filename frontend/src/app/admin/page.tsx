@@ -10,7 +10,7 @@ import {
 import {
   getAdminCategories, createAdminCategory, deleteAdminCategory,
   getPendingCategoryRequests, approveCategoryRequest, rejectCategoryRequest,
-  getAdminUsers, updateAdminUser,
+  getAdminUsers, updateAdminUser, resetAdminUserPassword,
   getAdminParties, createAdminParty, deleteAdminParty,
   getAdminStats, getQuests,
   createAdminQuest, deleteAdminQuest,
@@ -203,6 +203,18 @@ export default function AdminPage() {
                 <option value="">파티없음</option>
                 {parties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
+              <button
+                onClick={async () => {
+                  if (!confirm(`"${u.nickname}" 유저의 비밀번호를 리셋하시겠습니까?`)) return;
+                  try {
+                    const result = await resetAdminUserPassword(u.id);
+                    alert(`임시 비밀번호: ${result.tempPassword}\n\n이 비밀번호를 해당 유저에게 전달해주세요.`);
+                  } catch { alert("비밀번호 리셋 실패"); }
+                }}
+                className="px-2 py-1 text-xs text-orange-600 hover:text-orange-800 font-medium border border-orange-300 rounded hover:bg-orange-50 transition-colors"
+              >
+                PW리셋
+              </button>
             </div>
           ))}
         </div>

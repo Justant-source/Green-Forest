@@ -289,6 +289,18 @@ export async function updateMyProfile(data: {
   return res.json();
 }
 
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/users/me/password`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message || "비밀번호 변경에 실패했습니다.");
+  }
+}
+
 export async function getMyDropHistory(
   page: number = 0,
   size: number = 20
@@ -547,6 +559,15 @@ export async function updateAdminUser(id: number, data: {
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to update user");
+}
+
+export async function resetAdminUserPassword(id: number): Promise<{ status: string; tempPassword: string }> {
+  const res = await fetch(`${BASE_URL}/admin/users/${id}/reset-password`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to reset password");
+  return res.json();
 }
 
 export async function getAdminParties(): Promise<AdminParty[]> {

@@ -13,6 +13,7 @@ import com.vgc.dto.CategoryRequestResponse;
 import com.vgc.dto.CategoryResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -31,13 +32,15 @@ public class AdminController {
     private final DropTransactionRepository dropTransactionRepository;
     private final PostRepository postRepository;
     private final NotificationService notificationService;
+    private final PasswordEncoder passwordEncoder;
 
     public AdminController(CategoryService categoryService, UserRepository userRepository,
                            DropService dropService, QuestService questService,
                            PartyRepository partyRepository,
                            DropTransactionRepository dropTransactionRepository,
                            PostRepository postRepository,
-                           NotificationService notificationService) {
+                           NotificationService notificationService,
+                           PasswordEncoder passwordEncoder) {
         this.categoryService = categoryService;
         this.userRepository = userRepository;
         this.dropService = dropService;
@@ -46,6 +49,7 @@ public class AdminController {
         this.dropTransactionRepository = dropTransactionRepository;
         this.postRepository = postRepository;
         this.notificationService = notificationService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     private User getAdminUser(Authentication authentication) {
@@ -282,6 +286,19 @@ public class AdminController {
                 user.setExpMultiplier(Difficulty.HARD.getMultiplier());
             }
         }
+    }
+
+    @PostMapping("/users/{id}/reset-password")
+    public Map<String, String> resetUserPassword(@PathVariable Long id, Authentication authentication) {
+        getAdminUser(authentication);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+
+        String tempPassword = UUID.randomUUID().toString().substring(0, 8);
+        user.setPassword(passwordEncoder.encode(tempPassword));
+        userRepository.save(user);
+
+        return Map.of("status", "reset", "tempPassword", tempPassword);
     }
 
     // ========== 파티 관리 ==========

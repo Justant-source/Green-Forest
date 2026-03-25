@@ -7,6 +7,7 @@ import com.vgc.service.DropService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -19,13 +20,16 @@ public class UserController {
     private final UserRepository userRepository;
     private final DropTransactionRepository dropTransactionRepository;
     private final DropService dropService;
+    private final PasswordEncoder passwordEncoder;
 
     public UserController(UserRepository userRepository,
                           DropTransactionRepository dropTransactionRepository,
-                          DropService dropService) {
+                          DropService dropService,
+                          PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.dropTransactionRepository = dropTransactionRepository;
         this.dropService = dropService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping("/search")
@@ -153,6 +157,33 @@ public class UserController {
 
         dropService.giftDrops(sender, receiver, amount);
         return Map.of("status", "gifted", "newTotal", String.valueOf(sender.getTotalDrops()));
+    }
+
+    @PutMapping("/me/password")
+    public Map<String, String> changePassword(@RequestBody Map<String, String> body,
+                                               Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String currentPassword = body.get("currentPassword");
+        String newPassword = body.get("newPassword");
+
+        if (currentPassword == null || newPassword == null) {
+            throw new RuntimeException("현재 비밀번호와 새 비밀번호를 모두 입력해주세요.");
+        }
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("현재 비밀번호가 올바르지 않습니다.");
+        }
+
+        if (newPassword.length() < 4) {
+            throw new RuntimeException("새 비밀번호는 4자 이상이어야 합니다.");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return Map.of("status", "changed");
     }
 
     private Map<String, Object> userToMap(User user) {
