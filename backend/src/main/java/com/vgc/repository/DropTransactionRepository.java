@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.vgc.entity.DropReasonType;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -38,4 +39,6 @@ public interface DropTransactionRepository extends JpaRepository<DropTransaction
            "WHERE d.createdAt >= :startDate AND d.createdAt < :endDate AND d.amount > 0")
     int sumPositiveAmountByPeriod(@Param("startDate") LocalDateTime startDate,
                                   @Param("endDate") LocalDateTime endDate);
+
+    boolean existsByUserIdAndReasonTypeAndRelatedPostId(Long userId, DropReasonType reasonType, Long relatedPostId);
 }

@@ -215,10 +215,15 @@ public class DropService {
     }
 
     /**
-     * 좋아요 보너스 — 좋아요 누른 사람에게 2 물방울
+     * 좋아요 보너스 — 좋아요 누른 사람에게 2 물방울 (글당 1회)
      */
     @Transactional
     public void awardDropsForLike(User liker, Post post) {
+        if (dropTransactionRepository.existsByUserIdAndReasonTypeAndRelatedPostId(
+                liker.getId(), DropReasonType.LIKE_BONUS, post.getId())) {
+            return;
+        }
+
         int drops = 2;
         recordTransaction(liker, drops, DropReasonType.LIKE_BONUS,
                 "좋아요 보너스", post.getId(), null);
@@ -229,10 +234,15 @@ public class DropService {
     }
 
     /**
-     * 댓글 보너스 — 댓글 작성자에게 5 물방울
+     * 댓글 보너스 — 댓글 작성자에게 5 물방울 (글당 1회)
      */
     @Transactional
     public void awardDropsForComment(User commenter, Post post) {
+        if (dropTransactionRepository.existsByUserIdAndReasonTypeAndRelatedPostId(
+                commenter.getId(), DropReasonType.COMMENT_BONUS, post.getId())) {
+            return;
+        }
+
         int drops = 5;
         recordTransaction(commenter, drops, DropReasonType.COMMENT_BONUS,
                 "댓글 보너스", post.getId(), null);
