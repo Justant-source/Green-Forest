@@ -15,10 +15,13 @@ import java.util.List;
 public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
+    private final DropService dropService;
 
-    public CommentService(CommentRepository commentRepository, PostRepository postRepository) {
+    public CommentService(CommentRepository commentRepository, PostRepository postRepository,
+                          DropService dropService) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
+        this.dropService = dropService;
     }
 
     public List<Comment> getComments(Long postId) {
@@ -48,7 +51,9 @@ public class CommentService {
             comment.setParent(parent);
         }
 
-        return commentRepository.save(comment);
+        Comment saved = commentRepository.save(comment);
+        dropService.awardDropsForComment(author, post);
+        return saved;
     }
 
     @Transactional

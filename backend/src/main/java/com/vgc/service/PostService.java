@@ -182,6 +182,7 @@ public class PostService {
             postLike.setPost(post);
             postLikeRepository.save(postLike);
             post.setLikeCount(post.getLikeCount() + 1);
+            dropService.awardDropsForLike(user, post);
         }
 
         postRepository.save(post);

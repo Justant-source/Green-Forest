@@ -8,6 +8,8 @@ public enum DropReasonType {
     TAG_BONUS("태깅보너스"),
     GM_AWARD("GM수동지급"),
     GM_DEDUCT("GM수동차감"),
+    LIKE_BONUS("좋아요보너스"),
+    COMMENT_BONUS("댓글보너스"),
     GIFT_RECEIVED("선물받음"),
     GIFT_SENT("선물보냄");
 
