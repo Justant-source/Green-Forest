@@ -234,12 +234,13 @@ public class DropService {
     }
 
     /**
-     * 댓글 보너스 — 댓글 작성자에게 5 물방울 (글당 1회)
+     * 댓글 보너스 — 댓글 작성자에게 5 물방울 (글당 최대 5회)
      */
     @Transactional
     public void awardDropsForComment(User commenter, Post post) {
-        if (dropTransactionRepository.existsByUserIdAndReasonTypeAndRelatedPostId(
-                commenter.getId(), DropReasonType.COMMENT_BONUS, post.getId())) {
+        int count = dropTransactionRepository.countByUserIdAndReasonTypeAndRelatedPostId(
+                commenter.getId(), DropReasonType.COMMENT_BONUS, post.getId());
+        if (count >= 5) {
             return;
         }
 

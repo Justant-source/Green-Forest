@@ -41,4 +41,6 @@ public interface DropTransactionRepository extends JpaRepository<DropTransaction
                                   @Param("endDate") LocalDateTime endDate);
 
     boolean existsByUserIdAndReasonTypeAndRelatedPostId(Long userId, DropReasonType reasonType, Long relatedPostId);
+
+    int countByUserIdAndReasonTypeAndRelatedPostId(Long userId, DropReasonType reasonType, Long relatedPostId);
 }
