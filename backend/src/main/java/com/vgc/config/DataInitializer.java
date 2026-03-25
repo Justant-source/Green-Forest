@@ -62,15 +62,5 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void initAdminUser() {
-        String adminEmail = "gm@gm.com";
-        if (!userRepository.existsByEmail(adminEmail)) {
-            User admin = new User();
-            admin.setEmail(adminEmail);
-            admin.setPassword(passwordEncoder.encode("greenforest2026!"));
-            admin.setNickname("게임 마스터");
-            admin.setRole("ADMIN");
-            userRepository.save(admin);
-        }
-    }
+
 }
