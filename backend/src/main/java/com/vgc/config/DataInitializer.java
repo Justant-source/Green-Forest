@@ -63,7 +63,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initAdminUser() {
-        String adminEmail = "gm@greenforest.com";
+        String adminEmail = "gm@gm.com";
         if (!userRepository.existsByEmail(adminEmail)) {
             User admin = new User();
             admin.setEmail(adminEmail);
