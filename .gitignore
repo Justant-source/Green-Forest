@@ -12,5 +12,22 @@ bin/
 # System files
 .DS_Store
 
-# Environment
+# Environment & Secrets
 .env
+.env.local
+frontend/.env.local
+/green-forest-key.pem
+
+# Spring local properties (contains DB password, JWT secret)
+backend/src/main/resources/application-local.properties
+
+# Claude Code local files (machine-specific)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Gradle
+backend/.gradle/
+
+# Uploads (runtime-generated)
+backend/uploads/*
+!backend/uploads/.gitkeep
