@@ -1,0 +1,17 @@
+# Local environment settings — copy to application-local.properties and fill in values
+spring.datasource.url=jdbc:mysql://localhost:3307/vgc_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+spring.datasource.username=root
+spring.datasource.password=YOUR_DB_PASSWORD
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+file.upload-dir=/var/www/greenforest/uploads/
+server.port=9090
+
+jwt.secret=YOUR_JWT_SECRET_KEY_AT_LEAST_256_BITS
+
+# Admin initial password
+app.admin.password=YOUR_ADMIN_PASSWORD
+# CORS allowed origins (comma-separated)
+app.cors.allowed-origins=http://localhost:3000,http://YOUR_SERVER_IP:3000

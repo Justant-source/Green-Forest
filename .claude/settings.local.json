@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch",
+      "Edit(*)",
+      "Skill(update-config)"
+    ],
+    "deny": [
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git merge*)",
+      "Bash(git rebase*)",
+      "Bash(git reset*)",
+      "Bash(git revert*)",
+      "Bash(git tag*)",
+      "Bash(git stash drop*)",
+      "Bash(git branch -d*)",
+      "Bash(git branch -D*)",
+      "Bash(git checkout -B*)",
+      "Bash(git add*)"
+    ]
+  }
+}
