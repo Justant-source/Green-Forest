@@ -12,6 +12,6 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 RUN mkdir -p /app/uploads
-ENV SPRING_PROFILES_ACTIVE=prd
+# SPRING_PROFILES_ACTIVE is set by docker-compose (local or prod)
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

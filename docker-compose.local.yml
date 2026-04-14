@@ -1,0 +1,72 @@
+# ===== Local/Dev 환경 =====
+# 실행: docker compose -f docker-compose.local.yml --env-file .env.local up --build
+#
+# DB 마이그레이션 (prod → dev):
+#   1. prod 서버에서 덤프: docker exec greenforest-mysql-prod mysqldump -uroot -p vgc_db > dump.sql
+#   2. dev에 복원: docker exec -i greenforest-mysql-dev mysql -uroot -p vgc_db_dev < dump.sql
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: greenforest-mysql-dev
+    ports:
+      - "3308:3306"           # 로컬에서 직접 접속 시 localhost:3308
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: vgc_db_dev
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: greenforest-backend-dev
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: vgc_db_dev
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      UPLOAD_PATH: /app/uploads
+    volumes:
+      - uploads_dev:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
+    container_name: greenforest-frontend-dev
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: greenforest-nginx-dev
+    ports:
+      - "8080:80"             # 로컬 개발: http://localhost:8080
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  mysql_dev_data:
+  uploads_dev:

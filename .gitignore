@@ -15,6 +15,7 @@ bin/
 # Environment & Secrets
 .env
 .env.local
+.env.prod
 frontend/.env.local
 /green-forest-key.pem
 
