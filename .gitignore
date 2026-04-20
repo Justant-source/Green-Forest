@@ -18,6 +18,7 @@ bin/
 .env.prod
 frontend/.env.local
 /green-forest-key.pem
+.secret/
 
 # Spring local properties (contains DB password, JWT secret)
 backend/src/main/resources/application-local.properties

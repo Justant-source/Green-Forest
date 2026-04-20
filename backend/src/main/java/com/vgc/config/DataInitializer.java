@@ -6,6 +6,7 @@ import com.vgc.entity.User;
 import com.vgc.repository.CategoryRepository;
 import com.vgc.repository.PartyRepository;
 import com.vgc.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,9 @@ public class DataInitializer implements CommandLineRunner {
     private final PartyRepository partyRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.admin.password}")
+    private String adminPassword;
 
     public DataInitializer(CategoryRepository categoryRepository,
                            PartyRepository partyRepository,
@@ -62,5 +66,17 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
+    private void initAdminUser() {
+        String adminEmail = "admin@greenforest.com";
+        if (!userRepository.existsByEmail(adminEmail)) {
+            User admin = new User();
+            admin.setEmail(adminEmail);
+            admin.setPassword(passwordEncoder.encode(adminPassword));
+            admin.setNickname("관리자");
+            admin.setName("관리자");
+            admin.setRole("ADMIN");
+            userRepository.save(admin);
+        }
+    }
 
 }

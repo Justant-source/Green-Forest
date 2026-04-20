@@ -12,7 +12,7 @@ import java.nio.file.Paths;
 import java.util.UUID;
 
 @Service
-@Profile("local")
+@Profile({"local", "prod"})
 public class LocalStorageService implements ImageStorageService {
 
     @Value("${file.upload-dir}")
