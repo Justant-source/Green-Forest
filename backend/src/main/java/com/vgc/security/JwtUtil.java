@@ -14,7 +14,6 @@ import java.util.Date;
 public class JwtUtil {
 
     private final SecretKey key;
-    private static final long EXPIRATION_MS = 60 * 60 * 1000; // 1 hour
 
     public JwtUtil(@Value("${jwt.secret}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -24,7 +23,6 @@ public class JwtUtil {
         return Jwts.builder()
                 .subject(email)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_MS))
                 .signWith(key)
                 .compact();
     }

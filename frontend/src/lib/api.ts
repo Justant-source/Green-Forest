@@ -3,18 +3,32 @@ import {
   ConversationInfo, ChatMessage, User, Quest, Notification,
   LeaderboardEntry, PartyMember, DropTransaction,
   AdminUser, AdminParty, AdminStats,
+  AttendanceCheckinInfo, TodayBoard, AttendanceMonth, AttendancePhrase,
+  GachaPrizeInfo, GachaDrawResult, GachaDrawRecord, GachaRecentWin, GachaQuota, PlazaWinner,
+  PlantGrowth, AdminCreatePrizeRequest, AdminUpdatePrizeRequest,
 } from "@/types";
 import { getToken, logout } from "@/lib/auth";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 export const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_IMAGE_BASE_URL || "http://localhost:8080";
 
+/**
+ * 이미지 경로를 /api/media/ 경유 URL로 변환한다.
+ * - 기업 프록시가 /uploads/ 를 차단해도 /api/media/ 는 허용됨
+ * - 대소문자 구분 없이 파일을 찾는 FileServeController 사용
+ */
+export function toMediaUrl(path: string | null | undefined): string {
+  if (!path) return "";
+  const filename = path.replace(/^\/uploads\//, "");
+  return `${IMAGE_BASE_URL}/api/media/${filename}`;
+}
+
 function authHeaders(): HeadersInit {
   const token = getToken();
   if (token) {
-    return { Authorization: `Bearer ${token}` };
+    return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
   }
-  return {};
+  return { "Content-Type": "application/json" };
 }
 
 function handleUnauthorized(res: Response): void {
@@ -54,9 +68,10 @@ export async function getPost(id: number): Promise<Post> {
 }
 
 export async function createPost(formData: FormData): Promise<Post> {
+  const token = getToken();
   const res = await fetch(`${BASE_URL}/posts`, {
     method: "POST",
-    headers: authHeaders(),
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   });
   if (!res.ok) {
@@ -77,9 +92,10 @@ export async function updatePostStatus(id: number, status: string): Promise<Post
 }
 
 export async function updatePost(id: number, formData: FormData): Promise<Post> {
+  const token = getToken();
   const res = await fetch(`${BASE_URL}/posts/${id}`, {
     method: "PUT",
-    headers: authHeaders(),
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   });
   if (!res.ok) throw new Error("Failed to update post");
@@ -683,8 +699,218 @@ export async function getAdminStats(): Promise<AdminStats> {
 export async function createAnnouncement(title: string, content: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/admin/announcements`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: authHeaders(),
     body: JSON.stringify({ title, content }),
   });
   if (!res.ok) throw new Error("Failed to create announcement");
+}
+
+// ===== 출석 =====
+export async function checkin(body: { message?: string; phraseId?: number }): Promise<AttendanceCheckinInfo> {
+  const res = await fetch(`${BASE_URL}/attendance/checkin`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function getTodayBoard(): Promise<TodayBoard> {
+  const res = await fetch(`${BASE_URL}/attendance/today`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function getMyAttendanceMonth(month?: string): Promise<AttendanceMonth> {
+  const q = month ? `?month=${month}` : "";
+  const res = await fetch(`${BASE_URL}/attendance/me${q}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function getRandomPhrases(count = 3): Promise<AttendancePhrase[]> {
+  const res = await fetch(`${BASE_URL}/attendance/phrases/random?count=${count}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+// ===== 뽑기 =====
+export async function getGachaPrizes(): Promise<GachaPrizeInfo[]> {
+  const res = await fetch(`${BASE_URL}/gacha/prizes`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function drawGacha(prizeId: number): Promise<GachaDrawResult> {
+  const res = await fetch(`${BASE_URL}/gacha/draw`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ prizeId }),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function getGachaHistory(page = 0, size = 20): Promise<PageResponse<GachaDrawRecord>> {
+  const res = await fetch(`${BASE_URL}/gacha/me/history?page=${page}&size=${size}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function getRecentGachaWins(limit = 10): Promise<GachaRecentWin[]> {
+  const res = await fetch(`${BASE_URL}/gacha/recent-wins?limit=${limit}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function getGachaQuota(): Promise<GachaQuota> {
+  const res = await fetch(`${BASE_URL}/gacha/me/quota`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+// ===== 광장 위너 =====
+export async function getPlazaWinners(): Promise<PlazaWinner[]> {
+  const res = await fetch(`${BASE_URL}/plaza/winners`, { cache: "no-store" });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+// ===== 식물 성장 =====
+export async function getMyPlantGrowth(): Promise<PlantGrowth> {
+  const res = await fetch(`${BASE_URL}/plant/me`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function getUserPlantGrowth(userId: number): Promise<PlantGrowth> {
+  const res = await fetch(`${BASE_URL}/plant/${userId}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+// ===== 관리자 - 출석 =====
+export async function adminGetAttendanceStats(from: string, to: string): Promise<any> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/stats?from=${from}&to=${to}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminGetAttendanceRanking(from: string, to: string): Promise<any> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/ranking?from=${from}&to=${to}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminDrawWinnerManual(date: string): Promise<any> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/draw-winner?date=${date}`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminGetWinners(from: string, to: string): Promise<any> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/winners?from=${from}&to=${to}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminListPhrases(): Promise<AttendancePhrase[]> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/phrases`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminCreatePhrase(body: { phrase: string; category: string }): Promise<AttendancePhrase> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/phrases`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminUpdatePhrase(id: number, body: { phrase?: string; category?: string; active?: boolean }): Promise<AttendancePhrase> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/phrases/${id}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminDeletePhrase(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/phrases/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
+}
+
+// ===== 관리자 - 뽑기 =====
+export async function adminListAllPrizes(): Promise<GachaPrizeInfo[]> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/prizes`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminCreatePrize(body: AdminCreatePrizeRequest): Promise<GachaPrizeInfo> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/prizes`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminUpdatePrize(id: number, body: AdminUpdatePrizeRequest): Promise<GachaPrizeInfo> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/prizes/${id}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminDeactivatePrize(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/prizes/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
+}
+
+export async function adminListDeliveries(status = "PENDING", page = 0, size = 20): Promise<PageResponse<GachaDrawRecord>> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/deliveries?status=${status}&page=${page}&size=${size}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminMarkDelivered(drawId: number, memo?: string): Promise<GachaDrawRecord> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/deliveries/${drawId}/deliver`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ memo }),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminGetGachaStats(from: string, to: string): Promise<any> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/stats?from=${from}&to=${to}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminSimulateEv(prizeId: number, ev: number): Promise<any> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/simulate?prizeId=${prizeId}&ev=${ev}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
 }

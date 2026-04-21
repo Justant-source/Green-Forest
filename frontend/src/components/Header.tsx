@@ -2,12 +2,27 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { getTodayBoard } from "@/lib/api";
 import { jua } from "@/lib/fonts";
 
 export default function Header() {
   const router = useRouter();
-  const { nickname, isLoggedIn, isAdmin, authLoaded, handleLogout } = useAuth();
+  const { nickname, isLoggedIn, isAdmin, authLoaded, handleLogout, user } = useAuth();
+  const [checkinStatus, setCheckinStatus] = useState<"none" | "checkedin" | "winner">("none");
+
+  useEffect(() => {
+    if (!isLoggedIn || !user) return;
+    getTodayBoard()
+      .then((board) => {
+        const myCheckin = board.checkins.find(c => c.userId === user.id);
+        if (myCheckin) {
+          setCheckinStatus(myCheckin.isWinner ? "winner" : "checkedin");
+        }
+      })
+      .catch(() => {});
+  }, [isLoggedIn, user]);
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/60">
@@ -25,7 +40,7 @@ export default function Header() {
             <circle cx="14" cy="8" r="0.5" fill="#F5F9F0" opacity="0.4" />
           </svg>
           <span className={`${jua.className} tracking-widest text-2xl text-gray-900 transition-colors`}>
-            그린메이커
+            그린오피스
           </span>
         </Link>
         <div className="flex items-center gap-2">
@@ -33,6 +48,16 @@ export default function Header() {
             <div className="w-16 h-8" />
           ) : isLoggedIn ? (
             <>
+              {checkinStatus === "winner" && (
+                <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full font-semibold">
+                  ⭐ 당첨
+                </span>
+              )}
+              {checkinStatus === "checkedin" && (
+                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+                  ✓ 출석완료
+                </span>
+              )}
               {isAdmin && (
                 <Link
                   href="/admin"

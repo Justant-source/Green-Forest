@@ -11,7 +11,10 @@ public enum DropReasonType {
     LIKE_BONUS("좋아요보너스"),
     COMMENT_BONUS("댓글보너스"),
     GIFT_RECEIVED("선물받음"),
-    GIFT_SENT("선물보냄");
+    GIFT_SENT("선물보냄"),
+    ATTENDANCE("출석"),
+    ATTENDANCE_WINNER("출석당첨커피"),
+    GACHA_BET("뽑기차감");
 
     private final String label;
 

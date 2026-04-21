@@ -43,4 +43,6 @@ public interface DropTransactionRepository extends JpaRepository<DropTransaction
     boolean existsByUserIdAndReasonTypeAndRelatedPostId(Long userId, DropReasonType reasonType, Long relatedPostId);
 
     int countByUserIdAndReasonTypeAndRelatedPostId(Long userId, DropReasonType reasonType, Long relatedPostId);
+
+    List<DropTransaction> findByUserIdAndReasonTypeAndRelatedPostId(Long userId, DropReasonType reasonType, Long relatedPostId);
 }

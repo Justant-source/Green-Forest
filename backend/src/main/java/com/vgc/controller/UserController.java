@@ -135,12 +135,21 @@ public class UserController {
                     map.put("amount", tx.getAmount());
                     map.put("reasonType", tx.getReasonType().name());
                     map.put("reasonLabel", tx.getReasonType().getLabel());
-                    map.put("reasonDetail", tx.getReasonDetail());
-                    map.put("relatedPostId", tx.getRelatedPostId());
-                    map.put("relatedQuestId", tx.getRelatedQuestId());
+                    map.put("reasonDetail", publicDetail(tx.getReasonDetail()));
                     map.put("createdAt", tx.getCreatedAt().toString());
                     return map;
                 });
+    }
+
+    private String publicDetail(String detail) {
+        if (detail == null) return null;
+        int sep = detail.indexOf('|');
+        if (sep >= 0) return detail.substring(0, sep).trim();
+        // 구버전 레코드: 기술 정보 패턴 제거
+        return detail
+                .replaceAll("\\s*\\(postId=\\d+\\)", "")
+                .replaceAll("\\s*drawId=\\S+", "")
+                .trim();
     }
 
     @PostMapping("/me/gift")

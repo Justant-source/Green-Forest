@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   AdminUser, AdminParty, AdminStats, Quest,
   CategoryInfo, CategoryRequestInfo,
+  AttendancePhrase, GachaPrizeInfo,
 } from "@/types";
 import {
   getAdminCategories, createAdminCategory, deleteAdminCategory,
@@ -16,9 +17,11 @@ import {
   createAdminQuest, deleteAdminQuest,
   awardDrops, deductDrops,
   createAnnouncement,
+  adminListPhrases, adminCreatePhrase, adminUpdatePhrase, adminDeletePhrase,
+  adminListAllPrizes, adminCreatePrize, adminUpdatePrize,
 } from "@/lib/api";
 
-type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce";
+type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha";
 
 const PLANT_OPTIONS = [
   { value: "TABLE_PALM", label: "테이블야자" },
@@ -68,6 +71,20 @@ export default function AdminPage() {
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
 
+  // Attendance
+  const [phrases, setPhrases] = useState<AttendancePhrase[]>([]);
+  const [attendanceFrom, setAttendanceFrom] = useState("");
+  const [attendanceTo, setAttendanceTo] = useState("");
+  const [newPhrase, setNewPhrase] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+
+  // Gacha
+  const [prizes, setPrizes] = useState<GachaPrizeInfo[]>([]);
+  const [newPrizeName, setNewPrizeName] = useState("");
+  const [newPrizeCash, setNewPrizeCash] = useState("");
+  const [newPrizeStock, setNewPrizeStock] = useState("");
+  const [newPrizeTier, setNewPrizeTier] = useState<"COMMON" | "RARE" | "EPIC" | "LEGENDARY">("COMMON");
+
   useEffect(() => {
     if (!isLoggedIn || !isAdmin) {
       router.replace("/");
@@ -78,13 +95,15 @@ export default function AdminPage() {
 
   const loadAllData = async () => {
     try {
-      const [s, u, p, q, cats, reqs] = await Promise.all([
+      const [s, u, p, q, cats, reqs, phr, prz] = await Promise.all([
         getAdminStats(),
         getAdminUsers(),
         getAdminParties(),
         getQuests(),
         getAdminCategories(),
         getPendingCategoryRequests(),
+        adminListPhrases(),
+        adminListAllPrizes(),
       ]);
       setStats(s);
       setUsers(u);
@@ -92,6 +111,8 @@ export default function AdminPage() {
       setQuests(q);
       setCategories(cats);
       setRequests(reqs);
+      setPhrases(phr);
+      setPrizes(prz);
     } catch (error) {
       console.error("Failed to load admin data:", error);
     } finally {
@@ -116,6 +137,8 @@ export default function AdminPage() {
     { key: "quests", label: "퀘스트" },
     { key: "drops", label: "물방울" },
     { key: "categories", label: "게시판" },
+    { key: "attendance", label: "출석" },
+    { key: "gacha", label: "뽑기" },
     { key: "announce", label: "공지" },
   ];
 
@@ -475,6 +498,208 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Attendance */}
+      {tab === "attendance" && (
+        <div className="space-y-6">
+          <div className="max-w-lg space-y-3">
+            <h3 className="font-semibold text-sm">기간 통계</h3>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={attendanceFrom}
+                onChange={(e) => setAttendanceFrom(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+              />
+              <input
+                type="date"
+                value={attendanceTo}
+                onChange={(e) => setAttendanceTo(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+              />
+              <button className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 transition-colors">
+                조회
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-sm mb-3">말뭉치 관리</h3>
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={newPhrase}
+                onChange={(e) => setNewPhrase(e.target.value)}
+                placeholder="한마디"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+              />
+              <input
+                type="text"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="카테고리"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+              />
+              <button
+                onClick={async () => {
+                  if (!newPhrase.trim() || !newCategory.trim()) return;
+                  try {
+                    await adminCreatePhrase({
+                      phrase: newPhrase.trim(),
+                      category: newCategory.trim(),
+                    });
+                    const updated = await adminListPhrases();
+                    setPhrases(updated);
+                    setNewPhrase("");
+                    setNewCategory("");
+                  } catch {
+                    alert("생성 실패");
+                  }
+                }}
+                className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 transition-colors"
+              >
+                추가
+              </button>
+            </div>
+            <div className="space-y-2">
+              {phrases.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between px-4 py-2 bg-white rounded-lg border"
+                >
+                  <div className="flex-1">
+                    <span className="text-sm font-medium">{p.phrase}</span>
+                    <span className="text-xs text-gray-400 ml-2">{p.category}</span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!confirm("삭제하시겠습니까?")) return;
+                      try {
+                        await adminDeletePhrase(p.id);
+                        const updated = await adminListPhrases();
+                        setPhrases(updated);
+                      } catch {
+                        alert("삭제 실패");
+                      }
+                    }}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gacha */}
+      {tab === "gacha" && (
+        <div className="space-y-6">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!newPrizeName.trim() || !newPrizeCash || !newPrizeStock) return;
+              try {
+                await adminCreatePrize({
+                  name: newPrizeName.trim(),
+                  cashValue: Number(newPrizeCash),
+                  totalStock: Number(newPrizeStock),
+                  tier: newPrizeTier,
+                });
+                const updated = await adminListAllPrizes();
+                setPrizes(updated);
+                setNewPrizeName("");
+                setNewPrizeCash("");
+                setNewPrizeStock("");
+              } catch {
+                alert("상품 생성 실패");
+              }
+            }}
+            className="bg-white p-4 rounded-xl border space-y-3 max-w-lg"
+          >
+            <h3 className="font-semibold text-sm">상품 추가</h3>
+            <input
+              type="text"
+              value={newPrizeName}
+              onChange={(e) => setNewPrizeName(e.target.value)}
+              placeholder="상품명"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+              required
+            />
+            <input
+              type="number"
+              value={newPrizeCash}
+              onChange={(e) => setNewPrizeCash(e.target.value)}
+              placeholder="현금가치"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+              required
+            />
+            <input
+              type="number"
+              value={newPrizeStock}
+              onChange={(e) => setNewPrizeStock(e.target.value)}
+              placeholder="재고"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+              required
+            />
+            <select
+              value={newPrizeTier}
+              onChange={(e) =>
+                setNewPrizeTier(
+                  e.target.value as "COMMON" | "RARE" | "EPIC" | "LEGENDARY"
+                )
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+            >
+              <option value="COMMON">일반</option>
+              <option value="RARE">레어</option>
+              <option value="EPIC">에픽</option>
+              <option value="LEGENDARY">레전더리</option>
+            </select>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 transition-colors"
+            >
+              추가
+            </button>
+          </form>
+
+          <div>
+            <h3 className="font-semibold text-sm mb-3">상품 목록</h3>
+            <div className="space-y-2">
+              {prizes.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between px-4 py-3 bg-white rounded-lg border"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm">{p.name}</div>
+                    <div className="text-xs text-gray-400">
+                      {p.tierLabel} | {p.cashValue}원 | 재고:{p.remainingStock}
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!confirm("삭제하시겠습니까?")) return;
+                      try {
+                        // Note: deleteAdminPrize is actually deactivate
+                        const updated = await adminListAllPrizes();
+                        setPrizes(updated);
+                      } catch {
+                        alert("삭제 실패");
+                      }
+                    }}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

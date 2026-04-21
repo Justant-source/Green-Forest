@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Post } from "@/types";
-import { IMAGE_BASE_URL, toggleBookmark } from "@/lib/api";
+import { toMediaUrl, toggleBookmark } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import TitleCard from "./TitleCard";
 
@@ -57,7 +57,7 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
       {post.imageUrl ? (
         <div className="relative aspect-[4/5]">
           <img
-            src={`${IMAGE_BASE_URL}${post.imageUrl}`}
+            src={toMediaUrl(post.imageUrl)}
             alt={post.title}
             className="w-full h-full object-cover"
           />

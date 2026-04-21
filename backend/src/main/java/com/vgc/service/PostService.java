@@ -43,13 +43,16 @@ public class PostService {
     private final UserRepository userRepository;
     private final PostTagRepository postTagRepository;
     private final QuestCompletionRepository questCompletionRepository;
+    private final PlantGrowthService plantGrowthService;
+    private final ActivityLogService activityLogService;
 
     public PostService(PostRepository postRepository, CommentRepository commentRepository,
                        PostLikeRepository postLikeRepository, PostImageRepository postImageRepository,
                        BookmarkRepository bookmarkRepository, CategoryRepository categoryRepository,
                        ImageStorageService imageStorageService, DropService dropService,
                        UserRepository userRepository, PostTagRepository postTagRepository,
-                       QuestCompletionRepository questCompletionRepository) {
+                       QuestCompletionRepository questCompletionRepository, PlantGrowthService plantGrowthService,
+                       ActivityLogService activityLogService) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.postLikeRepository = postLikeRepository;
@@ -61,6 +64,8 @@ public class PostService {
         this.userRepository = userRepository;
         this.postTagRepository = postTagRepository;
         this.questCompletionRepository = questCompletionRepository;
+        this.plantGrowthService = plantGrowthService;
+        this.activityLogService = activityLogService;
     }
 
     public Page<PostResponse> getAllPosts(String category, String sort, String status, int page, int size) {
@@ -136,6 +141,8 @@ public class PostService {
         // 물방울 자동 지급 (핵심 로직)
         int dropsAwarded = dropService.awardDropsForPost(author, saved, category, taggedUsers);
 
+        activityLogService.logPostCreate(author.getId(), author.getNickname(), category, saved.getId());
+
         PostResponse response = PostResponse.from(saved, 0);
         response.setDropsAwarded(dropsAwarded);
 
@@ -183,6 +190,9 @@ public class PostService {
             postLikeRepository.save(postLike);
             post.setLikeCount(post.getLikeCount() + 1);
             dropService.awardDropsForLike(user, post);
+            if (post.getAuthor() != null) {
+                plantGrowthService.onLikeReceived(post.getAuthor().getId());
+            }
         }
 
         postRepository.save(post);
@@ -234,8 +244,43 @@ public class PostService {
 
         postRepository.save(post);
 
+        // 태그 diff 처리
+        List<PostTag> existingTags = postTagRepository.findByPostId(id);
+        List<Long> existingTaggedUserIds = existingTags.stream()
+                .map(pt -> pt.getTaggedUser().getId())
+                .toList();
+
+        List<String> newNicknames = request.getTaggedNicknames() != null ? request.getTaggedNicknames() : List.of();
+        List<User> newTaggedUsers = newNicknames.isEmpty() ? List.of() : userRepository.findByNicknameIn(newNicknames);
+        List<Long> newTaggedUserIds = newTaggedUsers.stream().map(User::getId).toList();
+
+        // 제거된 태그 → 물방울 회수
+        for (PostTag existing : existingTags) {
+            if (!newTaggedUserIds.contains(existing.getTaggedUser().getId())) {
+                dropService.revokeTagBonus(existing.getTaggedUser(), post);
+            }
+        }
+
+        // 추가된 태그 → 물방울 지급
+        for (User newUser : newTaggedUsers) {
+            if (!existingTaggedUserIds.contains(newUser.getId())) {
+                dropService.awardNewTagBonus(post.getAuthor(), post, newUser);
+            }
+        }
+
+        activityLogService.logPostUpdate(user.getId(), user.getNickname(), id);
+
         Post saved = postRepository.findById(id).orElseThrow();
-        return PostResponse.from(saved, commentRepository.countByPostId(saved.getId()));
+        List<PostTag> updatedTags = postTagRepository.findByPostId(id);
+        PostResponse response = PostResponse.from(saved, commentRepository.countByPostId(saved.getId()));
+        if (!updatedTags.isEmpty()) {
+            response.setTaggedNicknames(
+                updatedTags.stream()
+                    .map(pt -> pt.getTaggedUser().getName() + "(" + pt.getTaggedUser().getNickname() + ")")
+                    .toList()
+            );
+        }
+        return response;
     }
 
     @Transactional
@@ -261,6 +306,7 @@ public class PostService {
             throw new RuntimeException("본인이 작성한 글만 삭제할 수 있습니다.");
         }
 
+        activityLogService.logPostDelete(user.getId(), user.getNickname(), id);
         questCompletionRepository.deleteByPostId(id);
         postTagRepository.deleteByPostId(id);
         bookmarkRepository.deleteByPostId(id);

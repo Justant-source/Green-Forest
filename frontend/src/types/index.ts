@@ -188,3 +188,148 @@ export interface AdminStats {
     memberCount: number;
   }[];
 }
+
+// 출석 시스템
+export interface AttendanceCheckinInfo {
+  checkinId: number;
+  checkinAt: string;
+  stampStyle: string;
+  message: string;
+  dropsAwarded: number;
+  todayCheckinCount: number;
+  monthCheckinCount: number;
+  streak: number;
+}
+
+export interface TodayBoardEntry {
+  userId: number;
+  nickname: string;
+  plantType: string | null;
+  jobClass: string | null;
+  stampStyle: string;
+  message: string;
+  checkinAt: string;
+  isWinner: boolean;
+}
+
+export interface TodayBoard {
+  date: string;
+  checkins: TodayBoardEntry[];
+  isDrawDone: boolean;
+  winner: { userId: number; nickname: string; checkinAt: string } | null;
+}
+
+export interface AttendanceDay {
+  date: string;
+  isWinner: boolean;
+  message: string;
+}
+
+export interface AttendanceMonth {
+  month: string;
+  days: AttendanceDay[];
+  checkinCount: number;
+  winCount: number;
+  streak: number;
+}
+
+export interface AttendancePhrase {
+  id: number;
+  phrase: string;
+  category: string;
+  active?: boolean;
+}
+
+// 뽑기 시스템
+export interface GachaPrizeInfo {
+  id: number;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  cashValue: number;
+  remainingStock: number;
+  tier: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+  tierLabel: string;
+  currentProbability: number;
+  displayOrder: number;
+  evMultiplier?: number; // admin only
+}
+
+export interface GachaDrawResult {
+  drawId: number;
+  isWinner: boolean;
+  probability: number;
+  rngValue?: number; // admin only
+  prizeName: string;
+  prizeImageUrl: string | null;
+  prizeCashValue: number;
+  remainingDrawsToday: number;
+}
+
+export interface GachaDrawRecord {
+  id: number;
+  prizeName: string;
+  prizeCashValue: number;
+  dropsSpent: number;
+  winProbability: number;
+  isWinner: boolean;
+  deliveryStatus: 'NONE' | 'PENDING' | 'DELIVERED';
+  createdAt: string;
+}
+
+export interface GachaRecentWin {
+  drawId: number;
+  userNickname: string;
+  prizeName: string;
+  probability: number;
+  createdAt: string;
+}
+
+export interface GachaQuota {
+  remainingToday: number;
+  limit: number;
+}
+
+export interface PlazaWinner {
+  type: 'GACHA' | 'ATTENDANCE';
+  userNickname: string;
+  prizeName?: string;
+  checkinDate?: string;
+  createdAt: string;
+}
+
+// 식물 성장
+export interface PlantGrowth {
+  stage: number;
+  stageLabel: string;
+  score: number;
+  likesReceived: number;
+  commentsReceived: number;
+  praisesReceived: number;
+  nextStageScore: number;
+  lastGrownAt: string | null;
+}
+
+// 관리자용
+export interface AdminCreatePrizeRequest {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  cashValue: number;
+  totalStock: number;
+  tier: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+  evMultiplier?: number;
+  displayOrder?: number;
+}
+
+export interface AdminUpdatePrizeRequest {
+  name?: string;
+  description?: string;
+  imageUrl?: string;
+  cashValue?: number;
+  totalStock?: number;
+  remainingStock?: number;
+  evMultiplier?: number;
+  active?: boolean;
+  displayOrder?: number;
+}

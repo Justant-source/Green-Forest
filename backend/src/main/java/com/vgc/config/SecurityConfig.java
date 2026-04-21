@@ -1,6 +1,7 @@
 package com.vgc.config;
 
 import com.vgc.security.JwtAuthenticationFilter;
+import com.vgc.security.BotTokenFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -12,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -24,17 +26,19 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final BotTokenFilter botTokenFilter;
 
     @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, BotTokenFilter botTokenFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.botTokenFilter = botTokenFilter;
     }
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) -> web.ignoring().requestMatchers("/uploads/**");
+        return (web) -> web.ignoring().requestMatchers("/uploads/**", "/api/media/**");
     }
 
     @Bean
@@ -44,7 +48,11 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // 0. Bot API - 토큰 검증 (BotTokenFilter에서 처리)
+                        .requestMatchers("/api/bot/**").permitAll()
+
                         // 1. 인증 불필요 - 공개 API
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
@@ -78,6 +86,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/leaderboard").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/leaderboard/party/*").permitAll()
 
+                        // 8-1. 출석 - 공개/인증
+                        .requestMatchers(HttpMethod.GET, "/api/attendance/today").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/attendance/phrases/random").permitAll()
+                        .requestMatchers("/api/attendance/**").authenticated()
+
+                        // 8-2. 뽑기 - 공개/인증
+                        .requestMatchers(HttpMethod.GET, "/api/gacha/prizes").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/gacha/recent-wins").permitAll()
+                        .requestMatchers("/api/gacha/**").authenticated()
+
+                        // 8-4. 광장 위너 - 공개
+                        .requestMatchers(HttpMethod.GET, "/api/plaza/winners").permitAll()
+
+                        // 8-3. 식물 성장 - 인증 필요
+                        .requestMatchers("/api/plant/**").authenticated()
+
                         // 8. 퀘스트, 알림 - 인증 필요
                         .requestMatchers("/api/quests/**").authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()
@@ -93,6 +117,7 @@ public class SecurityConfig {
                         // 11. 그 외 모든 요청 - 인증 필요
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(botTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -110,6 +135,20 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<BotTokenFilter> botFilterRegistration(BotTokenFilter filter) {
+        FilterRegistrationBean<BotTokenFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getPost, getCategories, updatePost, IMAGE_BASE_URL } from "@/lib/api";
+import { getPost, getCategories, updatePost, toMediaUrl } from "@/lib/api";
 import { CategoryInfo } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import CategoryRequestModal from "@/components/CategoryRequestModal";
@@ -50,10 +50,10 @@ export default function EditPostPage() {
         setCategory(post.category);
         if (post.imageUrls && post.imageUrls.length > 0) {
           setExistingImageUrls(post.imageUrls);
-          setImagePreviews(post.imageUrls.map((url) => `${IMAGE_BASE_URL}${url}`));
+          setImagePreviews(post.imageUrls.map((url) => toMediaUrl(url)));
         } else if (post.imageUrl) {
           setExistingImageUrls([post.imageUrl]);
-          setImagePreviews([`${IMAGE_BASE_URL}${post.imageUrl}`]);
+          setImagePreviews([toMediaUrl(post.imageUrl)]);
         }
       })
       .catch(console.error)
@@ -73,7 +73,7 @@ export default function EditPostPage() {
     const newFiles = [...imageFiles, ...compressed];
     setImageFiles(newFiles);
 
-    const existingPreviews = existingImageUrls.map((url) => `${IMAGE_BASE_URL}${url}`);
+    const existingPreviews = existingImageUrls.map((url) => toMediaUrl(url));
     const filePreviews: string[] = [];
     await Promise.all(
       newFiles.map(

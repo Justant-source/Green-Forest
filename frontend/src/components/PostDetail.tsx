@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Post, CategoryInfo } from "@/types";
-import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, updatePostStatus, deletePost, startConversation, IMAGE_BASE_URL } from "@/lib/api";
+import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, updatePostStatus, deletePost, startConversation, toMediaUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import CommentSection from "./CommentSection";
 import PostContent from "./PostContent";
@@ -222,7 +222,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
             }}
           >
             <img
-              src={`${IMAGE_BASE_URL}${urls[carouselIndex]}`}
+              src={toMediaUrl(urls[carouselIndex])}
               alt={`${post.title} ${carouselIndex + 1}`}
               className="w-full rounded-xl"
             />

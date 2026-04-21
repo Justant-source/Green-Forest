@@ -1,14 +1,16 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import GridFeed from "@/components/GridFeed";
+import GachaRecentWinsTicker from "@/components/GachaRecentWinsTicker";
 
 function HomeContent() {
-  const searchParams = useSearchParams();
-  const tab = searchParams.get("tab");
-
-  return <GridFeed initialCategory={tab} />;
+  return (
+    <div className="space-y-4">
+      <GachaRecentWinsTicker />
+      <GridFeed initialCategory={null} />
+    </div>
+  );
 }
 
 export default function HomePage() {

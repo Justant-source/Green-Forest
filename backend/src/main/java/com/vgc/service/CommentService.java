@@ -16,12 +16,14 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final DropService dropService;
+    private final PlantGrowthService plantGrowthService;
 
     public CommentService(CommentRepository commentRepository, PostRepository postRepository,
-                          DropService dropService) {
+                          DropService dropService, PlantGrowthService plantGrowthService) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.dropService = dropService;
+        this.plantGrowthService = plantGrowthService;
     }
 
     public List<Comment> getComments(Long postId) {
@@ -53,6 +55,9 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
         dropService.awardDropsForComment(author, post);
+        if (post.getAuthor() != null && !post.getAuthor().getId().equals(author.getId())) {
+            plantGrowthService.onCommentReceived(post.getAuthor().getId());
+        }
         return saved;
     }
 

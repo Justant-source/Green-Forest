@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getMe, getMyPosts, getMyBookmarks, getMyDropHistory, updateMyProfile, changePassword } from "@/lib/api";
-import { User, Post, DropTransaction, PageResponse } from "@/types";
+import { getMe, getMyPosts, getMyBookmarks, getMyDropHistory, updateMyProfile, changePassword, getMyPlantGrowth } from "@/lib/api";
+import { User, Post, DropTransaction, PageResponse, PlantGrowth } from "@/types";
 import GridItem from "@/components/GridItem";
+import PlantGrowthBadge from "@/components/PlantGrowthBadge";
+import PlantLevelGuide from "@/components/PlantLevelGuide";
 
 const PLANT_TYPES = [
   { value: "TABLE_PALM", label: "테이블야자", job: "탱커(Guardian)", element: "땅", difficulty: "쉬움" },
@@ -20,6 +22,7 @@ export default function GardenPage() {
   const { isLoggedIn, handleLogout, authLoaded } = useAuth();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [growth, setGrowth] = useState<PlantGrowth | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("posts");
   const [posts, setPosts] = useState<Post[]>([]);
@@ -47,9 +50,13 @@ export default function GardenPage() {
       router.replace("/login");
       return;
     }
-    getMe()
-      .then((u) => {
+    Promise.all([
+      getMe(),
+      getMyPlantGrowth()
+    ])
+      .then(([u, g]) => {
         setUser(u);
+        setGrowth(g);
         setEditPlantName(u.plantName || "");
         setEditPlantType(u.plantType || "");
       })
@@ -222,6 +229,7 @@ export default function GardenPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
+                  <PlantGrowthBadge growth={growth} showDetails={true} />
                   <span className="text-lg font-semibold text-forest-600">
                     {user.plantName || plantInfo?.label}
                   </span>

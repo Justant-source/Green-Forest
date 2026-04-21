@@ -5,12 +5,22 @@ import com.vgc.repository.PartyRepository;
 import com.vgc.repository.UserRepository;
 import com.vgc.repository.DropTransactionRepository;
 import com.vgc.repository.PostRepository;
+import com.vgc.repository.AttendanceCheckinRepository;
+import com.vgc.repository.AttendancePhraseRepository;
+import com.vgc.repository.GachaPrizeRepository;
+import com.vgc.repository.GachaDrawRepository;
 import com.vgc.service.CategoryService;
 import com.vgc.service.DropService;
 import com.vgc.service.NotificationService;
 import com.vgc.service.QuestService;
+import com.vgc.service.AttendanceService;
+import com.vgc.service.GachaService;
 import com.vgc.dto.CategoryRequestResponse;
 import com.vgc.dto.CategoryResponse;
+import com.vgc.dto.AdminCreatePrizeRequest;
+import com.vgc.dto.AdminUpdatePrizeRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,6 +43,12 @@ public class AdminController {
     private final PostRepository postRepository;
     private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
+    private final AttendanceCheckinRepository attendanceCheckinRepository;
+    private final AttendancePhraseRepository attendancePhraseRepository;
+    private final AttendanceService attendanceService;
+    private final GachaPrizeRepository gachaPrizeRepository;
+    private final GachaDrawRepository gachaDrawRepository;
+    private final GachaService gachaService;
 
     public AdminController(CategoryService categoryService, UserRepository userRepository,
                            DropService dropService, QuestService questService,
@@ -40,7 +56,13 @@ public class AdminController {
                            DropTransactionRepository dropTransactionRepository,
                            PostRepository postRepository,
                            NotificationService notificationService,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           AttendanceCheckinRepository attendanceCheckinRepository,
+                           AttendancePhraseRepository attendancePhraseRepository,
+                           AttendanceService attendanceService,
+                           GachaPrizeRepository gachaPrizeRepository,
+                           GachaDrawRepository gachaDrawRepository,
+                           GachaService gachaService) {
         this.categoryService = categoryService;
         this.userRepository = userRepository;
         this.dropService = dropService;
@@ -50,6 +72,12 @@ public class AdminController {
         this.postRepository = postRepository;
         this.notificationService = notificationService;
         this.passwordEncoder = passwordEncoder;
+        this.attendanceCheckinRepository = attendanceCheckinRepository;
+        this.attendancePhraseRepository = attendancePhraseRepository;
+        this.attendanceService = attendanceService;
+        this.gachaPrizeRepository = gachaPrizeRepository;
+        this.gachaDrawRepository = gachaDrawRepository;
+        this.gachaService = gachaService;
     }
 
     private User getAdminUser(Authentication authentication) {
@@ -112,6 +140,28 @@ public class AdminController {
     }
 
     // ========== 물방울 수동 지급/차감 ==========
+
+    @GetMapping("/drops/history")
+    public Page<Map<String, Object>> getUserDropHistory(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size,
+            Authentication authentication) {
+        getAdminUser(authentication);
+        return dropTransactionRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
+                .map(tx -> {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("id", tx.getId());
+                    map.put("amount", tx.getAmount());
+                    map.put("reasonType", tx.getReasonType().name());
+                    map.put("reasonLabel", tx.getReasonType().getLabel());
+                    map.put("reasonDetail", tx.getReasonDetail());
+                    map.put("relatedPostId", tx.getRelatedPostId());
+                    map.put("relatedQuestId", tx.getRelatedQuestId());
+                    map.put("createdAt", tx.getCreatedAt().toString());
+                    return map;
+                });
+    }
 
     @PostMapping("/drops/award")
     public Map<String, String> awardDrops(@RequestBody Map<String, Object> body, Authentication authentication) {
@@ -409,5 +459,144 @@ public class AdminController {
         }
 
         return Map.of("status", "announced");
+    }
+
+    // ===== 출석 관리 =====
+
+    @GetMapping("/attendance/stats")
+    public ResponseEntity<Map<String, Object>> attendanceStats(
+            @RequestParam String from, @RequestParam String to) {
+        LocalDate fromDate = LocalDate.parse(from);
+        LocalDate toDate = LocalDate.parse(to);
+        long total = attendanceCheckinRepository.countByCheckinDateBetween(fromDate, toDate);
+        List<Object[]> topUsers = attendanceCheckinRepository.findTopAttendanceUsers(fromDate, toDate);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("totalCheckins", total);
+        result.put("from", from);
+        result.put("to", to);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/attendance/ranking")
+    public ResponseEntity<List<Map<String, Object>>> attendanceRanking(
+            @RequestParam String from, @RequestParam String to) {
+        LocalDate fromDate = LocalDate.parse(from);
+        LocalDate toDate = LocalDate.parse(to);
+        List<Object[]> rows = attendanceCheckinRepository.findTopAttendanceUsers(fromDate, toDate);
+        List<Map<String, Object>> ranking = rows.stream().map(row -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("userId", row[0]);
+            m.put("nickname", row[1]);
+            m.put("count", row[2]);
+            return m;
+        }).collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(ranking);
+    }
+
+    @PostMapping("/attendance/draw-winner")
+    public ResponseEntity<Map<String, Object>> drawWinner(@RequestParam String date) {
+        LocalDate d = LocalDate.parse(date);
+        return ResponseEntity.ok(attendanceService.drawDailyWinner(d));
+    }
+
+    @GetMapping("/attendance/winners")
+    public ResponseEntity<List<Map<String, Object>>> getWinners(
+            @RequestParam String from, @RequestParam String to) {
+        List<AttendanceCheckin> winners = attendanceCheckinRepository.findWinnersBetween(
+                LocalDate.parse(from), LocalDate.parse(to));
+        List<Map<String, Object>> result = winners.stream().map(c -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("date", c.getCheckinDate().toString());
+            m.put("userId", c.getUser().getId());
+            m.put("nickname", c.getUser().getNickname());
+            m.put("email", c.getUser().getEmail());
+            m.put("checkinAt", c.getCheckinAt().toString());
+            m.put("message", c.getMessage());
+            return m;
+        }).collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/attendance/phrases")
+    public ResponseEntity<AttendancePhrase> createPhrase(@RequestBody Map<String, String> body) {
+        AttendancePhrase p = new AttendancePhrase();
+        p.setPhrase(body.get("phrase"));
+        p.setCategory(body.getOrDefault("category", "GENERAL"));
+        return ResponseEntity.ok(attendancePhraseRepository.save(p));
+    }
+
+    @PutMapping("/attendance/phrases/{id}")
+    public ResponseEntity<AttendancePhrase> updatePhrase(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        AttendancePhrase p = attendancePhraseRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
+        if (body.containsKey("phrase")) p.setPhrase((String) body.get("phrase"));
+        if (body.containsKey("category")) p.setCategory((String) body.get("category"));
+        if (body.containsKey("active")) p.setActive((Boolean) body.get("active"));
+        return ResponseEntity.ok(attendancePhraseRepository.save(p));
+    }
+
+    @DeleteMapping("/attendance/phrases/{id}")
+    public ResponseEntity<Void> deletePhrase(@PathVariable Long id) {
+        attendancePhraseRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/attendance/phrases")
+    public ResponseEntity<List<AttendancePhrase>> listPhrases() {
+        return ResponseEntity.ok(attendancePhraseRepository.findAll());
+    }
+
+    // ===== 뽑기 관리 =====
+
+    @PostMapping("/gacha/prizes")
+    public ResponseEntity<GachaPrize> createGachaPrize(@RequestBody AdminCreatePrizeRequest req) {
+        return ResponseEntity.ok(gachaService.createPrize(req));
+    }
+
+    @PutMapping("/gacha/prizes/{id}")
+    public ResponseEntity<GachaPrize> updateGachaPrize(@PathVariable Long id, @RequestBody AdminUpdatePrizeRequest req) {
+        return ResponseEntity.ok(gachaService.updatePrize(id, req));
+    }
+
+    @DeleteMapping("/gacha/prizes/{id}")
+    public ResponseEntity<Void> deactivateGachaPrize(@PathVariable Long id) {
+        gachaService.deactivatePrize(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/gacha/prizes")
+    public ResponseEntity<List<GachaPrize>> listAllGachaPrizes() {
+        return ResponseEntity.ok(gachaService.listAllPrizes());
+    }
+
+    @GetMapping("/gacha/deliveries")
+    public ResponseEntity<Page<GachaDraw>> listDeliveries(
+            @RequestParam(defaultValue = "PENDING") String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(gachaService.listPendingDeliveries(PageRequest.of(page, size)));
+    }
+
+    @PatchMapping("/gacha/deliveries/{drawId}/deliver")
+    public ResponseEntity<GachaDraw> markDelivered(
+            @PathVariable Long drawId,
+            @RequestBody(required = false) Map<String, String> body,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal User admin) {
+        String memo = body != null ? body.get("memo") : null;
+        return ResponseEntity.ok(gachaService.markDelivered(drawId, admin.getId(), memo));
+    }
+
+    @GetMapping("/gacha/stats")
+    public ResponseEntity<Map<String, Object>> gachaStats(
+            @RequestParam String from, @RequestParam String to) {
+        LocalDateTime fromDt = LocalDate.parse(from).atStartOfDay();
+        LocalDateTime toDt = LocalDate.parse(to).atTime(23, 59, 59);
+        return ResponseEntity.ok(gachaService.getStats(fromDt, toDt));
+    }
+
+    @GetMapping("/gacha/simulate")
+    public ResponseEntity<Map<String, Object>> simulateEv(
+            @RequestParam Long prizeId, @RequestParam java.math.BigDecimal ev) {
+        return ResponseEntity.ok(gachaService.simulateEv(prizeId, ev));
     }
 }

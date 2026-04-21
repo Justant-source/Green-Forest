@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <property name="LOG_DIR" value="/app/logs" />
+  <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n" />
+  <property name="ACTIVITY_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level - %msg%n" />
+
+  <!-- ===== Console (dev 환경에서만) ===== -->
+  <springProfile name="local">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>${LOG_PATTERN}</pattern>
+        <charset>UTF-8</charset>
+      </encoder>
+    </appender>
+  </springProfile>
+
+  <!-- ===== app.log : 전체 애플리케이션 로그 (INFO+) ===== -->
+  <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_DIR}/app.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_DIR}/archive/app.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+      <maxHistory>30</maxHistory>
+      <totalSizeCap>1GB</totalSizeCap>
+    </rollingPolicy>
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>INFO</level>
+    </filter>
+  </appender>
+
+  <!-- ===== error.log : WARN/ERROR 전용 ===== -->
+  <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_DIR}/error.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_DIR}/archive/error.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+      <maxHistory>30</maxHistory>
+      <totalSizeCap>500MB</totalSizeCap>
+    </rollingPolicy>
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>WARN</level>
+    </filter>
+  </appender>
+
+  <!-- ===== activity.log : 사용자 활동 전용 ===== -->
+  <appender name="ACTIVITY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_DIR}/activity.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_DIR}/archive/activity.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+      <maxHistory>30</maxHistory>
+      <totalSizeCap>500MB</totalSizeCap>
+    </rollingPolicy>
+    <encoder>
+      <pattern>${ACTIVITY_PATTERN}</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+  <!-- ===== ACTIVITY 로거 : activity.log 전용 ===== -->
+  <logger name="ACTIVITY" level="INFO" additivity="false">
+    <appender-ref ref="ACTIVITY_FILE" />
+    <springProfile name="local">
+      <appender-ref ref="CONSOLE" />
+    </springProfile>
+  </logger>
+
+  <!-- ===== SYSTEM 로거 : app.log + error.log ===== -->
+  <logger name="SYSTEM" level="WARN" additivity="false">
+    <appender-ref ref="APP_FILE" />
+    <appender-ref ref="ERROR_FILE" />
+    <springProfile name="local">
+      <appender-ref ref="CONSOLE" />
+    </springProfile>
+  </logger>
+
+  <!-- ===== Root 로거 ===== -->
+  <springProfile name="local">
+    <root level="INFO">
+      <appender-ref ref="CONSOLE" />
+      <appender-ref ref="APP_FILE" />
+      <appender-ref ref="ERROR_FILE" />
+    </root>
+  </springProfile>
+
+  <springProfile name="prod">
+    <root level="INFO">
+      <appender-ref ref="APP_FILE" />
+      <appender-ref ref="ERROR_FILE" />
+    </root>
+  </springProfile>
+
+</configuration>

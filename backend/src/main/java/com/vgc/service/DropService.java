@@ -22,6 +22,8 @@ public class DropService {
     private final PostTagRepository postTagRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final PlantGrowthService plantGrowthService;
+    private final ActivityLogService activityLogService;
 
     public DropService(DropTransactionRepository dropTransactionRepository,
                        QuestCompletionLogRepository questCompletionLogRepository,
@@ -29,7 +31,9 @@ public class DropService {
                        QuestRepository questRepository,
                        PostTagRepository postTagRepository,
                        UserRepository userRepository,
-                       NotificationService notificationService) {
+                       NotificationService notificationService,
+                       PlantGrowthService plantGrowthService,
+                       ActivityLogService activityLogService) {
         this.dropTransactionRepository = dropTransactionRepository;
         this.questCompletionLogRepository = questCompletionLogRepository;
         this.questCompletionRepository = questCompletionRepository;
@@ -37,6 +41,8 @@ public class DropService {
         this.postTagRepository = postTagRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.plantGrowthService = plantGrowthService;
+        this.activityLogService = activityLogService;
     }
 
     /**
@@ -200,7 +206,7 @@ public class DropService {
 
             int tagDrops = 5;
             recordTransaction(taggedUser, tagDrops, DropReasonType.TAG_BONUS,
-                    author.getNickname() + "님이 태깅", post.getId(), null);
+                    author.getNickname() + "님이 태깅|postId=" + post.getId(), post.getId(), null);
 
             notificationService.createNotification(taggedUser, NotificationType.TAG,
                     "태깅되었어요!",
@@ -208,10 +214,53 @@ public class DropService {
                             + "님이 회원님을 태깅했어요! 💧5 물방울 획득!",
                     post.getId(), null);
 
+            plantGrowthService.onPraiseReceived(taggedUser.getId());
             totalTagBonus += tagDrops;
         }
 
         return totalTagBonus;
+    }
+
+    /**
+     * 태그 취소 — 태깅된 사람에게 준 TAG_BONUS를 회수하고 PostTag 삭제
+     */
+    @Transactional
+    public void revokeTagBonus(User taggedUser, Post post) {
+        List<DropTransaction> txList = dropTransactionRepository
+                .findByUserIdAndReasonTypeAndRelatedPostId(taggedUser.getId(), DropReasonType.TAG_BONUS, post.getId());
+        int totalRevoke = txList.stream().mapToInt(DropTransaction::getAmount).sum();
+        if (totalRevoke > 0) {
+            recordTransaction(taggedUser, -totalRevoke, DropReasonType.TAG_BONUS,
+                    "태그 취소 환수|postId=" + post.getId(), post.getId(), null);
+        }
+        postTagRepository.findByPostId(post.getId()).stream()
+                .filter(pt -> pt.getTaggedUser().getId().equals(taggedUser.getId()))
+                .forEach(postTagRepository::delete);
+    }
+
+    /**
+     * 태그 추가 — 수정 시 새로 추가된 태그에 물방울 지급
+     */
+    @Transactional
+    public void awardNewTagBonus(User author, Post post, User taggedUser) {
+        if (taggedUser.getId().equals(author.getId())) return;
+        if (postTagRepository.existsByPostIdAndTaggedUserId(post.getId(), taggedUser.getId())) return;
+
+        PostTag postTag = new PostTag();
+        postTag.setPost(post);
+        postTag.setTaggedUser(taggedUser);
+        postTagRepository.save(postTag);
+
+        recordTransaction(taggedUser, 5, DropReasonType.TAG_BONUS,
+                author.getNickname() + "님이 태깅|postId=" + post.getId(), post.getId(), null);
+
+        notificationService.createNotification(taggedUser, NotificationType.TAG,
+                "태깅되었어요!",
+                (post.isAnonymous() ? "익명의 그린메이커" : author.getNickname())
+                        + "님이 회원님을 태깅했어요! 💧5 물방울 획득!",
+                post.getId(), null);
+
+        plantGrowthService.onPraiseReceived(taggedUser.getId());
     }
 
     /**
@@ -289,6 +338,8 @@ public class DropService {
         recordTransaction(receiver, amount, DropReasonType.GIFT_RECEIVED,
                 sender.getNickname() + "님이 선물", null, null);
 
+        activityLogService.logDropGift(sender.getId(), sender.getNickname(), receiver.getId(), receiver.getNickname(), amount);
+
         notificationService.createNotification(receiver, NotificationType.DROP_AWARD,
                 "물방울 선물 도착!",
                 sender.getNickname() + "님이 💧" + amount + " 물방울을 선물했어요!",
@@ -322,5 +373,17 @@ public class DropService {
                 .multiply(multiplier)
                 .setScale(0, RoundingMode.HALF_UP)
                 .intValue();
+    }
+
+    @Transactional
+    public void awardAttendance(User user) {
+        recordTransaction(user, 10, DropReasonType.ATTENDANCE, "출석 보상", null, null);
+    }
+
+    @Transactional
+    public void deductForGacha(User user, int amount, String prizeName, Long drawId, boolean isWinner) {
+        String result = isWinner ? "당첨" : "꽝";
+        recordTransaction(user, -amount, DropReasonType.GACHA_BET,
+                "뽑기[" + prizeName + "] " + result + "|drawId=" + drawId, null, null);
     }
 }

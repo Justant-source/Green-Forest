@@ -79,6 +79,7 @@ public class PostController {
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam("category") String category,
+            @RequestParam(value = "taggedNicknames", required = false) String taggedNicknamesStr,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @RequestParam(value = "existingImageUrls", required = false) List<String> existingImageUrls,
             Authentication authentication) throws Exception {
@@ -88,6 +89,16 @@ public class PostController {
         request.setTitle(title);
         request.setContent(content);
         request.setCategory(category);
+        if (taggedNicknamesStr != null && !taggedNicknamesStr.isBlank()) {
+            request.setTaggedNicknames(
+                Arrays.stream(taggedNicknamesStr.split(","))
+                      .map(String::trim)
+                      .filter(s -> !s.isEmpty())
+                      .toList()
+            );
+        } else {
+            request.setTaggedNicknames(List.of());
+        }
         return postService.updatePost(id, request, images, existingImageUrls, user);
     }
 
