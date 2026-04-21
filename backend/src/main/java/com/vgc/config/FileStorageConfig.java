@@ -12,7 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 @Configuration
-@Profile({"local", "prod"})
+@Profile({"dev", "prod"})
 public class FileStorageConfig implements WebMvcConfigurer {
 
     @Value("${file.upload-dir}")

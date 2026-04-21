@@ -8,8 +8,6 @@
       "Skill(update-config)"
     ],
     "deny": [
-      "Bash(git commit*)",
-      "Bash(git push*)",
       "Bash(git merge*)",
       "Bash(git rebase*)",
       "Bash(git reset*)",
@@ -18,8 +16,7 @@
       "Bash(git stash drop*)",
       "Bash(git branch -d*)",
       "Bash(git branch -D*)",
-      "Bash(git checkout -B*)",
-      "Bash(git add*)"
+      "Bash(git checkout -B*)"
     ]
   }
 }

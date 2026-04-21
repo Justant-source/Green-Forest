@@ -12,7 +12,7 @@ import java.nio.file.Paths;
 import java.util.UUID;
 
 @Service
-@Profile({"local", "prod"})
+@Profile({"dev", "prod"})
 public class LocalStorageService implements ImageStorageService {
 
     @Value("${file.upload-dir}")
@@ -22,7 +22,10 @@ public class LocalStorageService implements ImageStorageService {
     public String upload(MultipartFile file) throws IOException {
         Path uploadPath = Paths.get(uploadDir);
         Files.createDirectories(uploadPath);
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
+        int dotIdx = original.lastIndexOf('.');
+        String ext = dotIdx >= 0 ? original.substring(dotIdx).toLowerCase() : "";
+        String fileName = UUID.randomUUID() + ext;
         Files.copy(file.getInputStream(), uploadPath.resolve(fileName));
         return "/uploads/" + fileName;
     }

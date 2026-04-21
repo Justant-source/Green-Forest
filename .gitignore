@@ -14,14 +14,14 @@ bin/
 
 # Environment & Secrets
 .env
-.env.local
+.env.dev
 .env.prod
-frontend/.env.local
+frontend/.env.dev
 /green-forest-key.pem
 .secret/
 
-# Spring local properties (contains DB password, JWT secret)
-backend/src/main/resources/application-local.properties
+# Spring dev properties (contains DB password, JWT secret)
+backend/src/main/resources/application-dev.properties
 
 # Claude Code local files (machine-specific)
 .claude/settings.local.json

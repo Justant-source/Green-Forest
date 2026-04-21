@@ -7,7 +7,7 @@
 ## 🛠 Stack Enforcement
 - **Backend:** Spring Boot (Java 21, Gradle). 절대 Node.js나 Python으로 바꾸지 마라.
 - **Frontend:** Next.js (App Router). Pages Router 사용 금지.
-- **Database:** MySQL 8.0 (Local DB: `vgc_db_dev` port 3308 / Prod DB: `vgc_db` port 3306 내부). PostgreSQL로 바꾸지 마라.
+- **Database:** MySQL 8.0 (Dev DB: `vgc_db_dev` port 3308 / Prod DB: `vgc_db` port 3306 내부). PostgreSQL로 바꾸지 마라.
 - **Security:** Spring Security 6 + JWT.
 
 ## 📝 Coding Rules
@@ -39,8 +39,27 @@
 - 대상: Docker 이미지 빌드, 컨테이너 recreate, `.env.prod` 값 변경 적용, nginx/cloudflared 설정 반영 등 prod 사용자 트래픽에 영향을 주는 모든 배포.
 - 예외: prod에만 존재하는 긴급 롤백(이전 이미지로 되돌리기), prod DB 긴급 대응 등은 사용자 지시를 명시적으로 받은 경우에 한해 허용.
 
-## 🚫 Git Commit / Push 금지
-- **git commit과 git push는 절대 자동으로 실행하지 마라.** 사용자가 직접 수행한다.
-- 작업 완료 후 어떤 파일이 변경되었는지 요약만 하고, 커밋/푸시 명령은 실행하지 마라.
-- 커밋이 필요하면 사용자에게 스테이징할 파일 목록을 안내하는 것으로 끝낸다.
-- 이는 .claude/settings.json의 deny 규칙으로도 강제된다.
+## 🔴 Docker 컨테이너/이미지 조작 안전 수칙 (재발 방지)
+
+**사고 경위 (2026-04-21):** `docker ps | xargs docker stop` 광범위 명령으로 prod 컨테이너가 함께 중단됨. dev 이미지 빌드로 prod 이미지 태그가 덮어씌워져 prod backend가 schema-validation 오류로 재시작 루프에 빠짐.
+
+- **`xargs docker stop/rm` 광범위 명령 절대 금지.** 컨테이너 조작 시 반드시 특정 컨테이너 이름을 명시해라. 예: `docker stop greenforest-backend-dev` (O) / `docker ps | xargs docker stop` (X)
+- **dev와 prod는 반드시 별도 이미지 태그를 사용해야 한다.** `docker compose build` 시 `-p green-forest-dev` / `-p green-forest-prod` 프로젝트명을 명시하여 이미지 태그가 분리되도록 해라. 같은 `latest` 태그를 공유하는 상태를 방치하지 마라.
+- **`docker stop/rm/restart` 명령 실행 전, 반드시 `docker ps --filter name=...` 으로 대상 컨테이너만 나열한 후 사용자에게 확인을 받아라.** prod 컨테이너가 목록에 포함되어 있으면 즉시 중단하고 사용자에게 보고해라.
+- **prod 이미지를 빌드할 때는 `-p green-forest-prod` 프로젝트명을 항상 명시해라.** 프로젝트명 없이 빌드하면 기본 태그가 prod와 겹칠 수 있다.
+- **prod DB는 `validate` DDL 모드이므로 새 엔티티 추가 시 반드시 DDL SQL을 prod DB에 직접 적용해야 한다.** dev DB에서 `mysqldump --no-data`로 스키마를 추출하여 prod에 적용하는 방식을 표준으로 사용해라.
+
+## 📦 환경 파일 규약 (local 금지)
+- **환경 구분 이름은 `dev` / `prod` 두 가지만 사용한다.** `local` 이라는 이름은 더 이상 쓰지 않는다.
+- **Docker Compose 파일:** `docker-compose.dev.yml`, `docker-compose.prod.yml`
+- **환경 변수 파일:** `.env.dev`, `.env.prod` (루트) / `frontend/.env.dev` (프론트)
+- **Spring Profile:** `dev`, `prod` — `SPRING_PROFILES_ACTIVE: dev` 등으로 지정
+- **Spring Boot 설정 파일:** `application-dev.properties`, `application-prod.properties`
+- **Compose project name:** `green-forest-dev`, `green-forest-prod` (항상 `-p` 로 명시)
+- 볼륨 이름도 compose 파일에 `name:` 으로 고정되어 있다. 볼륨명을 임의로 바꾸지 마라 (기존 데이터 연결이 끊긴다).
+
+## 📌 Git Commit / Push 규칙
+- **사용자가 명시적으로 지시할 때만 commit/push를 수행한다.** 지시 없이 자동 커밋 금지.
+- 작업 완료 후에는 변경 파일 요약과 함께 스테이징/커밋 제안을 먼저 한다.
+- 커밋 전에는 반드시 민감정보(비밀번호, 토큰, `.env.*`, `application-*.properties` 등)가 포함되지 않는지 `git diff --cached` 로 검증한다.
+- `git reset`, `git rebase`, `git merge`, `git revert`, `git branch -D` 등 파괴적 명령은 `.claude/settings.local.json` 의 deny 규칙으로 차단되어 있다.

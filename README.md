@@ -22,8 +22,9 @@
 ```
 ┌─────────────────────────────┐
 │ 1. dev에 변경 적용           │
-│    docker compose -f        │
-│    docker-compose.local.yml │
+│    docker compose           │
+│    -p green-forest-dev      │
+│    -f docker-compose.dev.yml│
 │    up -d --build <svc>      │
 └──────────┬──────────────────┘
            ↓
@@ -42,12 +43,13 @@
 │    사용자 확답 획득           │
 └──────────┬──────────────────┘
            ↓
-┌─────────────────────────────┐
-│ 4. prod에 동일 변경 적용     │
-│    docker compose -f        │
-│    docker-compose.prod.yml  │
-│    up -d --build <svc>      │
-└─────────────────────────────┘
+┌──────────────────────────────┐
+│ 4. prod에 동일 변경 적용      │
+│    docker compose            │
+│    -p green-forest-prod      │
+│    -f docker-compose.prod.yml│
+│    up -d --build <svc>       │
+└──────────────────────────────┘
 ```
 
 ---
@@ -59,25 +61,25 @@
 - 프로젝트 루트에 환경변수 파일 준비
 
 ```bash
-cp .env.local.example .env.local   # 값 채우기
-cp .env.prod.example  .env.prod    # 값 채우기 (서버에서)
+cp .env.dev.example  .env.dev    # 값 채우기
+cp .env.prod.example .env.prod   # 값 채우기 (서버에서)
 ```
 
 > ⚠️ **`NEXT_PUBLIC_*` 값 변경 시 프론트엔드 재빌드 필수.** Next.js는 이 변수들을 **빌드 타임에 JS 번들로 주입**하기 때문에 컨테이너 restart만으로는 반영 안 됨.
 > ```bash
-> docker compose -f docker-compose.prod.yml  --env-file .env.prod  up -d --build frontend
-> docker compose -f docker-compose.local.yml --env-file .env.local up -d --build frontend
+> docker compose -p green-forest-prod -f docker-compose.prod.yml --env-file .env.prod up -d --build frontend
+> docker compose -p green-forest-dev  -f docker-compose.dev.yml  --env-file .env.dev  up -d --build frontend
 > ```
 > 백엔드 CORS(`CORS_ORIGINS`)는 런타임 환경변수라 `--force-recreate`만 하면 반영된다.
 
 ---
 
-## Local (개발) 환경
+## Dev 환경
 
 ### 실행
 
 ```bash
-docker compose -f docker-compose.local.yml --env-file .env.local up --build
+docker compose -p green-forest-dev -f docker-compose.dev.yml --env-file .env.dev up --build -d
 ```
 
 ### 접속 주소
@@ -97,7 +99,7 @@ docker compose -f docker-compose.local.yml --env-file .env.local up --build
 | Port | **3308** |
 | Database | `vgc_db_dev` |
 | Username | root |
-| Password | `.env.local`의 `DB_PASSWORD` |
+| Password | `.env.dev`의 `DB_PASSWORD` |
 
 ### MySQL 클라이언트 접속 예시
 
@@ -112,7 +114,7 @@ mysql -h 127.0.0.1 -P 3308 -u root -p vgc_db_dev
 ### 실행
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
+docker compose -p green-forest-prod -f docker-compose.prod.yml --env-file .env.prod up --build -d
 ```
 
 ### 접속 주소
@@ -120,7 +122,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
 | 서비스 | 주소 |
 |--------|------|
 | 웹 (공개) | https://green-office.uk, https://www.green-office.uk |
-| Dev 공개 | https://dev.green-office.uk (Local 환경에 연결) |
+| Dev 공개 | https://dev.green-office.uk (Dev 환경에 연결) |
 | 웹 (Nginx, 내부) | http://서버IP:**80** |
 | Backend API | https://green-office.uk/api |
 | Backend | 외부 미노출 (nginx 경유) |
@@ -148,29 +150,48 @@ docker exec -it greenforest-mysql-prod mysql -uroot -p vgc_db
 
 ## 환경별 비교
 
-| 항목 | Local | Prod |
-|------|-------|------|
-| Spring Profile | `local` | `prod` |
+| 항목 | Dev | Prod |
+|------|-----|------|
+| Spring Profile | `dev` | `prod` |
 | DB 이름 | `vgc_db_dev` | `vgc_db` |
 | MySQL 외부 포트 | **3308** | 미노출 |
-| Backend 외부 포트 | **9091** | 미노출 |
+| Backend 외부 포트 | 미노출 (nginx 경유) | 미노출 |
 | Nginx 포트 | **8080** | **80** |
 | DDL 정책 | `update` | `validate` |
 | SQL 로그 | ON | OFF |
+| Compose project name | `green-forest-dev` | `green-forest-prod` |
 | 컨테이너 이름 prefix | `greenforest-*-dev` | `greenforest-*-prod` |
+| 환경 파일 | `.env.dev`, `docker-compose.dev.yml`, `application-dev.properties` | `.env.prod`, `docker-compose.prod.yml`, `application-prod.properties` |
 
 ---
 
-## DB 마이그레이션 (Prod → Local, 최초 1회)
+## DB 마이그레이션 (Prod → Dev, 최초 1회)
 
 ```bash
 # 1. prod 서버에서 덤프
 docker exec greenforest-mysql-prod \
   mysqldump -uroot -p${DB_PASSWORD} vgc_db > dump.sql
 
-# 2. dump.sql을 local 머신으로 복사 후 복원
+# 2. dump.sql을 dev 머신으로 복사 후 복원
 docker exec -i greenforest-mysql-dev \
   mysql -uroot -p${DB_PASSWORD} vgc_db_dev < dump.sql
+```
+
+## 스키마 변경 (Dev → Prod, 배포 시)
+
+prod는 DDL `validate` 모드이므로 자동으로 스키마를 바꾸지 않는다. dev에서 새 엔티티/컬럼을 추가했다면 prod 배포 전에 **비파괴적으로** 수동 반영해야 한다.
+
+```bash
+# 1. dev/prod 스키마 덤프
+docker exec greenforest-mysql-dev  mysqldump -uroot -p${DB_PASSWORD} --no-data vgc_db_dev > dev_schema.sql
+docker exec greenforest-mysql-prod mysqldump -uroot -p${DB_PASSWORD} --no-data vgc_db     > prod_schema.sql
+
+# 2. diff로 누락분 확인 (CREATE TABLE / ALTER TABLE ADD COLUMN 만 허용, DROP 금지)
+diff prod_schema.sql dev_schema.sql
+
+# 3. prod DB 백업 후 누락분만 수동 적용
+docker exec greenforest-mysql-prod mysqldump -uroot -p${DB_PASSWORD} vgc_db > prod_backup_$(date +%Y%m%d_%H%M%S).sql
+docker exec -i greenforest-mysql-prod mysql -uroot -p${DB_PASSWORD} vgc_db < diff.sql
 ```
 
 ---
@@ -199,7 +220,7 @@ backend / frontend
 |--------|------|-----------------|----------------|
 | `green-office.uk` | Prod | `greenforest-nginx-prod` | `http://localhost:80` |
 | `www.green-office.uk` | Prod | `greenforest-nginx-prod` | `http://localhost:80` |
-| `dev.green-office.uk` | Local/Dev | `greenforest-nginx-dev` | `http://localhost:8080` |
+| `dev.green-office.uk` | Dev | `greenforest-nginx-dev` | `http://localhost:8080` |
 
 ### nginx 설정 분리
 
@@ -208,7 +229,7 @@ prod / dev 컨테이너가 각자의 `server_name`을 갖도록 파일을 분리
 | 파일 | 용도 | 마운트 대상 |
 |------|------|--------------|
 | `nginx/nginx.prod.conf` | `server_name green-office.uk www.green-office.uk` | `docker-compose.prod.yml` |
-| `nginx/nginx.dev.conf`  | `server_name dev.green-office.uk` | `docker-compose.local.yml` |
+| `nginx/nginx.dev.conf`  | `server_name dev.green-office.uk` | `docker-compose.dev.yml` |
 
 ### cloudflared 설정
 
@@ -268,25 +289,110 @@ sudo systemctl enable --now cloudflared
 
 ---
 
+## 로깅
+
+### 구조
+
+애플리케이션 로그는 3가지 파일로 분리 관리된다.
+
+| 파일 | 레벨 | 내용 |
+|------|------|------|
+| `app.log` | INFO+ | 전체 애플리케이션 로그 |
+| `error.log` | WARN+ | 경고 및 오류 전용 |
+| `activity.log` | INFO | 사용자 활동 이벤트 전용 |
+
+### 기록되는 활동 이벤트
+
+`activity.log`에는 다음 이벤트가 구조화된 형식으로 기록된다.
+
+| 이벤트 | 태그 | 포함 정보 |
+|--------|------|----------|
+| 로그인 성공 | `[LOGIN]` | email, IP |
+| 로그인 실패 | `[LOGIN_FAILED]` | email, IP (SYSTEM WARN도 함께 기록) |
+| 회원가입 | `[REGISTER]` | email, nickname |
+| 게시글 작성 | `[POST_CREATE]` | userId, nickname, category, postId |
+| 게시글 수정 | `[POST_UPDATE]` | userId, nickname, postId |
+| 게시글 삭제 | `[POST_DELETE]` | userId, nickname, postId |
+| 출석 체크인 | `[ATTENDANCE]` | userId, nickname, dropsAwarded |
+| 출석 거절 | `[ATTENDANCE_DENIED]` | userId, nickname, reason |
+| 뽑기 시도 | `[GACHA_DRAW]` | userId, nickname, prize, winner, drawId |
+| 뽑기 한도 초과 | `[GACHA_LIMIT]` | userId, nickname |
+| 물방울 선물 | `[DROP_GIFT]` | senderId, receiverId, amount |
+
+### 로그 파일 위치
+
+- **Dev 환경**: 컨테이너 내부 `/app/logs/` (볼륨 마운트 없음)
+- **Prod 환경**: Docker 볼륨 `logs_prod` → 컨테이너 `/app/logs/`
+
+```bash
+# prod 로그 실시간 확인
+docker exec greenforest-backend-prod tail -f /app/logs/app.log
+docker exec greenforest-backend-prod tail -f /app/logs/activity.log
+docker exec greenforest-backend-prod tail -f /app/logs/error.log
+```
+
+### 로그 롤링 정책
+
+- 일별 롤링, `archive/` 폴더에 `.gz` 압축 보관
+- `app.log`: 최대 30일 / 1GB
+- `error.log`: 최대 30일 / 500MB
+- `activity.log`: 최대 30일 / 500MB
+
+---
+
+## 백업 (Prod)
+
+### 스크립트
+
+`scripts/backup-prod.sh` — prod DB + 활동 로그를 날짜별 스냅샷으로 저장.
+
+- **DB**: `mysqldump` → gzip 압축 (`db_YYYY-MM-DD.sql.gz`)
+- **로그**: `app.log`, `error.log`, `activity.log` + `archive/` → gzip 압축
+- **보관**: 30일, 이전 스냅샷은 자동 삭제
+
+### 수동 실행
+
+```bash
+# 프로젝트 루트에서 실행
+./scripts/backup-prod.sh
+```
+
+기본 저장 경로: `~/backups/green-forest/YYYY-MM-DD/`
+
+환경변수로 오버라이드 가능:
+```bash
+BACKUP_BASE_DIR=/data/backups ./scripts/backup-prod.sh
+```
+
+### 크론 자동화 (서버에서 설정)
+
+```bash
+# crontab -e
+# 매일 새벽 3시 KST (UTC 18:00) 실행
+0 18 * * * /home/justant/Data/Green-Forest/scripts/backup-prod.sh >> /var/log/greenforest-backup.log 2>&1
+```
+
+---
+
 ## 컨테이너 관리
 
 ```bash
 # 상태 확인
-docker compose -f docker-compose.local.yml ps
-docker compose -f docker-compose.prod.yml  ps
+docker compose -p green-forest-dev  -f docker-compose.dev.yml  ps
+docker compose -p green-forest-prod -f docker-compose.prod.yml ps
 
 # 로그
 docker logs greenforest-backend-dev -f
 docker logs greenforest-backend-prod -f
 
 # 재시작
-docker compose -f docker-compose.local.yml restart backend
-docker compose -f docker-compose.prod.yml  restart backend
+docker compose -p green-forest-dev  -f docker-compose.dev.yml  restart backend
+docker compose -p green-forest-prod -f docker-compose.prod.yml restart backend
 
 # 중지 (데이터 유지)
-docker compose -f docker-compose.local.yml down
-docker compose -f docker-compose.prod.yml  down
+docker compose -p green-forest-dev  -f docker-compose.dev.yml  down
+docker compose -p green-forest-prod -f docker-compose.prod.yml down
 
-# 중지 + 볼륨 삭제 (데이터 초기화)
-docker compose -f docker-compose.local.yml down -v
+# 중지 + 볼륨 삭제 (데이터 초기화 — 절대 prod에서 쓰지 말 것)
+docker compose -p green-forest-dev -f docker-compose.dev.yml down -v
 ```
