@@ -35,6 +35,7 @@ services:
       UPLOAD_PATH: /app/uploads
     volumes:
       - uploads_prod:/app/uploads
+      - logs_prod:/app/logs
     depends_on:
       mysql:
         condition: service_healthy
@@ -64,5 +65,11 @@ services:
     restart: unless-stopped
 
 volumes:
+  # name을 고정하여 compose project name이 바뀌어도 동일 볼륨을 재사용한다.
+  # (과거 project명 변경으로 빈 볼륨이 새로 생긴 사고 재발 방지)
   mysql_prod_data:
+    name: green-forest-prod_mysql_prod_data
   uploads_prod:
+    name: green-forest-prod_uploads_prod
+  logs_prod:
+    name: green-forest-prod_logs_prod
