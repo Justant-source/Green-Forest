@@ -2,11 +2,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { TodayBoard, AttendancePhrase } from "@/types";
 import { checkin, getTodayBoard, getRandomPhrases } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import AttendanceBoard from "@/components/AttendanceBoard";
 import AttendanceStamp from "@/components/AttendanceStamp";
 import PhrasePicker from "@/components/PhrasePicker";
 
 export default function AttendancePage() {
+  const { user } = useAuth();
   const [board, setBoard] = useState<TodayBoard | null>(null);
   const [phrases, setPhrases] = useState<AttendancePhrase[]>([]);
   const [selectedMessage, setSelectedMessage] = useState("");
@@ -15,6 +17,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<any>(null);
+  const [highlightMine, setHighlightMine] = useState(false);
 
   const loadBoard = useCallback(async () => {
     try {
@@ -68,12 +71,23 @@ export default function AttendancePage() {
       });
       setResult(r);
       setStamped(true);
+      setHighlightMine(true);
       await loadBoard();
     } catch (e: any) {
-      if (e.status === 409) setError("오늘 이미 출석하셨습니다");
-      else if (e.status === 422)
-        setError("출석 가능 시간(평일 06:00~11:00)이 아닙니다");
-      else setError("출석 중 오류가 발생했습니다");
+      // 응답 본문 메시지 파싱 (가능한 경우)
+      let bodyMsg: string | null = null;
+      if (e && typeof e.json === "function") {
+        try { const data = await e.json(); bodyMsg = data?.message ?? null; } catch {}
+      }
+      const alreadyIn = e?.status === 409 || (bodyMsg && bodyMsg.includes("이미 출석"));
+      if (alreadyIn) {
+        setError("이미 출석을 완료했습니다");
+        setHighlightMine(true);
+      } else if (e?.status === 422) {
+        setError(bodyMsg || "출석 가능 시간(평일 06:00~11:00)이 아닙니다");
+      } else {
+        setError(bodyMsg || "출석 중 오류가 발생했습니다");
+      }
     } finally {
       setLoading(false);
     }
@@ -83,7 +97,10 @@ export default function AttendancePage() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
         {/* 출석 보드 */}
-        <AttendanceBoard board={board} />
+        <AttendanceBoard
+          board={board}
+          highlightUserId={highlightMine && user ? user.id : null}
+        />
 
         {/* 출석 섹션 */}
         <div className="bg-white rounded-xl p-5 shadow-sm space-y-4">

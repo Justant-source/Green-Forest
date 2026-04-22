@@ -60,7 +60,11 @@ public class PlazaController {
             item.put("type", "ATTENDANCE");
             item.put("userNickname", checkin.getUser().getNickname());
             item.put("checkinDate", checkin.getCheckinDate().toString());
-            item.put("createdAt", checkin.getCheckinAt().toString());
+            // 출석 당첨은 추첨 시각(보통 당일 11:00) 기준으로 표시
+            LocalDateTime drawAt = checkin.getWinnerDrawnAt() != null
+                    ? checkin.getWinnerDrawnAt()
+                    : checkin.getCheckinDate().atTime(11, 0);
+            item.put("createdAt", drawAt.toString());
             result.add(item);
         }
 

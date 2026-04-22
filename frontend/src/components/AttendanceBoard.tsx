@@ -5,9 +5,10 @@ import StampIcon from "./StampIcon";
 
 interface Props {
   board: TodayBoard | null;
+  highlightUserId?: number | null;
 }
 
-export default function AttendanceBoard({ board }: Props) {
+export default function AttendanceBoard({ board, highlightUserId }: Props) {
   const [tooltip, setTooltip] = useState<TodayBoardEntry | null>(null);
 
   if (!board) {
@@ -43,10 +44,11 @@ export default function AttendanceBoard({ board }: Props) {
             );
           }
 
+          const isMine = highlightUserId != null && entry.userId === highlightUserId;
           return (
             <div
               key={i}
-              className={`flex items-center justify-center cursor-pointer ${entry.isWinner ? "py-2" : "aspect-square"}`}
+              className={`flex items-center justify-center cursor-pointer transition-shadow ${entry.isWinner ? "py-2" : "aspect-square"} ${isMine ? "rounded-full ring-4 ring-green-500 ring-offset-2" : ""}`}
               onClick={() =>
                 setTooltip(tooltip?.userId === entry.userId ? null : entry)
               }
