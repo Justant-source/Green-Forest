@@ -33,6 +33,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       CORS_ORIGINS: ${CORS_ORIGINS}
       UPLOAD_PATH: /app/uploads
+      NOTIFY_API_TOKEN: ${NOTIFY_API_TOKEN}
     volumes:
       - uploads_prod:/app/uploads
       - logs_prod:/app/logs
