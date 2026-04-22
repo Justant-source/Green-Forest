@@ -9,22 +9,29 @@ import com.vgc.repository.AttendanceCheckinRepository;
 import com.vgc.repository.AttendancePhraseRepository;
 import com.vgc.repository.GachaPrizeRepository;
 import com.vgc.repository.GachaDrawRepository;
+import com.vgc.repository.AnnouncementRepository;
 import com.vgc.service.CategoryService;
 import com.vgc.service.DropService;
 import com.vgc.service.NotificationService;
 import com.vgc.service.QuestService;
 import com.vgc.service.AttendanceService;
 import com.vgc.service.GachaService;
+import com.vgc.service.ImageStorageService;
 import com.vgc.dto.CategoryRequestResponse;
 import com.vgc.dto.CategoryResponse;
 import com.vgc.dto.AdminCreatePrizeRequest;
 import com.vgc.dto.AdminUpdatePrizeRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.math.BigDecimal;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -49,6 +56,8 @@ public class AdminController {
     private final GachaPrizeRepository gachaPrizeRepository;
     private final GachaDrawRepository gachaDrawRepository;
     private final GachaService gachaService;
+    private final AnnouncementRepository announcementRepository;
+    private final ImageStorageService imageStorageService;
 
     public AdminController(CategoryService categoryService, UserRepository userRepository,
                            DropService dropService, QuestService questService,
@@ -62,7 +71,9 @@ public class AdminController {
                            AttendanceService attendanceService,
                            GachaPrizeRepository gachaPrizeRepository,
                            GachaDrawRepository gachaDrawRepository,
-                           GachaService gachaService) {
+                           GachaService gachaService,
+                           AnnouncementRepository announcementRepository,
+                           ImageStorageService imageStorageService) {
         this.categoryService = categoryService;
         this.userRepository = userRepository;
         this.dropService = dropService;
@@ -78,6 +89,8 @@ public class AdminController {
         this.gachaPrizeRepository = gachaPrizeRepository;
         this.gachaDrawRepository = gachaDrawRepository;
         this.gachaService = gachaService;
+        this.announcementRepository = announcementRepository;
+        this.imageStorageService = imageStorageService;
     }
 
     private User getAdminUser(Authentication authentication) {
@@ -445,20 +458,51 @@ public class AdminController {
 
     // ========== 공지사항 ==========
 
-    @PostMapping("/announcements")
-    public Map<String, String> createAnnouncement(@RequestBody Map<String, String> body,
-                                                   Authentication authentication) {
+    @GetMapping("/announcements")
+    public ResponseEntity<List<com.vgc.entity.Announcement>> listAnnouncements(Authentication authentication) {
         getAdminUser(authentication);
-        String title = body.get("title");
-        String content = body.get("content");
+        return ResponseEntity.ok(announcementRepository.findAllByOrderByCreatedAtDesc());
+    }
 
-        List<User> allUsers = userRepository.findAll();
-        for (User user : allUsers) {
-            notificationService.createNotification(user, NotificationType.ANNOUNCEMENT,
-                    title, content, null, null);
-        }
+    @PostMapping("/announcements")
+    public ResponseEntity<com.vgc.entity.Announcement> createAnnouncement(
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        getAdminUser(authentication);
+        com.vgc.entity.Announcement ann = new com.vgc.entity.Announcement();
+        ann.setTitle(body.get("title"));
+        ann.setContent(body.get("content"));
+        ann.setActive(false);
+        return ResponseEntity.ok(announcementRepository.save(ann));
+    }
 
-        return Map.of("status", "announced");
+    @PatchMapping("/announcements/{id}/activate")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<com.vgc.entity.Announcement> activateAnnouncement(
+            @PathVariable Long id, Authentication authentication) {
+        getAdminUser(authentication);
+        announcementRepository.deactivateAll();
+        com.vgc.entity.Announcement ann = announcementRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("공지 없음"));
+        ann.setActive(true);
+        return ResponseEntity.ok(announcementRepository.save(ann));
+    }
+
+    @DeleteMapping("/announcements/deactivate-all")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<Void> deactivateAllAnnouncements(Authentication authentication) {
+        getAdminUser(authentication);
+        announcementRepository.deactivateAll();
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/announcements/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<Void> deleteAnnouncement(
+            @PathVariable Long id, Authentication authentication) {
+        getAdminUser(authentication);
+        announcementRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     // ===== 출석 관리 =====
@@ -548,14 +592,59 @@ public class AdminController {
 
     // ===== 뽑기 관리 =====
 
-    @PostMapping("/gacha/prizes")
-    public ResponseEntity<GachaPrize> createGachaPrize(@RequestBody AdminCreatePrizeRequest req) {
-        return ResponseEntity.ok(gachaService.createPrize(req));
+    @PostMapping(value = "/gacha/prizes", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<GachaPrize> createGachaPrize(
+            @RequestParam String name,
+            @RequestParam(required = false) String description,
+            @RequestParam int cashValue,
+            @RequestParam int totalStock,
+            @RequestParam String tier,
+            @RequestParam(required = false, defaultValue = "1.00") String evMultiplier,
+            @RequestParam(required = false, defaultValue = "0") int displayOrder,
+            @RequestParam(required = false) MultipartFile image) throws IOException {
+        AdminCreatePrizeRequest req = new AdminCreatePrizeRequest();
+        req.setName(name);
+        req.setDescription(description);
+        req.setCashValue(cashValue);
+        req.setTotalStock(totalStock);
+        req.setTier(com.vgc.entity.GachaPrizeTier.valueOf(tier));
+        req.setEvMultiplier(new BigDecimal(evMultiplier));
+        req.setDisplayOrder(displayOrder);
+        GachaPrize prize = gachaService.createPrize(req);
+        if (image != null && !image.isEmpty()) {
+            gachaService.uploadAndSetPrizeImage(prize.getId(), image.getBytes(), image.getOriginalFilename());
+        }
+        return ResponseEntity.ok(prize);
     }
 
-    @PutMapping("/gacha/prizes/{id}")
-    public ResponseEntity<GachaPrize> updateGachaPrize(@PathVariable Long id, @RequestBody AdminUpdatePrizeRequest req) {
-        return ResponseEntity.ok(gachaService.updatePrize(id, req));
+    @PutMapping(value = "/gacha/prizes/{id}", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_FORM_URLENCODED_VALUE})
+    public ResponseEntity<GachaPrize> updateGachaPrize(
+            @PathVariable Long id,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) Integer cashValue,
+            @RequestParam(required = false) Integer totalStock,
+            @RequestParam(required = false) Integer remainingStock,
+            @RequestParam(required = false) String tier,
+            @RequestParam(required = false) String evMultiplier,
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) Integer displayOrder,
+            @RequestParam(required = false) MultipartFile image) throws IOException {
+        AdminUpdatePrizeRequest req = new AdminUpdatePrizeRequest();
+        req.setName(name);
+        req.setDescription(description);
+        req.setCashValue(cashValue);
+        req.setTotalStock(totalStock);
+        req.setRemainingStock(remainingStock);
+        if (tier != null) req.setTier(com.vgc.entity.GachaPrizeTier.valueOf(tier));
+        if (evMultiplier != null) req.setEvMultiplier(new BigDecimal(evMultiplier));
+        req.setActive(active);
+        req.setDisplayOrder(displayOrder);
+        GachaPrize prize = gachaService.updatePrize(id, req);
+        if (image != null && !image.isEmpty()) {
+            gachaService.uploadAndSetPrizeImage(id, image.getBytes(), image.getOriginalFilename());
+        }
+        return ResponseEntity.ok(prize);
     }
 
     @DeleteMapping("/gacha/prizes/{id}")
@@ -565,23 +654,24 @@ public class AdminController {
     }
 
     @GetMapping("/gacha/prizes")
-    public ResponseEntity<List<GachaPrize>> listAllGachaPrizes() {
+    public ResponseEntity<List<Map<String, Object>>> listAllGachaPrizes() {
         return ResponseEntity.ok(gachaService.listAllPrizes());
     }
 
     @GetMapping("/gacha/deliveries")
-    public ResponseEntity<Page<GachaDraw>> listDeliveries(
-            @RequestParam(defaultValue = "PENDING") String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(gachaService.listPendingDeliveries(PageRequest.of(page, size)));
+    public ResponseEntity<List<com.vgc.dto.AdminDeliveryDto>> listDeliveries(
+            @RequestParam(defaultValue = "PENDING") String status) {
+        com.vgc.entity.GachaDeliveryStatus deliveryStatus =
+                com.vgc.entity.GachaDeliveryStatus.valueOf(status);
+        return ResponseEntity.ok(gachaService.listDeliveries(deliveryStatus));
     }
 
     @PatchMapping("/gacha/deliveries/{drawId}/deliver")
-    public ResponseEntity<GachaDraw> markDelivered(
+    public ResponseEntity<com.vgc.dto.AdminDeliveryDto> markDelivered(
             @PathVariable Long drawId,
             @RequestBody(required = false) Map<String, String> body,
-            @org.springframework.security.core.annotation.AuthenticationPrincipal User admin) {
+            Authentication authentication) {
+        User admin = getAdminUser(authentication);
         String memo = body != null ? body.get("memo") : null;
         return ResponseEntity.ok(gachaService.markDelivered(drawId, admin.getId(), memo));
     }

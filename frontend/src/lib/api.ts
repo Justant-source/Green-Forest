@@ -859,21 +859,43 @@ export async function adminListAllPrizes(): Promise<GachaPrizeInfo[]> {
   return res.json();
 }
 
-export async function adminCreatePrize(body: AdminCreatePrizeRequest): Promise<GachaPrizeInfo> {
+export async function adminCreatePrize(body: AdminCreatePrizeRequest, imageFile?: File): Promise<GachaPrizeInfo> {
+  const token = getToken();
+  const fd = new FormData();
+  fd.append("name", body.name);
+  if (body.description) fd.append("description", body.description);
+  fd.append("cashValue", String(body.cashValue));
+  fd.append("totalStock", String(body.totalStock));
+  fd.append("tier", body.tier);
+  if (body.evMultiplier != null) fd.append("evMultiplier", String(body.evMultiplier));
+  if (body.displayOrder != null) fd.append("displayOrder", String(body.displayOrder));
+  if (imageFile) fd.append("image", imageFile);
   const res = await fetch(`${BASE_URL}/admin/gacha/prizes`, {
     method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify(body),
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
   });
   if (!res.ok) throw res;
   return res.json();
 }
 
-export async function adminUpdatePrize(id: number, body: AdminUpdatePrizeRequest): Promise<GachaPrizeInfo> {
+export async function adminUpdatePrize(id: number, body: AdminUpdatePrizeRequest, imageFile?: File): Promise<GachaPrizeInfo> {
+  const token = getToken();
+  const fd = new FormData();
+  if (body.name != null) fd.append("name", body.name);
+  if (body.description != null) fd.append("description", body.description);
+  if (body.cashValue != null) fd.append("cashValue", String(body.cashValue));
+  if (body.totalStock != null) fd.append("totalStock", String(body.totalStock));
+  if (body.remainingStock != null) fd.append("remainingStock", String(body.remainingStock));
+  if (body.tier != null) fd.append("tier", body.tier);
+  if (body.evMultiplier != null) fd.append("evMultiplier", String(body.evMultiplier));
+  if (body.active != null) fd.append("active", String(body.active));
+  if (body.displayOrder != null) fd.append("displayOrder", String(body.displayOrder));
+  if (imageFile) fd.append("image", imageFile);
   const res = await fetch(`${BASE_URL}/admin/gacha/prizes/${id}`, {
     method: "PUT",
-    headers: authHeaders(),
-    body: JSON.stringify(body),
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
   });
   if (!res.ok) throw res;
   return res.json();
@@ -887,8 +909,8 @@ export async function adminDeactivatePrize(id: number): Promise<void> {
   if (!res.ok) throw res;
 }
 
-export async function adminListDeliveries(status = "PENDING", page = 0, size = 20): Promise<PageResponse<GachaDrawRecord>> {
-  const res = await fetch(`${BASE_URL}/admin/gacha/deliveries?status=${status}&page=${page}&size=${size}`, { headers: authHeaders() });
+export async function adminListDeliveries(status = "PENDING"): Promise<import("@/types").AdminDeliveryItem[]> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/deliveries?status=${status}`, { headers: authHeaders() });
   if (!res.ok) throw res;
   return res.json();
 }
@@ -913,4 +935,63 @@ export async function adminSimulateEv(prizeId: number, ev: number): Promise<any>
   const res = await fetch(`${BASE_URL}/admin/gacha/simulate?prizeId=${prizeId}&ev=${ev}`, { headers: authHeaders() });
   if (!res.ok) throw res;
   return res.json();
+}
+
+// ===== 공지사항 =====
+export interface AnnouncementItem {
+  id: number;
+  title: string;
+  content: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export async function getActiveAnnouncement(): Promise<AnnouncementItem | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/announcements/active`, { cache: "no-store" });
+    if (res.status === 204) return null;
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
+}
+
+export async function adminListAnnouncements(): Promise<AnnouncementItem[]> {
+  const res = await fetch(`${BASE_URL}/admin/announcements`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminCreateAnnouncement(title: string, content: string): Promise<AnnouncementItem> {
+  const res = await fetch(`${BASE_URL}/admin/announcements`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ title, content }),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminActivateAnnouncement(id: number): Promise<AnnouncementItem> {
+  const res = await fetch(`${BASE_URL}/admin/announcements/${id}/activate`, {
+    method: "PATCH",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminDeactivateAllAnnouncements(): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/announcements/deactivate-all`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
+}
+
+export async function adminDeleteAnnouncement(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/announcements/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
 }

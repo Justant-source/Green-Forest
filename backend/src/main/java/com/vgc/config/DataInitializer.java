@@ -48,7 +48,7 @@ public class DataInitializer implements CommandLineRunner {
     private void initCategories() {
         createCategoryIfNotExists("긍정문구", "긍정 문구", "green", false);
         createCategoryIfNotExists("동료칭찬", "동료 칭찬", "blue", false);
-        createCategoryIfNotExists("퀘스트", "퀘스트", "orange", false);
+        createCategoryIfNotExists("퀘스트", "퀘스트", "orange", true);
     }
 
     private void createCategoryIfNotExists(String name, String label, String color, boolean hasStatus) {

@@ -55,15 +55,15 @@ public class LeaderboardService {
     }
 
     /**
-     * 이번 달 파티별 랭킹 — drop_transactions 이번 달 합산
+     * 이번 달 파티별 랭킹 — drop_transactions 이번 달 합산 (양수만)
      */
     private List<Map<String, Object>> getMonthlyPartyRankings() {
         YearMonth currentMonth = YearMonth.now();
         LocalDateTime startDate = currentMonth.atDay(1).atStartOfDay();
         LocalDateTime endDate = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
 
-        // 이번 달 유저별 합산
-        List<Object[]> userSums = dropTransactionRepository.sumAmountGroupByUserForPeriod(startDate, endDate);
+        // 이번 달 유저별 합산 (양수 거래만)
+        List<Object[]> userSums = dropTransactionRepository.sumPositiveAmountGroupByUserForPeriod(startDate, endDate);
         Map<Long, Long> userDropMap = new HashMap<>();
         for (Object[] row : userSums) {
             userDropMap.put((Long) row[0], ((Number) row[1]).longValue());
@@ -104,7 +104,9 @@ public class LeaderboardService {
      * 파티 내 개인별 랭킹
      */
     public List<Map<String, Object>> getPartyMemberRankings(Long partyId, String period) {
-        List<User> members = userRepository.findByPartyIdOrderByTotalDropsDesc(partyId);
+        List<User> members = "monthly".equals(period)
+            ? userRepository.findByPartyIdOrderByTotalDropsDesc(partyId)
+            : userRepository.findByPartyIdOrderByEarnedDropsDesc(partyId);
 
         Map<Long, Long> monthlyDrops = null;
         if ("monthly".equals(period)) {
@@ -135,7 +137,7 @@ public class LeaderboardService {
             if ("monthly".equals(period) && finalMonthlyDrops != null) {
                 entry.put("totalDrops", finalMonthlyDrops.getOrDefault(member.getId(), 0L));
             } else {
-                entry.put("totalDrops", (long) member.getTotalDrops());
+                entry.put("totalDrops", (long) member.getEarnedDrops());
             }
             memberList.add(entry);
         }

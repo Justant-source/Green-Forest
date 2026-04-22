@@ -31,6 +31,18 @@ public class LocalStorageService implements ImageStorageService {
     }
 
     @Override
+    public String uploadBytes(byte[] bytes, String originalFilename) throws IOException {
+        Path uploadPath = Paths.get(uploadDir);
+        Files.createDirectories(uploadPath);
+        String original = originalFilename != null ? originalFilename : "file";
+        int dotIdx = original.lastIndexOf('.');
+        String ext = dotIdx >= 0 ? original.substring(dotIdx).toLowerCase() : "";
+        String fileName = UUID.randomUUID() + ext;
+        Files.write(uploadPath.resolve(fileName), bytes);
+        return "/uploads/" + fileName;
+    }
+
+    @Override
     public void delete(String key) {
         try {
             Path filePath = Paths.get(uploadDir).resolve(key.replaceFirst("^/uploads/", ""));

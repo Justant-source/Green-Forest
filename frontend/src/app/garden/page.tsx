@@ -37,6 +37,9 @@ export default function GardenPage() {
   const [editPlantType, setEditPlantType] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // 레벨 가이드 팝업
+  const [showLevelGuide, setShowLevelGuide] = useState(false);
+
   // 비밀번호 변경
   const [showPwChange, setShowPwChange] = useState(false);
   const [currentPw, setCurrentPw] = useState("");
@@ -229,7 +232,14 @@ export default function GardenPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <PlantGrowthBadge growth={growth} showDetails={true} />
+                  <button
+                    type="button"
+                    onClick={() => setShowLevelGuide(true)}
+                    aria-label="레벨 가이드 보기"
+                    className="rounded-md hover:bg-forest-100 focus:outline-none focus:ring-2 focus:ring-forest-400 transition-colors"
+                  >
+                    <PlantGrowthBadge growth={growth} showDetails={true} />
+                  </button>
                   <span className="text-lg font-semibold text-forest-600">
                     {user.plantName || plantInfo?.label}
                   </span>
@@ -421,6 +431,31 @@ export default function GardenPage() {
             )}
           </>
         )
+      )}
+
+      {/* 레벨 가이드 팝업 */}
+      {showLevelGuide && growth && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setShowLevelGuide(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-gray-800">레벨 가이드</h2>
+              <button
+                onClick={() => setShowLevelGuide(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none px-2"
+                aria-label="닫기"
+              >
+                ×
+              </button>
+            </div>
+            <PlantLevelGuide growth={growth} />
+          </div>
+        </div>
       )}
     </div>
   );

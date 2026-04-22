@@ -185,18 +185,35 @@ public class DropService {
     }
 
     /**
-     * 태깅 보너스 — 태깅된 사람에게 각 5 물방울 (글당 1인 1회)
+     * 동료 칭찬 주 1회 여부 확인 (PostService에서 사전 검증용)
+     */
+    public boolean hasPraisedThisWeek(Long userId) {
+        LocalDate now = LocalDate.now();
+        String periodKey = String.format("%d-W%02d",
+                now.get(IsoFields.WEEK_BASED_YEAR),
+                now.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
+        return questCompletionLogRepository.existsByUserIdAndQuestTypeAndCategoryAndPeriodKey(
+                userId, "주간", "동료칭찬", periodKey);
+    }
+
+    /**
+     * 태깅 보너스 — 1~2명: 각 30 물방울 / 3명 이상: 각 20 물방울 (동료칭찬 전용)
      */
     private int awardTagBonuses(User author, Post post, List<User> taggedUsers) {
         int totalTagBonus = 0;
+        long validCount = taggedUsers.stream()
+                .filter(u -> !u.getId().equals(author.getId()))
+                .filter(u -> !postTagRepository.existsByPostIdAndTaggedUserId(post.getId(), u.getId()))
+                .count();
+        int tagDrops = validCount <= 2 ? 30 : 20;
 
         for (User taggedUser : taggedUsers) {
             if (taggedUser.getId().equals(author.getId())) {
-                continue; // 자기 자신 태깅은 무시
+                continue;
             }
 
             if (postTagRepository.existsByPostIdAndTaggedUserId(post.getId(), taggedUser.getId())) {
-                continue; // 이미 태깅됨
+                continue;
             }
 
             PostTag postTag = new PostTag();
@@ -204,14 +221,13 @@ public class DropService {
             postTag.setTaggedUser(taggedUser);
             postTagRepository.save(postTag);
 
-            int tagDrops = 5;
             recordTransaction(taggedUser, tagDrops, DropReasonType.TAG_BONUS,
                     author.getNickname() + "님이 태깅|postId=" + post.getId(), post.getId(), null);
 
             notificationService.createNotification(taggedUser, NotificationType.TAG,
                     "태깅되었어요!",
                     (post.isAnonymous() ? "익명의 그린메이커" : author.getNickname())
-                            + "님이 회원님을 태깅했어요! 💧5 물방울 획득!",
+                            + "님이 회원님을 태깅했어요! 💧" + tagDrops + " 물방울 획득!",
                     post.getId(), null);
 
             plantGrowthService.onPraiseReceived(taggedUser.getId());
@@ -362,6 +378,10 @@ public class DropService {
 
         // 잔고 갱신
         user.setTotalDrops(user.getTotalDrops() + amount);
+        // 누적 획득분 갱신 (양수 거래만)
+        if (amount > 0) {
+            user.setEarnedDrops(user.getEarnedDrops() + amount);
+        }
         userRepository.save(user);
     }
 

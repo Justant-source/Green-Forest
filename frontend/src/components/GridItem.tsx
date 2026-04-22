@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Post } from "@/types";
 import { toMediaUrl, toggleBookmark } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useCategories } from "@/context/CategoryContext";
 import TitleCard from "./TitleCard";
 
 interface GridItemProps {
@@ -14,7 +15,37 @@ interface GridItemProps {
 
 export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
   const { isLoggedIn, authLoaded } = useAuth();
+  const { categories } = useCategories();
   const [bookmarked, setBookmarked] = useState(post.bookmarked ?? false);
+
+  const getCategoryBadgeStyle = (): { bg: string; label: string } => {
+    const cat = categories.find((c) => c.name === post.category);
+    if (!cat) return { bg: "bg-gray-400", label: post.category[0] || "?" };
+
+    const labelMap: Record<string, string> = {
+      "긍정문구": "긍",
+      "동료칭찬": "칭",
+      "퀘스트": "퀘",
+    };
+
+    const colorMap: Record<string, string> = {
+      green: "bg-green-500",
+      blue: "bg-blue-500",
+      yellow: "bg-yellow-500",
+      red: "bg-red-500",
+      purple: "bg-purple-500",
+      pink: "bg-pink-500",
+      indigo: "bg-indigo-500",
+      orange: "bg-orange-500",
+    };
+
+    return {
+      bg: colorMap[cat.color] || "bg-gray-400",
+      label: labelMap[cat.name] || cat.name[0],
+    };
+  };
+
+  const badgeStyle = getCategoryBadgeStyle();
 
   const handleBookmarkClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -33,8 +64,11 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
       href={`/posts/${post.id}`}
       className="group block overflow-hidden transition-transform duration-200 hover:scale-105 relative"
     >
+      <span className={`absolute top-2 left-2 z-10 w-6 h-6 rounded-full ${badgeStyle.bg} text-white text-[10px] font-semibold flex items-center justify-center`}>
+        {badgeStyle.label}
+      </span>
       {post.status && (
-        <span className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+        <span className={`absolute top-2 left-10 z-10 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
           post.status === "COMPLETE" ? "bg-green-500 text-white" :
           post.status === "ING" ? "bg-yellow-400 text-gray-900" :
           "bg-blue-500 text-white"

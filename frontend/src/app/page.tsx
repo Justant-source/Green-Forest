@@ -3,10 +3,12 @@
 import { Suspense } from "react";
 import GridFeed from "@/components/GridFeed";
 import GachaRecentWinsTicker from "@/components/GachaRecentWinsTicker";
+import WeeklyReportBanner from "@/components/WeeklyReportBanner";
 
 function HomeContent() {
   return (
     <div className="space-y-4">
+      <WeeklyReportBanner />
       <GachaRecentWinsTicker />
       <GridFeed initialCategory={null} />
     </div>

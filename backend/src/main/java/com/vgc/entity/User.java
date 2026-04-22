@@ -60,6 +60,9 @@ public class User {
     @Column(name = "total_drops", nullable = false)
     private int totalDrops = 0;
 
+    @Column(name = "earned_drops", nullable = false)
+    private int earnedDrops = 0;
+
     // --- 기존 필드 ---
 
     private LocalDateTime createdAt;
@@ -101,6 +104,8 @@ public class User {
     public void setParty(Party party) { this.party = party; }
     public int getTotalDrops() { return totalDrops; }
     public void setTotalDrops(int totalDrops) { this.totalDrops = totalDrops; }
+    public int getEarnedDrops() { return earnedDrops; }
+    public void setEarnedDrops(int earnedDrops) { this.earnedDrops = earnedDrops; }
     public boolean isPlantLocked() { return plantLocked; }
     public void setPlantLocked(boolean plantLocked) { this.plantLocked = plantLocked; }
 }

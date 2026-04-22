@@ -16,13 +16,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByPartyIdOrderByTotalDropsDesc(Long partyId);
 
+    List<User> findByPartyIdOrderByEarnedDropsDesc(Long partyId);
+
     @Query("SELECT u FROM User u WHERE u.party IS NOT NULL ORDER BY u.totalDrops DESC")
     List<User> findAllWithPartyOrderByTotalDropsDesc();
 
-    @Query("SELECT u.party.id, u.party.name, SUM(u.totalDrops), COUNT(u) " +
+    @Query("SELECT u FROM User u WHERE u.party IS NOT NULL ORDER BY u.earnedDrops DESC")
+    List<User> findAllWithPartyOrderByEarnedDropsDesc();
+
+    @Query("SELECT u.party.id, u.party.name, SUM(u.earnedDrops), COUNT(u) " +
            "FROM User u WHERE u.party IS NOT NULL " +
            "GROUP BY u.party.id, u.party.name " +
-           "ORDER BY SUM(u.totalDrops) DESC")
+           "ORDER BY SUM(u.earnedDrops) DESC")
     List<Object[]> getPartyRankings();
 
     List<User> findByNicknameIn(List<String> nicknames);

@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -60,6 +61,20 @@ public class GachaController {
     public ResponseEntity<Map<String, Object>> quota(Authentication authentication) {
         User user = getUser(authentication);
         return ResponseEntity.ok(gachaService.getRemainingDrawsToday(user.getId()));
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> stats(Authentication authentication) {
+        User user = getUser(authentication);
+        var dto = gachaService.getStats(user.getId());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("remaining", dto.getRemaining());
+        result.put("dailyLimit", dto.getDailyLimit());
+        result.put("todayDrawCount", dto.getTodayDrawCount());
+        result.put("betCost", dto.getBetCost());
+        result.put("expectedReward", dto.getExpectedReward());
+        result.put("totalActivePrizes", dto.getTotalActivePrizes());
+        return ResponseEntity.ok(result);
     }
 
     private User getUser(Authentication authentication) {

@@ -30,6 +30,12 @@ public interface DropTransactionRepository extends JpaRepository<DropTransaction
     List<Object[]> sumAmountGroupByUserForPeriod(@Param("startDate") LocalDateTime startDate,
                                                  @Param("endDate") LocalDateTime endDate);
 
+    @Query("SELECT d.user.id, COALESCE(SUM(d.amount), 0) FROM DropTransaction d " +
+           "WHERE d.createdAt >= :startDate AND d.createdAt < :endDate AND d.amount > 0 " +
+           "GROUP BY d.user.id")
+    List<Object[]> sumPositiveAmountGroupByUserForPeriod(@Param("startDate") LocalDateTime startDate,
+                                                         @Param("endDate") LocalDateTime endDate);
+
     @Query("SELECT COUNT(d) FROM DropTransaction d " +
            "WHERE d.createdAt >= :startDate AND d.createdAt < :endDate")
     long countByPeriod(@Param("startDate") LocalDateTime startDate,

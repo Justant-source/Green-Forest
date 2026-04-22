@@ -49,7 +49,7 @@ export default function GachaPrizeCard({
           <img
             src={prize.imageUrl}
             alt={prize.name}
-            className="w-12 h-12 rounded-lg object-cover"
+            className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-black/10"
           />
         )}
       </div>

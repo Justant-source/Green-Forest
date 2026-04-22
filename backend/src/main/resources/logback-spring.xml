@@ -6,7 +6,7 @@
   <property name="ACTIVITY_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level - %msg%n" />
 
   <!-- ===== Console (dev 환경에서만) ===== -->
-  <springProfile name="local">
+  <springProfile name="dev">
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
       <encoder>
         <pattern>${LOG_PATTERN}</pattern>
@@ -64,24 +64,35 @@
   </appender>
 
   <!-- ===== ACTIVITY 로거 : activity.log 전용 ===== -->
-  <logger name="ACTIVITY" level="INFO" additivity="false">
-    <appender-ref ref="ACTIVITY_FILE" />
-    <springProfile name="local">
+  <springProfile name="dev">
+    <logger name="ACTIVITY" level="INFO" additivity="false">
+      <appender-ref ref="ACTIVITY_FILE" />
       <appender-ref ref="CONSOLE" />
-    </springProfile>
-  </logger>
+    </logger>
+  </springProfile>
+  <springProfile name="prod">
+    <logger name="ACTIVITY" level="INFO" additivity="false">
+      <appender-ref ref="ACTIVITY_FILE" />
+    </logger>
+  </springProfile>
 
   <!-- ===== SYSTEM 로거 : app.log + error.log ===== -->
-  <logger name="SYSTEM" level="WARN" additivity="false">
-    <appender-ref ref="APP_FILE" />
-    <appender-ref ref="ERROR_FILE" />
-    <springProfile name="local">
+  <springProfile name="dev">
+    <logger name="SYSTEM" level="WARN" additivity="false">
+      <appender-ref ref="APP_FILE" />
+      <appender-ref ref="ERROR_FILE" />
       <appender-ref ref="CONSOLE" />
-    </springProfile>
-  </logger>
+    </logger>
+  </springProfile>
+  <springProfile name="prod">
+    <logger name="SYSTEM" level="WARN" additivity="false">
+      <appender-ref ref="APP_FILE" />
+      <appender-ref ref="ERROR_FILE" />
+    </logger>
+  </springProfile>
 
   <!-- ===== Root 로거 ===== -->
-  <springProfile name="local">
+  <springProfile name="dev">
     <root level="INFO">
       <appender-ref ref="CONSOLE" />
       <appender-ref ref="APP_FILE" />

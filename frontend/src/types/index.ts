@@ -18,6 +18,7 @@ export interface Post {
   commentCount: number;
   authorNickname: string | null;
   status?: string | null;
+  categoryHasStatus?: boolean;
   imageUrls?: string[];
   bookmarked?: boolean;
   liked?: boolean;
@@ -252,6 +253,7 @@ export interface GachaPrizeInfo {
   tierLabel: string;
   currentProbability: number;
   displayOrder: number;
+  active?: boolean;
   evMultiplier?: number; // admin only
 }
 
@@ -290,6 +292,15 @@ export interface GachaQuota {
   limit: number;
 }
 
+export interface GachaStats {
+  remaining: number;
+  dailyLimit: number;
+  todayDrawCount: number;
+  betCost: number;
+  expectedReward: number;
+  totalActivePrizes: number;
+}
+
 export interface PlazaWinner {
   type: 'GACHA' | 'ATTENDANCE';
   userNickname: string;
@@ -322,6 +333,17 @@ export interface AdminCreatePrizeRequest {
   displayOrder?: number;
 }
 
+export interface AdminDeliveryItem {
+  id: number;
+  userNickname: string;
+  prizeName: string;
+  prizeCashValue: number;
+  deliveryStatus: 'PENDING' | 'DELIVERED';
+  deliveryMemo: string | null;
+  createdAt: string;
+  deliveredAt: string | null;
+}
+
 export interface AdminUpdatePrizeRequest {
   name?: string;
   description?: string;
@@ -332,4 +354,5 @@ export interface AdminUpdatePrizeRequest {
   evMultiplier?: number;
   active?: boolean;
   displayOrder?: number;
+  tier?: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
 }

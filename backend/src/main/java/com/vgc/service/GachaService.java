@@ -2,15 +2,18 @@ package com.vgc.service;
 
 import com.vgc.dto.AdminCreatePrizeRequest;
 import com.vgc.dto.AdminUpdatePrizeRequest;
+import com.vgc.dto.GachaStatsDto;
 import com.vgc.entity.*;
 import com.vgc.repository.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
@@ -35,19 +38,37 @@ public class GachaService {
     private final DropService dropService;
     private final NotificationService notificationService;
     private final ActivityLogService activityLogService;
+    private final ImageStorageService imageStorageService;
 
     public GachaService(GachaPrizeRepository prizeRepository,
                         GachaDrawRepository drawRepository,
                         UserRepository userRepository,
                         DropService dropService,
                         NotificationService notificationService,
-                        ActivityLogService activityLogService) {
+                        ActivityLogService activityLogService,
+                        ImageStorageService imageStorageService) {
         this.prizeRepository = prizeRepository;
         this.drawRepository = drawRepository;
         this.userRepository = userRepository;
         this.dropService = dropService;
         this.notificationService = notificationService;
         this.activityLogService = activityLogService;
+        this.imageStorageService = imageStorageService;
+    }
+
+    @Async
+    @Transactional
+    public void uploadAndSetPrizeImage(Long prizeId, byte[] imageBytes, String originalFilename) {
+        try {
+            String imageUrl = imageStorageService.uploadBytes(imageBytes, originalFilename);
+            GachaPrize prize = prizeRepository.findById(prizeId).orElse(null);
+            if (prize != null) {
+                prize.setImageUrl(imageUrl);
+                prizeRepository.save(prize);
+            }
+        } catch (IOException e) {
+            // 업로드 실패 시 무시 (이미지 없이 상품은 정상 저장됨)
+        }
     }
 
     @Transactional
@@ -204,6 +225,7 @@ public class GachaService {
         }
         if (req.getActive() != null) prize.setActive(req.getActive());
         if (req.getDisplayOrder() != null) prize.setDisplayOrder(req.getDisplayOrder());
+        if (req.getTier() != null) prize.setTier(req.getTier());
         return prizeRepository.save(prize);
     }
 
@@ -216,24 +238,34 @@ public class GachaService {
     }
 
     @Transactional(readOnly = true)
-    public List<GachaPrize> listAllPrizes() {
-        return prizeRepository.findAll();
+    public List<Map<String, Object>> listAllPrizes() {
+        return prizeRepository.findAll(org.springframework.data.domain.Sort.by("displayOrder")).stream()
+                .map(p -> {
+                    Map<String, Object> m = toPrizeResponse(p);
+                    m.put("active", p.isActive());
+                    m.put("evMultiplier", p.getEvMultiplier());
+                    return m;
+                })
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Page<GachaDraw> listPendingDeliveries(Pageable pageable) {
-        return drawRepository.findByWinnerTrueAndDeliveryStatusOrderByCreatedAtAsc(GachaDeliveryStatus.PENDING, pageable);
+    public List<com.vgc.dto.AdminDeliveryDto> listDeliveries(GachaDeliveryStatus status) {
+        return drawRepository.findWinnersWithUserByStatus(status).stream()
+                .map(com.vgc.dto.AdminDeliveryDto::from)
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Transactional
-    public GachaDraw markDelivered(Long drawId, Long adminId, String memo) {
+    public com.vgc.dto.AdminDeliveryDto markDelivered(Long drawId, Long adminId, String memo) {
         GachaDraw draw = drawRepository.findById(drawId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "기록 없음"));
         draw.setDeliveryStatus(GachaDeliveryStatus.DELIVERED);
         draw.setDeliveredAt(LocalDateTime.now(KST));
         draw.setDeliveredBy(adminId);
         draw.setDeliveryMemo(memo);
-        return drawRepository.save(draw);
+        GachaDraw saved = drawRepository.save(draw);
+        return com.vgc.dto.AdminDeliveryDto.from(saved);
     }
 
     @Transactional(readOnly = true)
@@ -244,6 +276,47 @@ public class GachaService {
         result.put("totalWins", stats[1]);
         result.put("totalCashValue", stats[2]);
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public GachaStatsDto getStats(Long userId) {
+        // 오늘 뽑기 횟수
+        ZonedDateTime kstNow = ZonedDateTime.now(KST);
+        LocalDateTime todayStart = kstNow.toLocalDate().atStartOfDay();
+        LocalDateTime todayEnd = todayStart.plusDays(1);
+        long todayCount = drawRepository.countByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
+        long remaining = Math.max(0, DAILY_DRAW_LIMIT - todayCount);
+
+        // 활성 상품 목록
+        List<GachaPrize> activePrizes = prizeRepository.findByActiveTrueAndRemainingStockGreaterThanOrderByDisplayOrderAscIdAsc(0);
+        int totalActivePrizes = activePrizes.size();
+
+        // 기대값 계산: 각 상품의 확률 가중평균
+        BigDecimal expectedReward = BigDecimal.ZERO;
+        if (!activePrizes.isEmpty()) {
+            // 모든 활성 상품의 weight 합계
+            BigDecimal totalWeight = activePrizes.stream()
+                    .map(p -> p.getEvMultiplier())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            // 각 상품의 기대값: (cash_value * ev) * (ev / total_weight)
+            for (GachaPrize p : activePrizes) {
+                BigDecimal baseProb = new BigDecimal(DRAW_COST).multiply(DROP_CASH_VALUE)
+                        .divide(new BigDecimal(p.getCashValue()), 5, RoundingMode.HALF_UP);
+                BigDecimal finalProb = baseProb.multiply(p.getEvMultiplier()).min(BigDecimal.ONE);
+                // 기대 보상 = cashValue * 승률
+                BigDecimal prizeValue = new BigDecimal(p.getCashValue()).multiply(finalProb);
+                expectedReward = expectedReward.add(prizeValue);
+            }
+            // 평균
+            if (!activePrizes.isEmpty()) {
+                expectedReward = expectedReward.divide(
+                        new BigDecimal(activePrizes.size()),
+                        2, RoundingMode.HALF_UP);
+            }
+        }
+
+        return new GachaStatsDto(remaining, DAILY_DRAW_LIMIT, todayCount, DRAW_COST, expectedReward, totalActivePrizes);
     }
 
     @Transactional(readOnly = true)

@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Post, CategoryInfo } from "@/types";
-import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, updatePostStatus, deletePost, startConversation, toMediaUrl } from "@/lib/api";
+import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, deletePost, startConversation, toMediaUrl } from "@/lib/api";
+import { updatePostStatus } from "@/lib/api-post-status";
 import { useAuth } from "@/context/AuthContext";
 import CommentSection from "./CommentSection";
 import PostContent from "./PostContent";
@@ -129,7 +130,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
             >
               {catInfo?.label || post.category}
             </span>
-            {post.status && (
+            {post.status && post.categoryHasStatus && (
               isLoggedIn && nickname === post.authorNickname ? (
                 <select
                   value={post.status}

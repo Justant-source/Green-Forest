@@ -20,6 +20,7 @@ public class PostResponse {
     private boolean bookmarked;
     private boolean liked;
     private String status;
+    private boolean categoryHasStatus;
     private List<String> imageUrls;
     private Long questId;
     private boolean anonymous;
@@ -70,6 +71,8 @@ public class PostResponse {
     public void setLiked(boolean liked) { this.liked = liked; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public boolean isCategoryHasStatus() { return categoryHasStatus; }
+    public void setCategoryHasStatus(boolean categoryHasStatus) { this.categoryHasStatus = categoryHasStatus; }
     public List<String> getImageUrls() { return imageUrls; }
     public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
     public Long getQuestId() { return questId; }

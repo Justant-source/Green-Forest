@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   AdminUser, AdminParty, AdminStats, Quest,
   CategoryInfo, CategoryRequestInfo,
-  AttendancePhrase, GachaPrizeInfo,
+  AttendancePhrase, GachaPrizeInfo, AdminDeliveryItem,
 } from "@/types";
 import {
   getAdminCategories, createAdminCategory, deleteAdminCategory,
@@ -16,9 +16,11 @@ import {
   getAdminStats, getQuests,
   createAdminQuest, deleteAdminQuest,
   awardDrops, deductDrops,
-  createAnnouncement,
+  adminListAnnouncements, adminCreateAnnouncement, adminActivateAnnouncement,
+  adminDeactivateAllAnnouncements, adminDeleteAnnouncement,
   adminListPhrases, adminCreatePhrase, adminUpdatePhrase, adminDeletePhrase,
-  adminListAllPrizes, adminCreatePrize, adminUpdatePrize,
+  adminListAllPrizes, adminCreatePrize, adminUpdatePrize, adminDeactivatePrize,
+  adminListDeliveries, adminMarkDelivered,
 } from "@/lib/api";
 
 type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha";
@@ -70,6 +72,7 @@ export default function AdminPage() {
   // Announce
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
+  const [announcements, setAnnouncements] = useState<{ id: number; title: string; content: string; active: boolean; createdAt: string }[]>([]);
 
   // Attendance
   const [phrases, setPhrases] = useState<AttendancePhrase[]>([]);
@@ -84,6 +87,20 @@ export default function AdminPage() {
   const [newPrizeCash, setNewPrizeCash] = useState("");
   const [newPrizeStock, setNewPrizeStock] = useState("");
   const [newPrizeTier, setNewPrizeTier] = useState<"COMMON" | "RARE" | "EPIC" | "LEGENDARY">("COMMON");
+  const [newPrizeImageFile, setNewPrizeImageFile] = useState<File | null>(null);
+  const [newPrizeImagePreview, setNewPrizeImagePreview] = useState<string | null>(null);
+  const [editingPrizeId, setEditingPrizeId] = useState<number | null>(null);
+  const [editPrizeForm, setEditPrizeForm] = useState<{
+    name: string; description: string; imageUrl: string;
+    cashValue: string; totalStock: string; remainingStock: string;
+    tier: "COMMON" | "RARE" | "EPIC" | "LEGENDARY";
+    evMultiplier: string; active: boolean;
+  } | null>(null);
+  const [editPrizeImageFile, setEditPrizeImageFile] = useState<File | null>(null);
+  const [editPrizeImagePreview, setEditPrizeImagePreview] = useState<string | null>(null);
+  const [deliveries, setDeliveries] = useState<AdminDeliveryItem[]>([]);
+  const [deliveryTab, setDeliveryTab] = useState<"PENDING" | "DELIVERED">("PENDING");
+  const [deliveryMemo, setDeliveryMemo] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (!isLoggedIn || !isAdmin) {
@@ -93,9 +110,21 @@ export default function AdminPage() {
     loadAllData();
   }, [isLoggedIn, isAdmin, router]);
 
+  useEffect(() => {
+    if (tab !== "gacha") return;
+    (async () => {
+      try {
+        const data = await adminListDeliveries(deliveryTab);
+        setDeliveries(data);
+      } catch {
+        setDeliveries([]);
+      }
+    })();
+  }, [tab, deliveryTab]);
+
   const loadAllData = async () => {
     try {
-      const [s, u, p, q, cats, reqs, phr, prz] = await Promise.all([
+      const [s, u, p, q, cats, reqs, phr, prz, anns] = await Promise.all([
         getAdminStats(),
         getAdminUsers(),
         getAdminParties(),
@@ -104,6 +133,7 @@ export default function AdminPage() {
         getPendingCategoryRequests(),
         adminListPhrases(),
         adminListAllPrizes(),
+        adminListAnnouncements(),
       ]);
       setStats(s);
       setUsers(u);
@@ -112,7 +142,8 @@ export default function AdminPage() {
       setCategories(cats);
       setRequests(reqs);
       setPhrases(phr);
-      setPrizes(prz);
+      setPrizes([...prz].sort((a, b) => a.displayOrder - b.displayOrder));
+      setAnnouncements(anns);
     } catch (error) {
       console.error("Failed to load admin data:", error);
     } finally {
@@ -596,144 +627,467 @@ export default function AdminPage() {
       )}
 
       {/* Gacha */}
-      {tab === "gacha" && (
-        <div className="space-y-6">
+      {tab === "gacha" && (() => {
+        const TIER_BORDER: Record<string, string> = {
+          COMMON: "border-gray-300",
+          RARE: "border-blue-300",
+          EPIC: "border-purple-400",
+          LEGENDARY: "border-yellow-400",
+        };
+        const TIER_BG: Record<string, string> = {
+          COMMON: "bg-gray-50",
+          RARE: "bg-blue-50",
+          EPIC: "bg-purple-50",
+          LEGENDARY: "bg-yellow-50",
+        };
+        const TIER_BADGE: Record<string, string> = {
+          COMMON: "bg-gray-200 text-gray-700",
+          RARE: "bg-blue-200 text-blue-800",
+          EPIC: "bg-purple-200 text-purple-800",
+          LEGENDARY: "bg-yellow-300 text-yellow-900",
+        };
+        const inputCls = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500";
+
+        const openEdit = (p: GachaPrizeInfo) => {
+          setEditingPrizeId(p.id);
+          setEditPrizeForm({
+            name: p.name,
+            description: p.description ?? "",
+            imageUrl: p.imageUrl ?? "",
+            cashValue: String(p.cashValue),
+            totalStock: String(p.remainingStock),
+            remainingStock: String(p.remainingStock),
+            tier: p.tier,
+            evMultiplier: String(p.evMultiplier ?? 1),
+            active: true,
+          });
+          setEditPrizeImageFile(null);
+          setEditPrizeImagePreview(p.imageUrl ?? null);
+        };
+
+        const handleMoveOrder = async (idx: number, dir: -1 | 1) => {
+          const swapIdx = idx + dir;
+          if (swapIdx < 0 || swapIdx >= prizes.length) return;
+
+          // 배열에서 두 항목 위치 교환
+          const newOrder = [...prizes];
+          [newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]];
+
+          // 낙관적 UI 업데이트 (즉시 반영)
+          setPrizes(newOrder);
+
+          // 전체 인덱스 기준으로 displayOrder 재기록
+          try {
+            await Promise.all(
+              newOrder.map((p, i) => adminUpdatePrize(p.id, { displayOrder: i }))
+            );
+          } catch {
+            alert("순서 변경 실패");
+            setPrizes([...(await adminListAllPrizes())].sort((a, b) => a.displayOrder - b.displayOrder));
+          }
+        };
+
+        const loadDeliveries = async (tab: "PENDING" | "DELIVERED") => {
+          try {
+            const data = await adminListDeliveries(tab);
+            setDeliveries(data);
+          } catch { setDeliveries([]); }
+        };
+
+        return (
+          <div className="space-y-8">
+            {/* 당첨 수령 관리 */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">당첨 수령 관리</h3>
+              <div className="flex gap-2 mb-3">
+                {(["PENDING", "DELIVERED"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={async () => { setDeliveryTab(t); await loadDeliveries(t); }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                      deliveryTab === t ? "bg-forest-500 text-white" : "bg-white border border-gray-300 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {t === "PENDING" ? "미수령" : "수령완료"}
+                  </button>
+                ))}
+              </div>
+              {deliveries.length === 0 ? (
+                <div className="text-center text-gray-400 text-sm py-6 bg-white rounded-xl border">
+                  {deliveryTab === "PENDING" ? "미수령 당첨자가 없습니다" : "수령 완료 내역이 없습니다"}
+                </div>
+              ) : (
+                <div className="space-y-2 max-w-2xl">
+                  {deliveries.map((d) => (
+                    <div key={d.id} className={`bg-white rounded-xl border-l-4 p-4 ${d.deliveryStatus === "PENDING" ? "border-orange-400" : "border-green-400"}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm text-gray-800">{d.userNickname}</span>
+                            <span className="text-gray-400 text-xs">→</span>
+                            <span className="text-sm text-gray-700">{d.prizeName}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${d.deliveryStatus === "PENDING" ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"}`}>
+                              {d.deliveryStatus === "PENDING" ? "미수령" : "수령완료"}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {new Date(d.createdAt).toLocaleString("ko-KR")} · {d.prizeCashValue.toLocaleString()}원
+                            {d.deliveryMemo && <span className="ml-2 text-gray-500">메모: {d.deliveryMemo}</span>}
+                          </div>
+                        </div>
+                        {d.deliveryStatus === "PENDING" && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <input
+                              type="text"
+                              placeholder="메모 (선택)"
+                              value={deliveryMemo[d.id] ?? ""}
+                              onChange={(e) => setDeliveryMemo(prev => ({ ...prev, [d.id]: e.target.value }))}
+                              className="px-2 py-1 border border-gray-300 rounded-lg text-xs w-28 focus:outline-none focus:ring-1 focus:ring-forest-500"
+                            />
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await adminMarkDelivered(d.id, deliveryMemo[d.id]);
+                                  await loadDeliveries(deliveryTab);
+                                } catch { alert("처리 실패"); }
+                              }}
+                              className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 whitespace-nowrap"
+                            >
+                              수령 완료
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 상품 추가 폼 */}
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!newPrizeName.trim() || !newPrizeCash || !newPrizeStock) return;
+                try {
+                  await adminCreatePrize({
+                    name: newPrizeName.trim(),
+                    cashValue: Number(newPrizeCash),
+                    totalStock: Number(newPrizeStock),
+                    tier: newPrizeTier,
+                  }, newPrizeImageFile ?? undefined);
+                  setPrizes([...(await adminListAllPrizes())].sort((a, b) => a.displayOrder - b.displayOrder));
+                  setNewPrizeName(""); setNewPrizeCash(""); setNewPrizeStock("");
+                  setNewPrizeImageFile(null); setNewPrizeImagePreview(null);
+                } catch { alert("상품 생성 실패"); }
+              }}
+              className="bg-white p-4 rounded-xl border space-y-3 max-w-lg"
+            >
+              <h3 className="font-semibold text-sm">상품 추가</h3>
+              <input type="text" value={newPrizeName} onChange={(e) => setNewPrizeName(e.target.value)} placeholder="상품명" className={inputCls} required />
+              <input type="number" value={newPrizeCash} onChange={(e) => setNewPrizeCash(e.target.value)} placeholder="현금가치 (원)" className={inputCls} required />
+              <input type="number" value={newPrizeStock} onChange={(e) => setNewPrizeStock(e.target.value)} placeholder="재고" className={inputCls} required />
+              <select value={newPrizeTier} onChange={(e) => setNewPrizeTier(e.target.value as "COMMON" | "RARE" | "EPIC" | "LEGENDARY")} className={inputCls}>
+                <option value="COMMON">일반</option>
+                <option value="RARE">레어</option>
+                <option value="EPIC">에픽</option>
+                <option value="LEGENDARY">레전더리</option>
+              </select>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">이미지 (선택)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    setNewPrizeImageFile(file);
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setNewPrizeImagePreview(ev.target?.result as string);
+                      reader.readAsDataURL(file);
+                    } else {
+                      setNewPrizeImagePreview(null);
+                    }
+                  }}
+                  className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-forest-50 file:text-forest-600 hover:file:bg-forest-100"
+                />
+                {newPrizeImagePreview && (
+                  <img src={newPrizeImagePreview} alt="미리보기" className="mt-2 w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                )}
+              </div>
+              <button type="submit" className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 transition-colors">추가</button>
+            </form>
+
+            {/* 상품 목록 */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">상품 목록</h3>
+              <div className="space-y-2 max-w-2xl">
+                {prizes.map((p, idx) => (
+                  <div key={p.id} className={`border-2 rounded-xl ${TIER_BORDER[p.tier]} ${p.active === false ? "bg-gray-100 opacity-60" : TIER_BG[p.tier]}`}>
+                    {/* 헤더 행 */}
+                    <div className="flex items-center gap-2 px-4 py-3">
+                      {/* 순서 버튼 */}
+                      <div className="flex flex-col gap-0.5">
+                        <button onClick={() => handleMoveOrder(idx, -1)} disabled={idx === 0} className="w-6 h-5 flex items-center justify-center text-gray-400 hover:text-gray-700 disabled:opacity-20 text-xs leading-none">▲</button>
+                        <button onClick={() => handleMoveOrder(idx, 1)} disabled={idx === prizes.length - 1} className="w-6 h-5 flex items-center justify-center text-gray-400 hover:text-gray-700 disabled:opacity-20 text-xs leading-none">▼</button>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${TIER_BADGE[p.tier]}`}>{p.tierLabel}</span>
+                          <span className="font-medium text-sm">{p.name}</span>
+                          {!p.remainingStock && <span className="text-xs text-red-400 font-medium">품절</span>}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {p.cashValue.toLocaleString()}원 | 재고 {p.remainingStock}개 | 확률 {(p.currentProbability * 100).toFixed(2)}%
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => editingPrizeId === p.id ? setEditingPrizeId(null) : openEdit(p)}
+                          className="text-xs px-3 py-1.5 bg-forest-500 text-white rounded-lg hover:bg-forest-600 font-medium"
+                        >
+                          {editingPrizeId === p.id ? "닫기" : "수정"}
+                        </button>
+                        {p.active === false ? (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await adminUpdatePrize(p.id, { active: true });
+                                setPrizes([...(await adminListAllPrizes())].sort((a, b) => a.displayOrder - b.displayOrder));
+                              } catch { alert("활성화 실패"); }
+                            }}
+                            className="text-xs px-3 py-1.5 border border-green-400 text-green-600 rounded-lg hover:bg-green-50 font-medium"
+                          >
+                            활성화
+                          </button>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`"${p.name}"을 비활성화하시겠습니까?`)) return;
+                              try {
+                                await adminDeactivatePrize(p.id);
+                                setPrizes([...(await adminListAllPrizes())].sort((a, b) => a.displayOrder - b.displayOrder));
+                              } catch { alert("비활성화 실패"); }
+                            }}
+                            className="text-xs px-3 py-1.5 border border-red-300 text-red-500 rounded-lg hover:bg-red-50 font-medium"
+                          >
+                            비활성화
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 수정 폼 (펼침) */}
+                    {editingPrizeId === p.id && editPrizeForm && (
+                      <div className="border-t border-gray-200 px-4 py-4 space-y-3 bg-white rounded-b-xl">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block">상품명</label>
+                            <input type="text" value={editPrizeForm.name} onChange={(e) => setEditPrizeForm({ ...editPrizeForm, name: e.target.value })} className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block">등급</label>
+                            <select value={editPrizeForm.tier} onChange={(e) => setEditPrizeForm({ ...editPrizeForm, tier: e.target.value as "COMMON" | "RARE" | "EPIC" | "LEGENDARY" })} className={inputCls}>
+                              <option value="COMMON">일반</option>
+                              <option value="RARE">레어</option>
+                              <option value="EPIC">에픽</option>
+                              <option value="LEGENDARY">레전더리</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">설명</label>
+                          <input type="text" value={editPrizeForm.description} onChange={(e) => setEditPrizeForm({ ...editPrizeForm, description: e.target.value })} placeholder="(선택)" className={inputCls} />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">이미지</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] ?? null;
+                              setEditPrizeImageFile(file);
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (ev) => setEditPrizeImagePreview(ev.target?.result as string);
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-forest-50 file:text-forest-600 hover:file:bg-forest-100"
+                          />
+                          {editPrizeImagePreview && (
+                            <img src={editPrizeImagePreview} alt="미리보기" className="mt-2 w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block">현금가치 (원)</label>
+                            <input type="number" value={editPrizeForm.cashValue} onChange={(e) => setEditPrizeForm({ ...editPrizeForm, cashValue: e.target.value })} className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block">남은 재고</label>
+                            <input type="number" value={editPrizeForm.remainingStock} onChange={(e) => setEditPrizeForm({ ...editPrizeForm, remainingStock: e.target.value })} className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block">EV 배율</label>
+                            <input type="number" step="0.01" value={editPrizeForm.evMultiplier} onChange={(e) => setEditPrizeForm({ ...editPrizeForm, evMultiplier: e.target.value })} className={inputCls} />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" id={`active-${p.id}`} checked={editPrizeForm.active} onChange={(e) => setEditPrizeForm({ ...editPrizeForm, active: e.target.checked })} className="w-4 h-4" />
+                          <label htmlFor={`active-${p.id}`} className="text-sm text-gray-700">활성화</label>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={async () => {
+                              try {
+                                await adminUpdatePrize(p.id, {
+                                  name: editPrizeForm.name,
+                                  description: editPrizeForm.description || undefined,
+                                  cashValue: Number(editPrizeForm.cashValue),
+                                  remainingStock: Number(editPrizeForm.remainingStock),
+                                  tier: editPrizeForm.tier,
+                                  evMultiplier: Number(editPrizeForm.evMultiplier),
+                                  active: editPrizeForm.active,
+                                }, editPrizeImageFile ?? undefined);
+                                setPrizes([...(await adminListAllPrizes())].sort((a, b) => a.displayOrder - b.displayOrder));
+                                setEditingPrizeId(null);
+                                setEditPrizeImageFile(null);
+                                setEditPrizeImagePreview(null);
+                              } catch { alert("수정 실패"); }
+                            }}
+                            className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600"
+                          >
+                            저장
+                          </button>
+                          <button onClick={() => setEditingPrizeId(null)} className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50">취소</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Announce */}
+      {tab === "announce" && (
+        <div className="space-y-6 max-w-2xl">
+          {/* 새 공지 작성 */}
           <form
             onSubmit={async (e) => {
               e.preventDefault();
-              if (!newPrizeName.trim() || !newPrizeCash || !newPrizeStock) return;
+              if (!annTitle.trim() || !annContent.trim()) return;
               try {
-                await adminCreatePrize({
-                  name: newPrizeName.trim(),
-                  cashValue: Number(newPrizeCash),
-                  totalStock: Number(newPrizeStock),
-                  tier: newPrizeTier,
-                });
-                const updated = await adminListAllPrizes();
-                setPrizes(updated);
-                setNewPrizeName("");
-                setNewPrizeCash("");
-                setNewPrizeStock("");
-              } catch {
-                alert("상품 생성 실패");
-              }
+                await adminCreateAnnouncement(annTitle.trim(), annContent.trim());
+                const updated = await adminListAnnouncements();
+                setAnnouncements(updated);
+                setAnnTitle("");
+                setAnnContent("");
+              } catch { alert("공지 생성 실패"); }
             }}
-            className="bg-white p-4 rounded-xl border space-y-3 max-w-lg"
+            className="bg-white p-4 rounded-xl border space-y-3"
           >
-            <h3 className="font-semibold text-sm">상품 추가</h3>
+            <h3 className="font-semibold text-sm">새 공지 작성</h3>
             <input
               type="text"
-              value={newPrizeName}
-              onChange={(e) => setNewPrizeName(e.target.value)}
-              placeholder="상품명"
+              value={annTitle}
+              onChange={(e) => setAnnTitle(e.target.value)}
+              placeholder="제목"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
               required
             />
-            <input
-              type="number"
-              value={newPrizeCash}
-              onChange={(e) => setNewPrizeCash(e.target.value)}
-              placeholder="현금가치"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+            <textarea
+              value={annContent}
+              onChange={(e) => setAnnContent(e.target.value)}
+              placeholder="내용"
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 resize-none"
               required
             />
-            <input
-              type="number"
-              value={newPrizeStock}
-              onChange={(e) => setNewPrizeStock(e.target.value)}
-              placeholder="재고"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
-              required
-            />
-            <select
-              value={newPrizeTier}
-              onChange={(e) =>
-                setNewPrizeTier(
-                  e.target.value as "COMMON" | "RARE" | "EPIC" | "LEGENDARY"
-                )
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
-            >
-              <option value="COMMON">일반</option>
-              <option value="RARE">레어</option>
-              <option value="EPIC">에픽</option>
-              <option value="LEGENDARY">레전더리</option>
-            </select>
             <button
               type="submit"
               className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 transition-colors"
             >
-              추가
+              저장 (미게시)
             </button>
           </form>
 
+          {/* 공지 목록 */}
           <div>
-            <h3 className="font-semibold text-sm mb-3">상품 목록</h3>
-            <div className="space-y-2">
-              {prizes.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between px-4 py-3 bg-white rounded-lg border"
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-sm">공지 목록</h3>
+              {announcements.some((a) => a.active) && (
+                <button
+                  onClick={async () => {
+                    if (!confirm("현재 공지를 내리겠습니까?")) return;
+                    try {
+                      await adminDeactivateAllAnnouncements();
+                      setAnnouncements(await adminListAnnouncements());
+                    } catch { alert("실패"); }
+                  }}
+                  className="text-xs px-3 py-1.5 border border-red-300 text-red-500 rounded-lg hover:bg-red-50"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">{p.name}</div>
-                    <div className="text-xs text-gray-400">
-                      {p.tierLabel} | {p.cashValue}원 | 재고:{p.remainingStock}
+                  공지 내리기
+                </button>
+              )}
+            </div>
+            <div className="space-y-2">
+              {announcements.map((a) => (
+                <div
+                  key={a.id}
+                  className={`rounded-xl border-l-4 p-4 ${a.active ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {a.active && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500 text-white font-medium">현재 공지</span>
+                        )}
+                        <span className="font-semibold text-sm text-gray-800">{a.title}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{a.content}</p>
+                      <p className="text-xs text-gray-400 mt-1">{new Date(a.createdAt).toLocaleDateString("ko-KR")}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {!a.active && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await adminActivateAnnouncement(a.id);
+                              setAnnouncements(await adminListAnnouncements());
+                            } catch { alert("게시 실패"); }
+                          }}
+                          className="text-xs px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+                        >
+                          게시
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => {
+                          if (!confirm("삭제하시겠습니까?")) return;
+                          try {
+                            await adminDeleteAnnouncement(a.id);
+                            setAnnouncements(await adminListAnnouncements());
+                          } catch { alert("삭제 실패"); }
+                        }}
+                        className="text-xs px-3 py-1.5 border border-red-300 text-red-500 rounded-lg hover:bg-red-50 font-medium"
+                      >
+                        삭제
+                      </button>
                     </div>
                   </div>
-                  <button
-                    onClick={async () => {
-                      if (!confirm("삭제하시겠습니까?")) return;
-                      try {
-                        // Note: deleteAdminPrize is actually deactivate
-                        const updated = await adminListAllPrizes();
-                        setPrizes(updated);
-                      } catch {
-                        alert("삭제 실패");
-                      }
-                    }}
-                    className="text-xs text-red-500 hover:text-red-700 font-medium"
-                  >
-                    삭제
-                  </button>
                 </div>
               ))}
+              {announcements.length === 0 && (
+                <div className="text-center text-gray-400 text-sm py-6 bg-white rounded-xl border">공지가 없습니다</div>
+              )}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Announce */}
-      {tab === "announce" && (
-        <div className="max-w-lg space-y-4">
-          <input
-            type="text"
-            value={annTitle}
-            onChange={(e) => setAnnTitle(e.target.value)}
-            placeholder="공지 제목"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
-          />
-          <textarea
-            value={annContent}
-            onChange={(e) => setAnnContent(e.target.value)}
-            placeholder="공지 내용"
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-forest-500"
-          />
-          <button
-            onClick={async () => {
-              if (!annTitle.trim() || !annContent.trim()) { alert("제목과 내용을 입력하세요."); return; }
-              try {
-                await createAnnouncement(annTitle.trim(), annContent.trim());
-                alert("공지가 전송되었습니다.");
-                setAnnTitle("");
-                setAnnContent("");
-              } catch { alert("공지 전송 실패"); }
-            }}
-            className="px-6 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 transition-colors"
-          >
-            전체 공지 보내기
-          </button>
         </div>
       )}
     </div>

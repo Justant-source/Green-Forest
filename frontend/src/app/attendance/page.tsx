@@ -28,6 +28,27 @@ export default function AttendancePage() {
     getRandomPhrases(5).then(setPhrases).catch(() => {});
   }, [loadBoard]);
 
+  // 날짜 변경(6시 이후) 감지: 1분마다 board.date와 오늘 비교, 탭 포커스 시에도 확인
+  useEffect(() => {
+    const todayStr = () => new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD
+
+    const checkAndRefresh = () => {
+      if (board && board.date !== todayStr()) {
+        setBoard(null);
+        setResult(null);
+        setStamped(false);
+        loadBoard();
+      }
+    };
+
+    const interval = setInterval(checkAndRefresh, 60_000);
+    window.addEventListener("focus", checkAndRefresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", checkAndRefresh);
+    };
+  }, [board, loadBoard]);
+
   const handleSelect = (value: string, phraseId?: number) => {
     setSelectedMessage(value);
     setSelectedPhraseId(phraseId);

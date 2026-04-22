@@ -1,5 +1,7 @@
 package com.vgc.dto;
 
+import com.vgc.entity.GachaPrizeTier;
+
 import java.math.BigDecimal;
 
 public class AdminUpdatePrizeRequest {
@@ -12,6 +14,7 @@ public class AdminUpdatePrizeRequest {
     private BigDecimal evMultiplier;
     private Boolean active;
     private Integer displayOrder;
+    private GachaPrizeTier tier;
 
     public String getName() {
         return name;
@@ -83,5 +86,13 @@ public class AdminUpdatePrizeRequest {
 
     public void setDisplayOrder(Integer displayOrder) {
         this.displayOrder = displayOrder;
+    }
+
+    public GachaPrizeTier getTier() {
+        return tier;
+    }
+
+    public void setTier(GachaPrizeTier tier) {
+        this.tier = tier;
     }
 }

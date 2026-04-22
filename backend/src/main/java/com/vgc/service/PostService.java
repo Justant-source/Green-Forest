@@ -93,7 +93,14 @@ public class PostService {
         Map<Long, Long> commentCountMap = commentRepository.countByPostIdIn(postIds).stream()
                 .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
 
-        return posts.map(post -> PostResponse.from(post, commentCountMap.getOrDefault(post.getId(), 0L).intValue()));
+        return posts.map(post -> {
+            PostResponse response = PostResponse.from(post, commentCountMap.getOrDefault(post.getId(), 0L).intValue());
+            var categoryEntity = categoryRepository.findByName(post.getCategory());
+            if (categoryEntity.isPresent()) {
+                response.setCategoryHasStatus(categoryEntity.get().isHasStatus());
+            }
+            return response;
+        });
     }
 
     public PostResponse getPost(Long id) {
@@ -102,6 +109,12 @@ public class PostService {
         post.setViewCount(post.getViewCount() + 1);
         postRepository.save(post);
         PostResponse response = PostResponse.from(post, commentRepository.countByPostId(post.getId()));
+
+        // categoryHasStatus 필드 추가
+        var category = categoryRepository.findByName(post.getCategory());
+        if (category.isPresent()) {
+            response.setCategoryHasStatus(category.get().isHasStatus());
+        }
 
         List<PostTag> tags = postTagRepository.findByPostId(id);
         if (!tags.isEmpty()) {
@@ -119,6 +132,11 @@ public class PostService {
         String category = request.getCategory();
         if (!List.of("긍정문구", "동료칭찬", "퀘스트").contains(category)) {
             throw new RuntimeException("유효하지 않은 카테고리입니다. (긍정문구/동료칭찬/퀘스트)");
+        }
+
+        // 동료칭찬 주 1회 제한
+        if ("동료칭찬".equals(category) && dropService.hasPraisedThisWeek(author.getId())) {
+            throw new RuntimeException("동료 칭찬은 주 1회만 작성할 수 있습니다.");
         }
 
         Post post = new Post();
@@ -145,6 +163,11 @@ public class PostService {
 
         PostResponse response = PostResponse.from(saved, 0);
         response.setDropsAwarded(dropsAwarded);
+
+        var categoryEntity = categoryRepository.findByName(category);
+        if (categoryEntity.isPresent()) {
+            response.setCategoryHasStatus(categoryEntity.get().isHasStatus());
+        }
 
         if (!taggedUsers.isEmpty()) {
             response.setTaggedNicknames(
@@ -198,6 +221,12 @@ public class PostService {
         postRepository.save(post);
         PostResponse response = PostResponse.from(post, commentRepository.countByPostId(post.getId()));
         response.setLiked(!alreadyLiked);
+
+        var category = categoryRepository.findByName(post.getCategory());
+        if (category.isPresent()) {
+            response.setCategoryHasStatus(category.get().isHasStatus());
+        }
+
         return response;
     }
 
@@ -273,6 +302,12 @@ public class PostService {
         Post saved = postRepository.findById(id).orElseThrow();
         List<PostTag> updatedTags = postTagRepository.findByPostId(id);
         PostResponse response = PostResponse.from(saved, commentRepository.countByPostId(saved.getId()));
+
+        var category = categoryRepository.findByName(saved.getCategory());
+        if (category.isPresent()) {
+            response.setCategoryHasStatus(category.get().isHasStatus());
+        }
+
         if (!updatedTags.isEmpty()) {
             response.setTaggedNicknames(
                 updatedTags.stream()
@@ -292,9 +327,16 @@ public class PostService {
             throw new RuntimeException("본인이 작성한 글만 상태를 변경할 수 있습니다.");
         }
 
+        var category = categoryRepository.findByName(post.getCategory());
+        if (!category.isPresent() || !category.get().isHasStatus()) {
+            throw new RuntimeException("이 카테고리는 상태 변경을 지원하지 않습니다.");
+        }
+
         post.setStatus(status);
         postRepository.save(post);
-        return PostResponse.from(post, commentRepository.countByPostId(post.getId()));
+        PostResponse response = PostResponse.from(post, commentRepository.countByPostId(post.getId()));
+        response.setCategoryHasStatus(category.get().isHasStatus());
+        return response;
     }
 
     @Transactional

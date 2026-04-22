@@ -46,7 +46,7 @@ export default function PlantLevelGuide({ growth }: Props) {
               <div className="text-[10px] text-gray-400">→ {STAGES[stage + 1].label} {STAGES[stage + 1].emoji}</div>
             </div>
           ) : (
-            <span className="text-xs font-semibold text-amber-500">✨ 최고 레벨</span>
+            <span className="text-xs font-semibold text-amber-500">최고 레벨</span>
           )}
         </div>
 
@@ -66,20 +66,17 @@ export default function PlantLevelGuide({ growth }: Props) {
 
       {/* 점수 획득 방법 */}
       <div className="bg-blue-50 rounded-xl p-3">
-        <div className="text-xs font-semibold text-blue-700 mb-2">📊 점수 획득 방법</div>
+        <div className="text-xs font-semibold text-blue-700 mb-2">점수 획득 방법</div>
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-white rounded-lg py-2 px-1">
-            <div className="text-base">♥</div>
             <div className="text-[11px] font-semibold text-gray-700">좋아요 받기</div>
             <div className="text-xs text-forest-600 font-bold">+1점</div>
           </div>
           <div className="bg-white rounded-lg py-2 px-1">
-            <div className="text-base">💬</div>
             <div className="text-[11px] font-semibold text-gray-700">댓글 받기</div>
             <div className="text-xs text-forest-600 font-bold">+3점</div>
           </div>
           <div className="bg-white rounded-lg py-2 px-1">
-            <div className="text-base">🏷️</div>
             <div className="text-[11px] font-semibold text-gray-700">칭찬 태그</div>
             <div className="text-xs text-forest-600 font-bold">+10점</div>
           </div>
@@ -91,7 +88,7 @@ export default function PlantLevelGuide({ growth }: Props) {
 
       {/* 전체 레벨 안내 */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="text-xs font-semibold text-gray-600 mb-3">🗺️ 전체 레벨 안내</div>
+        <div className="text-xs font-semibold text-gray-600 mb-3">전체 레벨 안내</div>
         <div className="space-y-2">
           {STAGES.map((s, i) => {
             const isCurrentStage = i === stage;
@@ -118,16 +115,12 @@ export default function PlantLevelGuide({ growth }: Props) {
                       <span className="text-[10px] bg-forest-500 text-white px-1.5 py-0.5 rounded-full font-medium">현재</span>
                     )}
                     {isUnlocked && !isCurrentStage && (
-                      <span className="text-[10px] text-gray-400">달성 ✓</span>
+                      <span className="text-[10px] text-gray-400">달성</span>
                     )}
                   </div>
                   <div className="text-[10px] text-gray-400">
                     {s.minScore}점{nextMin ? ` ~ ${nextMin - 1}점` : " 이상"}
                   </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-[10px] text-gray-400">대표 아이콘</div>
-                  <div className="text-base">{s.emoji}</div>
                 </div>
               </div>
             );

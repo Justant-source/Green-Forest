@@ -17,6 +17,9 @@ public interface GachaDrawRepository extends JpaRepository<GachaDraw, Long> {
     List<GachaDraw> findTop20ByWinnerTrueOrderByCreatedAtDesc();
     Page<GachaDraw> findByWinnerTrueAndDeliveryStatusOrderByCreatedAtAsc(GachaDeliveryStatus status, Pageable pageable);
 
+    @Query("SELECT d FROM GachaDraw d JOIN FETCH d.user WHERE d.winner = true AND d.deliveryStatus = :status ORDER BY d.createdAt ASC")
+    List<GachaDraw> findWinnersWithUserByStatus(@Param("status") GachaDeliveryStatus status);
+
     @Query("SELECT COUNT(d), SUM(CASE WHEN d.winner = true THEN 1 ELSE 0 END), SUM(CASE WHEN d.winner = true THEN d.prizeCashValue ELSE 0 END) " +
            "FROM GachaDraw d WHERE d.createdAt BETWEEN :from AND :to")
     Object[] findStats(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);

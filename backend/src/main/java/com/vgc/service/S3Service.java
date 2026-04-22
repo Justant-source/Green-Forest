@@ -52,6 +52,18 @@ public class S3Service implements ImageStorageService {
     }
 
     @Override
+    public String uploadBytes(byte[] bytes, String originalFilename) throws IOException {
+        String fileName = UUID.randomUUID() + "_" + (originalFilename != null ? originalFilename : "file");
+        String key = "uploads/" + fileName;
+        PutObjectRequest putRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .build();
+        s3Client.putObject(putRequest, RequestBody.fromBytes(bytes));
+        return "/uploads/" + fileName;
+    }
+
+    @Override
     public void delete(String key) {
         String s3Key = key.replaceFirst("^/", "");
         DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
