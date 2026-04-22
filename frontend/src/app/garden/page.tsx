@@ -185,7 +185,6 @@ export default function GardenPage() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{user.nickname}</h1>
-            <p className="text-sm text-gray-400 mt-0.5">마이 가든</p>
           </div>
           <div className="flex gap-2">
             <button
