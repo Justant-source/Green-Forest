@@ -22,3 +22,6 @@ app.cors.allowed-origins=${CORS_ORIGINS:http://localhost:3000,http://localhost:8
 # Upload paths
 file.upload-dir=${UPLOAD_PATH:/app/uploads}
 app.upload.path=${UPLOAD_PATH:/app/uploads}/
+
+# Notify polling token (사내 우분투 폴러용 — 환경변수로 주입)
+app.notify.token=${NOTIFY_API_TOKEN:dev-local-token-please-change}

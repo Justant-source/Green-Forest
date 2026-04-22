@@ -30,19 +30,22 @@ public class AttendanceService {
     private final DropService dropService;
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
+    private final OutboundEventService outboundEventService;
 
     public AttendanceService(AttendanceCheckinRepository checkinRepository,
                              AttendancePhraseRepository phraseRepository,
                              NotificationService notificationService,
                              DropService dropService,
                              UserRepository userRepository,
-                             ActivityLogService activityLogService) {
+                             ActivityLogService activityLogService,
+                             OutboundEventService outboundEventService) {
         this.checkinRepository = checkinRepository;
         this.phraseRepository = phraseRepository;
         this.notificationService = notificationService;
         this.dropService = dropService;
         this.userRepository = userRepository;
         this.activityLogService = activityLogService;
+        this.outboundEventService = outboundEventService;
     }
 
     @Transactional
@@ -230,6 +233,29 @@ public class AttendanceService {
                 null, null
             );
         } catch (Exception ignored) {}
+
+        // 사내망 polling 용 outbox publish (같은 트랜잭션에 join)
+        // 참여자 전체 목록을 함께 실어 회사 측에서 누가/몇시에 출석했는지 알 수 있게 한다.
+        List<Map<String, Object>> participants = checkins.stream().map(c -> {
+            Map<String, Object> p = new LinkedHashMap<>();
+            p.put("userId", c.getUser().getId());
+            p.put("nickname", c.getUser().getNickname());
+            p.put("checkinAt", c.getCheckinAt().toString());
+            p.put("message", c.getMessage());
+            p.put("isWinner", c.isWinner());
+            return p;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> attendancePayload = new LinkedHashMap<>();
+        attendancePayload.put("date", date.toString());
+        attendancePayload.put("winnerId", winner.getUser().getId());
+        attendancePayload.put("winnerNickname", winner.getUser().getNickname());
+        attendancePayload.put("winnerCheckinAt", winner.getCheckinAt().toString());
+        attendancePayload.put("winnerMessage", winner.getMessage());
+        attendancePayload.put("totalCheckins", checkins.size());
+        attendancePayload.put("drawnAt", LocalDateTime.now(KST).toString());
+        attendancePayload.put("participants", participants);
+        outboundEventService.publish("ATTENDANCE_WINNER", attendancePayload);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("skipped", false);

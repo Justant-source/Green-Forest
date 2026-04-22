@@ -39,6 +39,7 @@ public class GachaService {
     private final NotificationService notificationService;
     private final ActivityLogService activityLogService;
     private final ImageStorageService imageStorageService;
+    private final OutboundEventService outboundEventService;
 
     public GachaService(GachaPrizeRepository prizeRepository,
                         GachaDrawRepository drawRepository,
@@ -46,7 +47,8 @@ public class GachaService {
                         DropService dropService,
                         NotificationService notificationService,
                         ActivityLogService activityLogService,
-                        ImageStorageService imageStorageService) {
+                        ImageStorageService imageStorageService,
+                        OutboundEventService outboundEventService) {
         this.prizeRepository = prizeRepository;
         this.drawRepository = drawRepository;
         this.userRepository = userRepository;
@@ -54,6 +56,7 @@ public class GachaService {
         this.notificationService = notificationService;
         this.activityLogService = activityLogService;
         this.imageStorageService = imageStorageService;
+        this.outboundEventService = outboundEventService;
     }
 
     @Async
@@ -141,6 +144,28 @@ public class GachaService {
                         "[" + prize.getName() + "] 당첨되었습니다! 관리자에게 문의하세요.",
                         null, null);
             } catch (Exception ignored) {}
+
+            // 사내망 polling 용 outbox publish
+            // 누가/언제/어떤 상품을/어떤 확률로 도전해 당첨됐는지 모두 실어 보낸다.
+            Map<String, Object> gachaPayload = new LinkedHashMap<>();
+            gachaPayload.put("drawId", saved.getId());
+            gachaPayload.put("userId", user.getId());
+            gachaPayload.put("userNickname", user.getNickname());
+            gachaPayload.put("prizeId", prize.getId());
+            gachaPayload.put("prizeName", prize.getName());
+            gachaPayload.put("prizeCashValue", prize.getCashValue());
+            gachaPayload.put("prizeTier", prize.getTier().name());
+            gachaPayload.put("evMultiplier", prize.getEvMultiplier());
+            gachaPayload.put("winProbability", finalProbability);
+            gachaPayload.put("rngValue", rng);
+            gachaPayload.put("dropsSpent", DRAW_COST);
+            gachaPayload.put("remainingStock", prize.getRemainingStock());
+            gachaPayload.put("drawnAt", saved.getCreatedAt() != null
+                    ? saved.getCreatedAt().toString()
+                    : LocalDateTime.now(KST).toString());
+            gachaPayload.put("todayDrawNumber", todayCount + 1);
+            gachaPayload.put("dailyDrawLimit", DAILY_DRAW_LIMIT);
+            outboundEventService.publish("GACHA_WIN", gachaPayload);
         }
 
         long remainingToday = DAILY_DRAW_LIMIT - todayCount - 1;

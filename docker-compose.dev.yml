@@ -39,6 +39,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       CORS_ORIGINS: ${CORS_ORIGINS}
       UPLOAD_PATH: /app/uploads
+      NOTIFY_API_TOKEN: ${NOTIFY_API_TOKEN}
     volumes:
       - ./backend/src:/app/src
       - ./backend/build.gradle:/app/build.gradle

@@ -2,6 +2,7 @@ package com.vgc.config;
 
 import com.vgc.security.JwtAuthenticationFilter;
 import com.vgc.security.BotTokenFilter;
+import com.vgc.security.NotifyTokenFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -27,13 +28,17 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final BotTokenFilter botTokenFilter;
+    private final NotifyTokenFilter notifyTokenFilter;
 
     @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, BotTokenFilter botTokenFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          BotTokenFilter botTokenFilter,
+                          NotifyTokenFilter notifyTokenFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.botTokenFilter = botTokenFilter;
+        this.notifyTokenFilter = notifyTokenFilter;
     }
 
     @Bean
@@ -50,6 +55,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 0. Bot API - 토큰 검증 (BotTokenFilter에서 처리)
                         .requestMatchers("/api/bot/**").permitAll()
+
+                        // 0-1. Notify polling - NotifyTokenFilter 에서 Bearer 토큰 검증
+                        .requestMatchers("/api/notify/**").authenticated()
+
+                        // 0-2. Swagger UI / OpenAPI 스펙 - 공개 (prod 는 nginx 에서 차단)
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
                         // 1. 인증 불필요 - 공개 API
                         .requestMatchers("/error").permitAll()
@@ -119,6 +130,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(botTokenFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(notifyTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -148,6 +160,13 @@ public class SecurityConfig {
     @Bean
     public FilterRegistrationBean<BotTokenFilter> botFilterRegistration(BotTokenFilter filter) {
         FilterRegistrationBean<BotTokenFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<NotifyTokenFilter> notifyFilterRegistration(NotifyTokenFilter filter) {
+        FilterRegistrationBean<NotifyTokenFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
     }
