@@ -2,7 +2,7 @@ import {
   Post, Comment, PageResponse, CategoryInfo, CategoryRequestInfo,
   ConversationInfo, ChatMessage, User, Quest, Notification,
   LeaderboardEntry, PartyMember, DropTransaction,
-  AdminUser, AdminParty, AdminStats,
+  AdminUser, AdminParty, AdminStats, AdminPost, AdminPostPage,
   AttendanceCheckinInfo, TodayBoard, AttendanceMonth, AttendancePhrase,
   GachaPrizeInfo, GachaDrawResult, GachaDrawRecord, GachaRecentWin, GachaQuota, PlazaWinner,
   PlantGrowth, AdminCreatePrizeRequest, AdminUpdatePrizeRequest,
@@ -566,15 +566,30 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
 
 export async function updateAdminUser(id: number, data: {
   partyId?: number | null;
-  plantType?: string;
+  plantType?: string | null;
   nickname?: string;
+  name?: string;
+  email?: string;
+  role?: "USER" | "ADMIN";
 }): Promise<void> {
   const res = await fetch(`${BASE_URL}/admin/users/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to update user");
+  if (!res.ok) {
+    let msg = "Failed to update user";
+    try { msg = (await res.json()).message ?? msg; } catch {}
+    throw new Error(msg);
+  }
+}
+
+export async function deleteAdminUser(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/users/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to delete user");
 }
 
 export async function resetAdminUserPassword(id: number): Promise<{ status: string; tempPassword: string }> {
@@ -990,6 +1005,42 @@ export async function adminDeactivateAllAnnouncements(): Promise<void> {
 
 export async function adminDeleteAnnouncement(id: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/admin/announcements/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
+}
+
+// ===== 관리자 - 게시글 =====
+export async function adminListPosts(params: {
+  page?: number; size?: number; category?: string; keyword?: string;
+} = {}): Promise<AdminPostPage> {
+  const qs = new URLSearchParams();
+  if (params.page != null) qs.set("page", String(params.page));
+  if (params.size != null) qs.set("size", String(params.size));
+  if (params.category) qs.set("category", params.category);
+  if (params.keyword) qs.set("keyword", params.keyword);
+  const res = await fetch(`${BASE_URL}/admin/posts?${qs.toString()}`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminUpdatePost(id: number, data: {
+  title?: string; content?: string; category?: string; anonymous?: boolean;
+}): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/posts/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw res;
+}
+
+export async function adminDeletePost(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/posts/${id}`, {
     method: "DELETE",
     headers: authHeaders(),
   });

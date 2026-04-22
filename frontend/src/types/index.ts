@@ -170,6 +170,27 @@ export interface AdminUser {
   totalDrops: number;
 }
 
+export interface AdminPost {
+  id: number;
+  title: string;
+  content: string;
+  category: string;
+  imageUrl: string | null;
+  anonymous: boolean;
+  createdAt: string;
+  authorId: number | null;
+  authorNickname: string | null;
+  authorName: string | null;
+}
+
+export interface AdminPostPage {
+  items: AdminPost[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
 export interface AdminParty {
   id: number;
   name: string;

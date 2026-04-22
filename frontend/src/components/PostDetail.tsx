@@ -52,7 +52,11 @@ export default function PostDetail({ postId }: PostDetailProps) {
             .catch(console.error);
         }
       })
-      .catch(console.error)
+      .catch((err) => {
+        // 삭제되었거나 존재하지 않는 게시글 — 광장 캐시 무효화로 썸네일 제거
+        try { sessionStorage.removeItem("gridFeedCache"); } catch {}
+        console.error(err);
+      })
       .finally(() => setLoading(false));
   }, [postId, isLoggedIn]);
 

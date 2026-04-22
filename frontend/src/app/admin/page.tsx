@@ -6,12 +6,12 @@ import { useAuth } from "@/context/AuthContext";
 import {
   AdminUser, AdminParty, AdminStats, Quest,
   CategoryInfo, CategoryRequestInfo,
-  AttendancePhrase, GachaPrizeInfo, AdminDeliveryItem,
+  AttendancePhrase, GachaPrizeInfo, AdminDeliveryItem, AdminPost,
 } from "@/types";
 import {
   getAdminCategories, createAdminCategory, deleteAdminCategory,
   getPendingCategoryRequests, approveCategoryRequest, rejectCategoryRequest,
-  getAdminUsers, updateAdminUser, resetAdminUserPassword,
+  getAdminUsers, updateAdminUser, resetAdminUserPassword, deleteAdminUser,
   getAdminParties, createAdminParty, deleteAdminParty,
   getAdminStats, getQuests,
   createAdminQuest, deleteAdminQuest,
@@ -21,9 +21,10 @@ import {
   adminListPhrases, adminCreatePhrase, adminUpdatePhrase, adminDeletePhrase,
   adminListAllPrizes, adminCreatePrize, adminUpdatePrize, adminDeactivatePrize,
   adminListDeliveries, adminMarkDelivered,
+  adminListPosts, adminUpdatePost, adminDeletePost,
 } from "@/lib/api";
 
-type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha";
+type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha" | "posts";
 
 const PLANT_OPTIONS = [
   { value: "TABLE_PALM", label: "테이블야자" },
@@ -164,6 +165,7 @@ export default function AdminPage() {
   const tabs: { key: AdminTab; label: string }[] = [
     { key: "dashboard", label: "대시보드" },
     { key: "users", label: "유저" },
+    { key: "posts", label: "게시글" },
     { key: "parties", label: "파티" },
     { key: "quests", label: "퀘스트" },
     { key: "drops", label: "물방울" },
@@ -227,51 +229,11 @@ export default function AdminPage() {
 
       {/* Users */}
       {tab === "users" && (
-        <div className="space-y-3">
-          {users.map((u) => (
-            <div key={u.id} className="flex items-center gap-3 px-4 py-3 bg-white rounded-lg border border-gray-200">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{u.nickname}</span>
-                  <span className="text-xs text-gray-500">{u.name}</span>
-                  <span className="text-xs text-gray-400">{u.email}</span>
-                  {u.role === "ADMIN" && <span className="text-[10px] bg-forest-100 text-forest-600 px-1.5 py-0.5 rounded">관리자</span>}
-                </div>
-                <div className="text-xs text-gray-400">
-                  {u.plantType ? PLANT_OPTIONS.find((p) => p.value === u.plantType)?.label : "미선택"}
-                  {u.partyName && ` | ${u.partyName}`}
-                  {` | 물방울: ${u.totalDrops}`}
-                </div>
-              </div>
-              <select
-                value={u.partyId ?? ""}
-                onChange={async (e) => {
-                  const val = e.target.value ? Number(e.target.value) : null;
-                  try {
-                    await updateAdminUser(u.id, { partyId: val });
-                    setUsers((prev) => prev.map((uu) => uu.id === u.id ? { ...uu, partyId: val, partyName: parties.find((p) => p.id === val)?.name ?? null } : uu));
-                  } catch { alert("파티 변경 실패"); }
-                }}
-                className="px-2 py-1 border border-gray-300 rounded text-xs bg-white"
-              >
-                <option value="">파티없음</option>
-                {parties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <button
-                onClick={async () => {
-                  if (!confirm(`"${u.nickname}" 유저의 비밀번호를 리셋하시겠습니까?`)) return;
-                  try {
-                    const result = await resetAdminUserPassword(u.id);
-                    alert(`임시 비밀번호: ${result.tempPassword}\n\n이 비밀번호를 해당 유저에게 전달해주세요.`);
-                  } catch { alert("비밀번호 리셋 실패"); }
-                }}
-                className="px-2 py-1 text-xs text-orange-600 hover:text-orange-800 font-medium border border-orange-300 rounded hover:bg-orange-50 transition-colors"
-              >
-                PW리셋
-              </button>
-            </div>
-          ))}
-        </div>
+        <UsersPanel
+          users={users}
+          setUsers={setUsers}
+          parties={parties}
+        />
       )}
 
       {/* Parties */}
@@ -1090,6 +1052,11 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* Posts */}
+      {tab === "posts" && (
+        <PostsPanel categories={categories} />
+      )}
     </div>
   );
 }
@@ -1099,6 +1066,305 @@ function StatCard({ label, value }: { label: string; value: number }) {
     <div className="bg-white rounded-xl border p-4 text-center">
       <div className="text-2xl font-bold text-gray-900">{value.toLocaleString()}</div>
       <div className="text-xs text-gray-400 mt-1">{label}</div>
+    </div>
+  );
+}
+
+function UsersPanel({
+  users, setUsers, parties,
+}: {
+  users: AdminUser[];
+  setUsers: React.Dispatch<React.SetStateAction<AdminUser[]>>;
+  parties: AdminParty[];
+}) {
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<{ nickname: string; name: string; email: string; role: "USER" | "ADMIN"; } | null>(null);
+  const [keyword, setKeyword] = useState("");
+
+  const filtered = users.filter((u) => {
+    if (!keyword.trim()) return true;
+    const k = keyword.toLowerCase();
+    return (
+      (u.nickname ?? "").toLowerCase().includes(k) ||
+      (u.name ?? "").toLowerCase().includes(k) ||
+      (u.email ?? "").toLowerCase().includes(k)
+    );
+  });
+
+  const openEdit = (u: AdminUser) => {
+    setEditingId(u.id);
+    setForm({ nickname: u.nickname, name: u.name ?? "", email: u.email, role: u.role === "ADMIN" ? "ADMIN" : "USER" });
+  };
+
+  const save = async (u: AdminUser) => {
+    if (!form) return;
+    try {
+      await updateAdminUser(u.id, {
+        nickname: form.nickname,
+        name: form.name,
+        email: form.email,
+        role: form.role,
+      });
+      setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, nickname: form.nickname, name: form.name, email: form.email, role: form.role } : x));
+      setEditingId(null);
+      setForm(null);
+    } catch (e: any) {
+      alert("수정 실패: " + (e?.message ?? ""));
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <input
+        type="text"
+        value={keyword}
+        onChange={(e) => setKeyword(e.target.value)}
+        placeholder="닉네임·실명·이메일로 검색"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+      />
+      {filtered.map((u) => (
+        <div key={u.id} className="bg-white rounded-lg border border-gray-200">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-sm">{u.nickname}</span>
+                <span className="text-xs text-gray-500">{u.name}</span>
+                <span className="text-xs text-gray-400">{u.email}</span>
+                {u.role === "ADMIN" && <span className="text-[10px] bg-forest-100 text-forest-600 px-1.5 py-0.5 rounded">관리자</span>}
+              </div>
+              <div className="text-xs text-gray-400">
+                {u.plantType ? PLANT_OPTIONS.find((p) => p.value === u.plantType)?.label : "미선택"}
+                {u.partyName && ` | ${u.partyName}`}
+                {` | 물방울: ${u.totalDrops.toLocaleString()}`}
+              </div>
+            </div>
+            <select
+              value={u.partyId ?? ""}
+              onChange={async (e) => {
+                const val = e.target.value ? Number(e.target.value) : null;
+                try {
+                  await updateAdminUser(u.id, { partyId: val });
+                  setUsers((prev) => prev.map((uu) => uu.id === u.id ? { ...uu, partyId: val, partyName: parties.find((p) => p.id === val)?.name ?? null } : uu));
+                } catch { alert("파티 변경 실패"); }
+              }}
+              className="px-2 py-1 border border-gray-300 rounded text-xs bg-white"
+            >
+              <option value="">파티없음</option>
+              {parties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <button
+              onClick={() => editingId === u.id ? (setEditingId(null), setForm(null)) : openEdit(u)}
+              className="px-2 py-1 text-xs text-forest-600 hover:text-forest-800 font-medium border border-forest-300 rounded hover:bg-forest-50 transition-colors"
+            >
+              {editingId === u.id ? "닫기" : "수정"}
+            </button>
+            <button
+              onClick={async () => {
+                if (!confirm(`"${u.nickname}" 유저의 비밀번호를 리셋하시겠습니까?`)) return;
+                try {
+                  const result = await resetAdminUserPassword(u.id);
+                  alert(`임시 비밀번호: ${result.tempPassword}\n\n이 비밀번호를 해당 유저에게 전달해주세요.`);
+                } catch { alert("비밀번호 리셋 실패"); }
+              }}
+              className="px-2 py-1 text-xs text-orange-600 hover:text-orange-800 font-medium border border-orange-300 rounded hover:bg-orange-50 transition-colors"
+            >
+              PW리셋
+            </button>
+            <button
+              onClick={async () => {
+                if (!confirm(`정말로 "${u.nickname}" 유저를 삭제하시겠습니까?\n\n이 유저의 모든 게시글·댓글·물방울 내역 등이 함께 삭제됩니다.`)) return;
+                try {
+                  await deleteAdminUser(u.id);
+                  setUsers((prev) => prev.filter((x) => x.id !== u.id));
+                  sessionStorage.removeItem("gridFeedCache");
+                } catch { alert("삭제 실패"); }
+              }}
+              className="px-2 py-1 text-xs text-red-600 hover:text-red-800 font-medium border border-red-300 rounded hover:bg-red-50 transition-colors"
+            >
+              삭제
+            </button>
+          </div>
+          {editingId === u.id && form && (
+            <div className="border-t border-gray-200 px-4 py-4 space-y-3 bg-gray-50 rounded-b-lg">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">닉네임</label>
+                  <input type="text" value={form.nickname} onChange={(e) => setForm({ ...form, nickname: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">실명</label>
+                  <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 mb-1 block">메일주소</label>
+                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">권한</label>
+                  <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as "USER" | "ADMIN" })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                    <option value="USER">일반</option>
+                    <option value="ADMIN">관리자</option>
+                  </select>
+                </div>
+              </div>
+              <div className="text-[11px] text-gray-400">※ 물방울은 이 페이지에서 수정할 수 없습니다. 지급·차감은 "물방울" 탭을 이용하세요.</div>
+              <div className="flex gap-2">
+                <button onClick={() => save(u)} className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600">저장</button>
+                <button onClick={() => { setEditingId(null); setForm(null); }} className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50">취소</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PostsPanel({ categories }: { categories: CategoryInfo[] }) {
+  const [posts, setPosts] = useState<AdminPost[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<{ title: string; content: string; category: string; anonymous: boolean } | null>(null);
+
+  const load = async (p = page) => {
+    setLoading(true);
+    try {
+      const data = await adminListPosts({ page: p, size: 20, category: categoryFilter || undefined, keyword: keyword || undefined });
+      setPosts(data.items);
+      setTotalPages(data.totalPages);
+      setPage(data.page);
+    } catch {
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(0); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [categoryFilter]);
+
+  const openEdit = (p: AdminPost) => {
+    setEditingId(p.id);
+    setEditForm({ title: p.title, content: p.content, category: p.category, anonymous: p.anonymous });
+  };
+
+  const save = async (p: AdminPost) => {
+    if (!editForm) return;
+    try {
+      await adminUpdatePost(p.id, editForm);
+      setPosts((prev) => prev.map((x) => x.id === p.id ? { ...x, ...editForm } : x));
+      sessionStorage.removeItem("gridFeedCache");
+      setEditingId(null);
+      setEditForm(null);
+    } catch { alert("수정 실패"); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+          <option value="">전체 게시판</option>
+          {categories.map((c) => <option key={c.id} value={c.name}>{c.label}</option>)}
+        </select>
+        <input
+          type="text"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") load(0); }}
+          placeholder="제목·내용 검색"
+          className="flex-1 min-w-[150px] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+        />
+        <button onClick={() => load(0)} className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600">검색</button>
+      </div>
+
+      {loading ? (
+        <div className="text-center text-gray-400 py-8">불러오는 중...</div>
+      ) : posts.length === 0 ? (
+        <div className="text-center text-gray-400 text-sm py-8 bg-white rounded-xl border">게시글이 없습니다</div>
+      ) : (
+        <div className="space-y-2">
+          {posts.map((p) => (
+            <div key={p.id} className="bg-white rounded-lg border">
+              <div className="flex items-start gap-3 px-4 py-3">
+                {p.imageUrl && (
+                  <img src={p.imageUrl.startsWith("http") ? p.imageUrl : (process.env.NEXT_PUBLIC_IMAGE_BASE_URL ?? "") + p.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{p.category}</span>
+                    <span className="font-medium text-sm truncate">{p.title}</span>
+                    {p.anonymous && <span className="text-[10px] text-gray-400">[익명]</span>}
+                  </div>
+                  <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{p.content}</p>
+                  <div className="text-[11px] text-gray-400 mt-1">
+                    {p.authorNickname ?? "(삭제된 유저)"} {p.authorName && `(${p.authorName})`} · {new Date(p.createdAt).toLocaleString("ko-KR")}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1 shrink-0">
+                  <button
+                    onClick={() => editingId === p.id ? (setEditingId(null), setEditForm(null)) : openEdit(p)}
+                    className="px-2 py-1 text-xs text-forest-600 border border-forest-300 rounded hover:bg-forest-50"
+                  >
+                    {editingId === p.id ? "닫기" : "수정"}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`"${p.title}" 게시글을 삭제하시겠습니까?`)) return;
+                      try {
+                        await adminDeletePost(p.id);
+                        setPosts((prev) => prev.filter((x) => x.id !== p.id));
+                        sessionStorage.removeItem("gridFeedCache");
+                      } catch { alert("삭제 실패"); }
+                    }}
+                    className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+              {editingId === p.id && editForm && (
+                <div className="border-t border-gray-200 px-4 py-4 space-y-3 bg-gray-50 rounded-b-lg">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">제목</label>
+                    <input type="text" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">내용</label>
+                    <textarea value={editForm.content} onChange={(e) => setEditForm({ ...editForm, content: e.target.value })} rows={5} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">게시판</label>
+                      <select value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                        {categories.map((c) => <option key={c.id} value={c.name}>{c.label}</option>)}
+                      </select>
+                    </div>
+                    <label className="flex items-end gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={editForm.anonymous} onChange={(e) => setEditForm({ ...editForm, anonymous: e.target.checked })} className="w-4 h-4 accent-forest-500 mb-2" />
+                      <span className="mb-2">익명</span>
+                    </label>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => save(p)} className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600">저장</button>
+                    <button onClick={() => { setEditingId(null); setEditForm(null); }} className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50">취소</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2 pt-2">
+          <button disabled={page === 0} onClick={() => load(page - 1)} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm disabled:opacity-30">이전</button>
+          <span className="px-3 py-1.5 text-sm text-gray-600">{page + 1} / {totalPages}</span>
+          <button disabled={page >= totalPages - 1} onClick={() => load(page + 1)} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm disabled:opacity-30">다음</button>
+        </div>
+      )}
     </div>
   );
 }

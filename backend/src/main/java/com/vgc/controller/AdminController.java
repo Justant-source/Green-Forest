@@ -17,18 +17,25 @@ import com.vgc.service.QuestService;
 import com.vgc.service.AttendanceService;
 import com.vgc.service.GachaService;
 import com.vgc.service.ImageStorageService;
+import com.vgc.service.PostService;
 import com.vgc.dto.CategoryRequestResponse;
 import com.vgc.dto.CategoryResponse;
 import com.vgc.dto.AdminCreatePrizeRequest;
 import com.vgc.dto.AdminUpdatePrizeRequest;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -58,6 +65,10 @@ public class AdminController {
     private final GachaService gachaService;
     private final AnnouncementRepository announcementRepository;
     private final ImageStorageService imageStorageService;
+    private final PostService postService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public AdminController(CategoryService categoryService, UserRepository userRepository,
                            DropService dropService, QuestService questService,
@@ -73,7 +84,8 @@ public class AdminController {
                            GachaDrawRepository gachaDrawRepository,
                            GachaService gachaService,
                            AnnouncementRepository announcementRepository,
-                           ImageStorageService imageStorageService) {
+                           ImageStorageService imageStorageService,
+                           PostService postService) {
         this.categoryService = categoryService;
         this.userRepository = userRepository;
         this.dropService = dropService;
@@ -91,6 +103,7 @@ public class AdminController {
         this.gachaService = gachaService;
         this.announcementRepository = announcementRepository;
         this.imageStorageService = imageStorageService;
+        this.postService = postService;
     }
 
     private User getAdminUser(Authentication authentication) {
@@ -315,11 +328,94 @@ public class AdminController {
         }
 
         if (body.containsKey("nickname")) {
-            user.setNickname((String) body.get("nickname"));
+            String nickname = (String) body.get("nickname");
+            if (nickname != null && !nickname.isBlank() && !nickname.equals(user.getNickname())) {
+                userRepository.findByNickname(nickname).ifPresent(exist -> {
+                    if (!exist.getId().equals(user.getId())) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다.");
+                    }
+                });
+                user.setNickname(nickname);
+            }
+        }
+
+        if (body.containsKey("name")) {
+            user.setName((String) body.get("name"));
+        }
+
+        if (body.containsKey("email")) {
+            String email = (String) body.get("email");
+            if (email != null && !email.isBlank() && !email.equals(user.getEmail())) {
+                userRepository.findByEmail(email).ifPresent(exist -> {
+                    if (!exist.getId().equals(user.getId())) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 메일 주소입니다.");
+                    }
+                });
+                user.setEmail(email);
+            }
+        }
+
+        if (body.containsKey("role")) {
+            String role = (String) body.get("role");
+            if (role != null && (role.equals("USER") || role.equals("ADMIN"))) {
+                user.setRole(role);
+            }
         }
 
         userRepository.save(user);
         return Map.of("status", "updated");
+    }
+
+    @DeleteMapping("/users/{id}")
+    @Transactional
+    public Map<String, String> deleteUser(@PathVariable Long id, Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        if (admin.getId().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인은 삭제할 수 없습니다.");
+        }
+        User target = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다."));
+
+        // 1) 이 유저가 작성한 글 먼저 삭제 (하위 엔티티까지 정리)
+        List<com.vgc.entity.Post> authored = postRepository.findByAuthorIdOrderByCreatedAtDesc(id,
+                PageRequest.of(0, Integer.MAX_VALUE)).getContent();
+        for (com.vgc.entity.Post p : authored) {
+            postService.deletePost(p.getId(), admin);
+        }
+
+        // 2) 다른 유저 게시글에서 이 유저의 상호작용/개인 데이터 정리
+        String[] deletes = {
+            "DELETE FROM comments WHERE author_id = :uid",
+            "DELETE FROM post_likes WHERE user_id = :uid",
+            "DELETE FROM post_tags WHERE tagged_user_id = :uid",
+            "DELETE FROM bookmarks WHERE user_id = :uid",
+            "DELETE FROM notifications WHERE user_id = :uid",
+            "DELETE FROM drop_transactions WHERE user_id = :uid",
+            "DELETE FROM quest_completions WHERE user_id = :uid",
+            "DELETE FROM quest_completion_log WHERE user_id = :uid",
+            "DELETE FROM gacha_draws WHERE user_id = :uid",
+            "DELETE FROM attendance_checkins WHERE user_id = :uid",
+            "DELETE FROM plant_growth WHERE user_id = :uid",
+            "DELETE FROM weekly_reports WHERE user_id = :uid",
+            "DELETE FROM votes WHERE user_id = :uid OR voted_for_user_id = :uid",
+            "DELETE FROM category_requests WHERE requester_id = :uid",
+            "DELETE FROM messages WHERE sender_id = :uid",
+            "DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = :uid OR user2_id = :uid)",
+            "DELETE FROM conversations WHERE user1_id = :uid OR user2_id = :uid"
+        };
+        for (String sql : deletes) {
+            entityManager.createNativeQuery(sql).setParameter("uid", id).executeUpdate();
+        }
+
+        // 3) 이 유저가 만든 퀘스트는 관리자로 재할당
+        entityManager.createNativeQuery("UPDATE quests SET created_by = :aid WHERE created_by = :uid")
+                .setParameter("aid", admin.getId())
+                .setParameter("uid", id)
+                .executeUpdate();
+
+        // 4) 유저 본인 삭제
+        userRepository.delete(target);
+        return Map.of("status", "deleted");
     }
 
     private void applyPlantJobMapping(User user, PlantType plantType) {
@@ -688,5 +784,78 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> simulateEv(
             @RequestParam Long prizeId, @RequestParam java.math.BigDecimal ev) {
         return ResponseEntity.ok(gachaService.simulateEv(prizeId, ev));
+    }
+
+    // ========== 게시글 관리 ==========
+
+    @GetMapping("/posts")
+    public Map<String, Object> adminListPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String keyword,
+            Authentication authentication) {
+        getAdminUser(authentication);
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<com.vgc.entity.Post> posts;
+        if (category != null && !category.isBlank()) {
+            posts = postRepository.findByCategory(category, pageable);
+        } else {
+            posts = postRepository.findAll(pageable);
+        }
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (com.vgc.entity.Post p : posts.getContent()) {
+            if (keyword != null && !keyword.isBlank()) {
+                String kw = keyword.toLowerCase();
+                boolean hit = (p.getTitle() != null && p.getTitle().toLowerCase().contains(kw))
+                        || (p.getContent() != null && p.getContent().toLowerCase().contains(kw));
+                if (!hit) continue;
+            }
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", p.getId());
+            m.put("title", p.getTitle());
+            m.put("content", p.getContent());
+            m.put("category", p.getCategory());
+            m.put("imageUrl", p.getImageUrl());
+            m.put("anonymous", p.isAnonymous());
+            m.put("createdAt", p.getCreatedAt());
+            m.put("authorId", p.getAuthor() != null ? p.getAuthor().getId() : null);
+            m.put("authorNickname", p.getAuthor() != null ? p.getAuthor().getNickname() : null);
+            m.put("authorName", p.getAuthor() != null ? p.getAuthor().getName() : null);
+            items.add(m);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("items", items);
+        result.put("totalElements", posts.getTotalElements());
+        result.put("totalPages", posts.getTotalPages());
+        result.put("page", posts.getNumber());
+        result.put("size", posts.getSize());
+        return result;
+    }
+
+    @PutMapping("/posts/{id}")
+    @Transactional
+    public Map<String, String> adminUpdatePost(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication authentication) {
+        getAdminUser(authentication);
+        com.vgc.entity.Post post = postRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        if (body.containsKey("title")) post.setTitle((String) body.get("title"));
+        if (body.containsKey("content")) post.setContent((String) body.get("content"));
+        if (body.containsKey("category")) post.setCategory((String) body.get("category"));
+        if (body.containsKey("anonymous")) post.setAnonymous(Boolean.TRUE.equals(body.get("anonymous")));
+        postRepository.save(post);
+        return Map.of("status", "updated");
+    }
+
+    @DeleteMapping("/posts/{id}")
+    public Map<String, String> adminDeletePost(@PathVariable Long id, Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        postService.deletePost(id, admin);
+        return Map.of("status", "deleted");
     }
 }
