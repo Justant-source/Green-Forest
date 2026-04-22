@@ -13,6 +13,7 @@ const nextConfig = {
       },
     ],
   },
+  allowedDevOrigins: ["dev.green-office.uk"],
 };
 
 module.exports = nextConfig;

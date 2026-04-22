@@ -1,0 +1,22 @@
+# ===== Dev 전용 Dockerfile =====
+# 목적: bootRun --continuous 로 소스 변경 시 자동 재컴파일 + spring-boot-devtools 가
+#       JVM 내 classpath 변경을 감지해 Spring context 를 수초 내 재시작.
+# 소스(src/)는 이미지에 COPY 하지 않고 docker-compose 의 bind-mount 로 주입한다.
+# prod 이미지에는 영향 없음 (별도 Dockerfile 로 분리).
+
+FROM eclipse-temurin:21-jdk
+WORKDIR /app
+
+COPY gradle/ gradle/
+COPY gradlew build.gradle settings.gradle ./
+RUN chmod +x gradlew && ./gradlew --version && ./gradlew dependencies --no-daemon || true
+
+EXPOSE 8080
+
+# hot reload 패턴:
+#   (1) 백그라운드의 ./gradlew compileJava --continuous 가 src 변경 → .class 재생성
+#   (2) 포그라운드의 ./gradlew bootRun 이 spring-boot-devtools 와 함께 실행되어
+#       classpath 변경을 감지하면 Spring context 만 재시작 (JVM 유지)
+# bootRun --continuous 를 단독으로 쓰면 long-running task 라 재컴파일이 트리거되지 않으므로
+# compileJava 를 별도 continuous 프로세스로 돌린다.
+CMD ["sh", "-c", "./gradlew compileJava --continuous --no-daemon & exec ./gradlew bootRun --no-daemon"]

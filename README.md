@@ -65,30 +65,79 @@ cp .env.dev.example  .env.dev    # 값 채우기
 cp .env.prod.example .env.prod   # 값 채우기 (서버에서)
 ```
 
-> ⚠️ **`NEXT_PUBLIC_*` 값 변경 시 프론트엔드 재빌드 필수.** Next.js는 이 변수들을 **빌드 타임에 JS 번들로 주입**하기 때문에 컨테이너 restart만으로는 반영 안 됨.
+> ⚠️ **`NEXT_PUBLIC_*` 값 변경 시 프론트엔드 재빌드 필수 (Prod만).** prod 는 `next build`로 번들이 고정되므로 컨테이너 restart만으로는 반영 안 됨.
 > ```bash
 > docker compose -p green-forest-prod -f docker-compose.prod.yml --env-file .env.prod up -d --build frontend
-> docker compose -p green-forest-dev  -f docker-compose.dev.yml  --env-file .env.dev  up -d --build frontend
 > ```
-> 백엔드 CORS(`CORS_ORIGINS`)는 런타임 환경변수라 `--force-recreate`만 하면 반영된다.
+> **Dev 는 `next dev` + `env_file` 런타임 주입 구조라 재빌드 불필요, `restart` 만 하면 반영된다.**
+> ```bash
+> docker compose -p green-forest-dev -f docker-compose.dev.yml --env-file .env.dev restart frontend
+> ```
+> 백엔드 CORS(`CORS_ORIGINS`)도 런타임 환경변수라 `--force-recreate`만 하면 반영된다.
+
+> ⚠️ **`NEXT_PUBLIC_API_BASE_URL`은 반드시 Cloudflare 도메인을 써야 한다.** 서버 IP나 내부 포트를 직접 쓰면, IP가 바뀌거나 방화벽에 막혔을 때 브라우저에서 글·이미지·랭킹 등 API 데이터 전체가 로딩 안 된다.
+> - `frontend/.env.dev` → `NEXT_PUBLIC_API_BASE_URL=https://dev.green-office.uk/api`
+> - `frontend/.env.prod` (또는 루트 `.env.prod`) → `NEXT_PUBLIC_API_BASE_URL=https://green-office.uk/api`
 
 ---
 
 ## Dev 환경
 
-### 실행
+### 실행 (최초 1회만 `--build`)
 
 ```bash
 docker compose -p green-forest-dev -f docker-compose.dev.yml --env-file .env.dev up --build -d
 ```
 
+첫 기동은 Gradle 의존성 다운로드 + `npm install` + Next.js 첫 페이지 컴파일 때문에 2~4분 걸린다. 이후엔 컨테이너를 내리지 않는 한 **코드 변경은 저장만으로 반영** 된다 (아래 "Hot Reload" 참고).
+
+### ⚡ Hot Reload — 코드 저장 → 즉시 반영
+
+dev 환경은 소스를 bind-mount 하고 컨테이너 안에서 `bootRun`(+`compileJava --continuous`) / `next dev` 가 돌아간다. **재빌드·재시작 없이 파일 저장만으로 반영된다.**
+
+| 변경 유형 | 반영 시간 | 동작 |
+|-----------|-----------|------|
+| `backend/src/**/*.java` | 2~5초 | Gradle 재컴파일 → `spring-boot-devtools` 가 Spring context 재시작 |
+| `frontend/src/**/*.{ts,tsx,css}` | 1~2초 | Next.js HMR, 브라우저 자동 갱신 |
+| `frontend/public/**` | 1초 | HMR |
+| `frontend/tailwind.config.ts`, `postcss.config.js` | ~3초 | `next dev` 자동 재컴파일 |
+
+**저장만으로 해결 안 되고 재빌드가 필요한 경우:**
+```bash
+# 1) build.gradle 또는 package.json 의 의존성 추가/변경
+docker compose -p green-forest-dev -f docker-compose.dev.yml --env-file .env.dev up -d --build backend   # (또는 frontend)
+
+# 2) Dockerfile.dev 자체 수정
+docker compose -p green-forest-dev -f docker-compose.dev.yml --env-file .env.dev up -d --build --no-deps <svc>
+
+# 3) docker-compose.dev.yml 의 volumes 추가/변경
+docker compose -p green-forest-dev -f docker-compose.dev.yml --env-file .env.dev up -d --force-recreate <svc>
+```
+
+**UI가 깨져 보이거나 CSS/이미지가 이상할 때 (stale `.next` 캐시):**
+```bash
+docker compose -p green-forest-dev -f docker-compose.dev.yml --env-file .env.dev stop frontend
+docker compose -p green-forest-dev -f docker-compose.dev.yml --env-file .env.dev rm -f frontend
+docker compose -p green-forest-dev -f docker-compose.dev.yml --env-file .env.dev up -d --no-deps frontend
+```
+브라우저에서 **Ctrl+Shift+R** 로 하드 리프레시.
+
+**Hot reload 가 작동 안 할 때 로그 확인:**
+```bash
+docker logs -f greenforest-backend-dev  | grep -E "Change detected|BUILD SUCCESSFUL|Waiting for changes"
+docker logs -f greenforest-frontend-dev | grep -E "Compiled|Ready in"
+```
+`Waiting for changes to input files...` 가 나오면 감시 중. `Change detected` → `BUILD SUCCESSFUL` 시퀀스가 안 나오면 bind-mount가 풀렸거나 파일 경로가 `src/` 밖에 있음.
+
+> Prod 는 이 구조를 쓰지 않는다. Prod 는 그대로 `bootJar` + `next build` 로 고정 번들을 실행. Dev 전용 `Dockerfile.dev` / 소스 마운트는 Prod에 영향 없다.
+
 ### 접속 주소
 
 | 서비스 | 주소 |
 |--------|------|
-| 웹 (Nginx) | http://localhost:8080 |
-| Backend API | http://localhost:8080/api |
-| Backend 직접 | http://localhost:9091 |
+| 웹 (Cloudflare) | https://dev.green-office.uk |
+| 웹 (내부 Nginx) | http://localhost:8080 |
+| Backend API | https://dev.green-office.uk/api |
 | MySQL (외부) | localhost:**3308** |
 
 ### DB 정보

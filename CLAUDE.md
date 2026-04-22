@@ -58,6 +58,47 @@
 - **Compose project name:** `green-forest-dev`, `green-forest-prod` (항상 `-p` 로 명시)
 - 볼륨 이름도 compose 파일에 `name:` 으로 고정되어 있다. 볼륨명을 임의로 바꾸지 마라 (기존 데이터 연결이 끊긴다).
 
+## ⚡ Dev Hot Reload (재빌드 불필요)
+
+dev 환경은 `Dockerfile.dev` + 소스 bind-mount + `bootRun`/`next dev` 조합으로 **코드 저장만으로 1~5초 내 반영된다.** prod는 기존대로 `bootJar` + `next build` 유지 (건드리지 마라).
+
+**재빌드 없이 저장만으로 반영되는 변경:**
+- `backend/src/**` Java 파일 → Gradle `compileJava --continuous` 가 재컴파일 (~1s) → `spring-boot-devtools` 가 Spring context 재시작 (총 2~5s)
+- `frontend/src/**`, `frontend/public/**`, `frontend/tailwind.config.ts`, `frontend/postcss.config.js` → `next dev` HMR (1~2s, 브라우저 자동 새로고침)
+- `application-dev.properties` (볼륨 마운트 시)
+
+**재빌드가 필요한 변경 (이미지 rebuild 필요):**
+- `backend/build.gradle` 의 **의존성** 추가·변경 → `docker compose ... up -d --build backend`
+- `frontend/package.json` 의 **의존성** 추가·변경 → `docker compose ... up -d --build frontend`
+- `Dockerfile.dev` 자체 변경 → 해당 서비스만 rebuild
+- dev용 **새 볼륨 마운트** 추가 시 → `down` 후 `up` (recreate 필요)
+
+**UI가 깨져 보이거나 CSS/레이아웃이 이상할 때 (stale cache):**
+`.next` anonymous volume 에 broken build cache 가 남아 있을 수 있다. frontend 컨테이너를 제거하고 재기동하면 캐시가 리셋된다.
+```bash
+docker compose --env-file .env.dev -f docker-compose.dev.yml -p green-forest-dev stop frontend
+docker compose --env-file .env.dev -f docker-compose.dev.yml -p green-forest-dev rm -f frontend
+docker compose --env-file .env.dev -f docker-compose.dev.yml -p green-forest-dev up -d --no-deps frontend
+```
+브라우저는 **Ctrl+Shift+R** 로 하드 리프레시.
+
+**원칙:** 코드만 고칠 때는 `--build` 를 쓰지 마라. 불필요한 45~90초 대기가 생긴다. 의존성이나 Dockerfile.dev 를 만진 경우에만 rebuild.
+
+## 🌐 프론트엔드 환경변수 & API URL 규칙
+
+**prod 는 `NEXT_PUBLIC_*` 를 빌드 타임에 JS 번들에 주입한다.** 값이 바뀌면 반드시 `docker compose -p green-forest-prod ... up -d --build frontend` 로 재빌드해야 한다.
+
+**dev 는 `next dev` + `env_file: ./frontend/.env.dev` 런타임 주입 구조라 재빌드 없이 컨테이너 restart 만으로 반영된다.**
+```bash
+docker compose --env-file .env.dev -f docker-compose.dev.yml -p green-forest-dev restart frontend
+```
+
+- **`frontend/.env.dev`의 `NEXT_PUBLIC_API_BASE_URL`은 반드시 Cloudflare 도메인을 사용해야 한다.**
+  - dev: `https://dev.green-office.uk/api`
+  - prod: `https://green-office.uk/api`
+- **서버 IP 주소나 내부 포트(예: `192.168.x.x:8080`)를 직접 쓰지 마라.** 브라우저는 서버의 localhost가 아니므로 IP가 바뀌거나 방화벽에 막히면 API 전체가 무응답된다.
+- **사고 사례 (2026-04-21):** IP가 `100.99.33.127 → 192.168.45.240`으로 바뀐 후 `.env.dev`를 미갱신한 채 재빌드 → 브라우저에서 글/이미지/랭킹 전부 로딩 안 됨. 도메인 기반 URL로 전환 후 해결.
+
 ## 📌 Git Commit / Push 규칙
 - **사용자가 명시적으로 지시할 때만 commit/push를 수행한다.** 지시 없이 자동 커밋 금지.
 - 작업 완료 후에는 변경 파일 요약과 함께 스테이징/커밋 제안을 먼저 한다.

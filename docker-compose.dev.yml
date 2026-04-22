@@ -24,7 +24,9 @@ services:
     restart: unless-stopped
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
     container_name: greenforest-backend-dev
     environment:
       SPRING_PROFILES_ACTIVE: dev
@@ -38,6 +40,10 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       UPLOAD_PATH: /app/uploads
     volumes:
+      - ./backend/src:/app/src
+      - ./backend/build.gradle:/app/build.gradle
+      - ./backend/settings.gradle:/app/settings.gradle
+      - gradle_cache:/root/.gradle
       - uploads_dev:/app/uploads
     depends_on:
       mysql:
@@ -47,10 +53,20 @@ services:
   frontend:
     build:
       context: ./frontend
-      args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
-        NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
+      dockerfile: Dockerfile.dev
     container_name: greenforest-frontend-dev
+    env_file:
+      - ./frontend/.env.dev
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/next.config.js:/app/next.config.js
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/tailwind.config.ts:/app/tailwind.config.ts
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      - /app/node_modules
+      - /app/.next
     depends_on:
       - backend
     restart: unless-stopped
@@ -75,3 +91,5 @@ volumes:
     name: green-forest_mysql_dev_data
   uploads_dev:
     name: green-forest_uploads_dev
+  gradle_cache:
+    name: green-forest_gradle_cache_dev

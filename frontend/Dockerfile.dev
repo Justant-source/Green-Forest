@@ -1,0 +1,20 @@
+# ===== Dev 전용 Dockerfile =====
+# 목적: next dev 프로세스를 컨테이너 안에서 실행하고, 소스(src/public/config)는
+#       docker-compose 의 bind-mount 로 주입하여 저장 즉시 HMR 이 터지게 한다.
+# NEXT_PUBLIC_* 변수는 런타임에 compose 의 env_file 로 주입되므로 ARG 불필요.
+# prod 이미지에는 영향 없음 (별도 Dockerfile 로 분리).
+
+FROM node:20-alpine
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm install
+
+EXPOSE 3000
+
+# Linux Docker 볼륨 마운트에서 inotify 가 놓치는 파일 변경을 polling 으로 보완.
+# 없으면 저장해도 HMR 이 간헐적으로 안 터지는 케이스 발생.
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
+
+CMD ["npm", "run", "dev"]
