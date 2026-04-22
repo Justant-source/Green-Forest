@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { getTodayBoard } from "@/lib/api";
+import { getTodayBoard, getMyPendingRewards } from "@/lib/api";
 import { jua } from "@/lib/fonts";
 
 export default function Header() {
   const router = useRouter();
   const { nickname, isLoggedIn, isAdmin, authLoaded, handleLogout, user } = useAuth();
-  const [checkinStatus, setCheckinStatus] = useState<"none" | "checkedin" | "winner">("none");
+  const [checkinStatus, setCheckinStatus] = useState<"none" | "checkedin">("none");
+  const [pendingRewards, setPendingRewards] = useState(0);
 
   useEffect(() => {
     if (!isLoggedIn || !user) return;
@@ -18,10 +19,13 @@ export default function Header() {
       .then((board) => {
         const myCheckin = board.checkins.find(c => c.userId === user.id);
         if (myCheckin) {
-          setCheckinStatus(myCheckin.isWinner ? "winner" : "checkedin");
+          setCheckinStatus("checkedin");
         }
       })
       .catch(() => {});
+    getMyPendingRewards()
+      .then((r) => setPendingRewards(r.total))
+      .catch(() => setPendingRewards(0));
   }, [isLoggedIn, user]);
 
   return (
@@ -48,13 +52,13 @@ export default function Header() {
             <div className="w-16 h-8" />
           ) : isLoggedIn ? (
             <>
-              {checkinStatus === "winner" && (
-                <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full font-semibold">
-                  ⭐ 당첨
+              {pendingRewards > 0 && (
+                <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full font-semibold whitespace-nowrap">
+                  ⭐ 당첨{pendingRewards > 1 ? ` ${pendingRewards}` : ""}
                 </span>
               )}
-              {checkinStatus === "checkedin" && (
-                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+              {pendingRewards === 0 && checkinStatus === "checkedin" && (
+                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold whitespace-nowrap">
                   ✓ 출석완료
                 </span>
               )}

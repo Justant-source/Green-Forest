@@ -3,11 +3,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getMe, getMyPosts, getMyBookmarks, getMyDropHistory, updateMyProfile, changePassword, getMyPlantGrowth } from "@/lib/api";
-import { User, Post, DropTransaction, PageResponse, PlantGrowth } from "@/types";
+import { getMe, getMyPosts, getMyBookmarks, getMyDropHistory, updateMyProfile, changePassword, getMyPlantGrowth, getMyAttendanceWins, getGachaHistory } from "@/lib/api";
+import { User, Post, DropTransaction, PageResponse, PlantGrowth, MyAttendanceWin, GachaDrawRecord } from "@/types";
 import GridItem from "@/components/GridItem";
 import PlantGrowthBadge from "@/components/PlantGrowthBadge";
 import PlantLevelGuide from "@/components/PlantLevelGuide";
+
+type RewardItem = {
+  key: string;
+  type: "ATTENDANCE" | "GACHA";
+  date: string;
+  title: string;
+  detail?: string;
+  deliveryStatus: "PENDING" | "DELIVERED";
+  deliveryMemo?: string | null;
+  deliveredAt?: string | null;
+};
 
 const PLANT_TYPES = [
   { value: "TABLE_PALM", label: "테이블야자", job: "탱커(Guardian)", element: "땅", difficulty: "쉬움" },
@@ -16,7 +27,7 @@ const PLANT_TYPES = [
   { value: "ORANGE_JASMINE", label: "오렌지자스민", job: "딜러(Striker)", element: "불", difficulty: "어려움" },
 ];
 
-type Tab = "posts" | "bookmarks" | "drops";
+type Tab = "posts" | "bookmarks" | "drops" | "rewards";
 
 export default function GardenPage() {
   const { isLoggedIn, handleLogout, authLoaded } = useAuth();
@@ -27,6 +38,7 @@ export default function GardenPage() {
   const [activeTab, setActiveTab] = useState<Tab>("posts");
   const [posts, setPosts] = useState<Post[]>([]);
   const [drops, setDrops] = useState<DropTransaction[]>([]);
+  const [rewards, setRewards] = useState<RewardItem[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
@@ -74,6 +86,33 @@ export default function GardenPage() {
         const data = await getMyDropHistory(pageNum, 20);
         setDrops((prev) => append ? [...prev, ...data.content] : data.content);
         setHasMore(!data.last);
+      } else if (tab === "rewards") {
+        // 출석 + 가챠 당첨건을 한 번에 조회 (페이지네이션 없이 일괄)
+        const [attendanceWins, gachaPage] = await Promise.all([
+          getMyAttendanceWins().catch(() => [] as MyAttendanceWin[]),
+          getGachaHistory(0, 200).catch(() => ({ content: [] as GachaDrawRecord[], last: true } as PageResponse<GachaDrawRecord>)),
+        ]);
+        const aItems: RewardItem[] = attendanceWins.map((w) => ({
+          key: `attendance-${w.id}`,
+          type: "ATTENDANCE",
+          date: w.date,
+          title: "출석 이벤트 당첨",
+          detail: w.message ?? undefined,
+          deliveryStatus: w.deliveryStatus === "DELIVERED" ? "DELIVERED" : "PENDING",
+          deliveryMemo: w.deliveryMemo,
+          deliveredAt: w.deliveredAt,
+        }));
+        const gItems: RewardItem[] = (gachaPage.content ?? []).filter((d) => d.isWinner).map((d) => ({
+          key: `gacha-${d.id}`,
+          type: "GACHA",
+          date: d.createdAt,
+          title: `뽑기 당첨: ${d.prizeName}`,
+          detail: `${d.prizeCashValue.toLocaleString()}원 상당`,
+          deliveryStatus: d.deliveryStatus === "DELIVERED" ? "DELIVERED" : "PENDING",
+        }));
+        const merged = [...aItems, ...gItems].sort((a, b) => (a.date < b.date ? 1 : -1));
+        setRewards(merged);
+        setHasMore(false);
       } else {
         const fetcher = tab === "posts" ? getMyPosts : getMyBookmarks;
         const data: PageResponse<Post> = await fetcher(pageNum, 12);
@@ -92,6 +131,7 @@ export default function GardenPage() {
       setPage(0);
       setPosts([]);
       setDrops([]);
+      setRewards([]);
       fetchTabData(activeTab, 0, false);
     }
   }, [activeTab, isLoggedIn, fetchTabData]);
@@ -245,11 +285,14 @@ export default function GardenPage() {
                   </span>
                   <span className="text-xs text-gray-400">({plantInfo?.label})</span>
                 </div>
-                <div className="flex gap-3 text-xs text-gray-500">
-                  <span>직업: {user.jobClassLabel}</span>
-                  <span>속성: {user.elementLabel}</span>
-                  <span>난이도: {user.difficultyLabel}</span>
-                  <span>경험치 배율: x{user.expMultiplier}</span>
+                <div className="text-xs text-gray-500 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  <span><span className="text-gray-400">직업</span> {user.jobClassLabel}</span>
+                  <span className="text-gray-300">·</span>
+                  <span><span className="text-gray-400">속성</span> {user.elementLabel}</span>
+                  <span className="text-gray-300">·</span>
+                  <span><span className="text-gray-400">난도</span> {user.difficultyLabel}</span>
+                  <span className="text-gray-300">·</span>
+                  <span><span className="text-gray-400">EXP</span> ×{user.expMultiplier}</span>
                 </div>
               </div>
               {!user.plantLocked && (
@@ -345,14 +388,15 @@ export default function GardenPage() {
       {/* 탭 */}
       <div className="flex gap-1 mb-6 border-b">
         {([
-          { key: "posts" as Tab, label: "내가 쓴 글" },
+          { key: "posts" as Tab, label: "내 글" },
           { key: "bookmarks" as Tab, label: "북마크" },
-          { key: "drops" as Tab, label: "물방울 내역" },
+          { key: "drops" as Tab, label: "물방울" },
+          { key: "rewards" as Tab, label: "보상" },
         ]).map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`px-3 sm:px-6 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
               activeTab === tab.key
                 ? "border-forest-500 text-forest-500"
                 : "border-transparent text-gray-500 hover:text-gray-700"
@@ -364,7 +408,59 @@ export default function GardenPage() {
       </div>
 
       {/* 탭 컨텐츠 */}
-      {activeTab === "drops" ? (
+      {activeTab === "rewards" ? (
+        // 보상 내역 (출석 + 가챠 통합)
+        tabLoading && rewards.length === 0 ? (
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 border-4 border-gray-300 border-t-forest-500 rounded-full animate-spin" />
+          </div>
+        ) : rewards.length === 0 ? (
+          <div className="text-center py-20 text-gray-400">받은 보상이 없습니다.</div>
+        ) : (
+          <div className="space-y-2">
+            {rewards.map((r) => {
+              const isDelivered = r.deliveryStatus === "DELIVERED";
+              const typeBadge = r.type === "ATTENDANCE"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-purple-100 text-purple-700";
+              const statusBadge = isDelivered
+                ? "bg-green-100 text-green-700 border-green-300"
+                : "bg-orange-100 text-orange-700 border-orange-300";
+              const borderColor = isDelivered ? "border-green-400" : "border-orange-400";
+              return (
+                <div key={r.key} className={`bg-white rounded-xl border-l-4 ${borderColor} px-4 py-3`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeBadge}`}>
+                          {r.type === "ATTENDANCE" ? "출석" : "뽑기"}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-800">{r.title}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusBadge}`}>
+                          {isDelivered ? "수령 완료" : "수령 대기"}
+                        </span>
+                      </div>
+                      {r.detail && <div className="text-xs text-gray-500 mt-1">{r.detail}</div>}
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        당첨일 {new Date(r.date).toLocaleDateString("ko-KR")}
+                      </div>
+                      {isDelivered && r.deliveredAt && (
+                        <div className="text-xs text-green-700 mt-1">
+                          수령일: {new Date(r.deliveredAt).toLocaleString("ko-KR")}
+                          {r.deliveryMemo && <span className="ml-2 text-gray-500">메모: {r.deliveryMemo}</span>}
+                        </div>
+                      )}
+                      {!isDelivered && (
+                        <div className="text-xs text-orange-700 mt-1">관리자가 보상을 준비 중입니다</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : activeTab === "drops" ? (
         // 물방울 내역
         tabLoading && drops.length === 0 ? (
           <div className="flex justify-center py-20">

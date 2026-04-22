@@ -365,6 +365,32 @@ export interface AdminDeliveryItem {
   deliveredAt: string | null;
 }
 
+export interface AdminAttendanceDeliveryItem {
+  id: number;
+  winDate: string;
+  userId: number;
+  userName: string;
+  userNickname: string;
+  userEmail: string;
+  checkinAt: string;
+  winnerDrawnAt: string | null;
+  message: string | null;
+  deliveryStatus: 'PENDING' | 'DELIVERED';
+  deliveryMemo: string | null;
+  deliveredAt: string | null;
+}
+
+export interface MyAttendanceWin {
+  id: number;
+  date: string;
+  checkinAt: string;
+  winnerDrawnAt: string | null;
+  message: string | null;
+  deliveryStatus: 'NONE' | 'PENDING' | 'DELIVERED';
+  deliveryMemo: string | null;
+  deliveredAt: string | null;
+}
+
 export interface AdminUpdatePrizeRequest {
   name?: string;
   description?: string;

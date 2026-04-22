@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 @Table(name = "attendance_checkins", indexes = {
     @Index(name = "idx_attendance_user_date", columnList = "user_id, checkin_date DESC"),
     @Index(name = "idx_attendance_date", columnList = "checkin_date DESC"),
-    @Index(name = "idx_attendance_winner", columnList = "checkin_date, is_winner")
+    @Index(name = "idx_attendance_winner", columnList = "checkin_date, is_winner"),
+    @Index(name = "idx_attendance_winner_delivery", columnList = "is_winner, delivery_status")
 }, uniqueConstraints = {
     @UniqueConstraint(name = "uk_attendance_user_date", columnNames = {"user_id", "checkin_date"})
 })
@@ -46,6 +47,19 @@ public class AttendanceCheckin {
     @Column(name = "winner_drawn_at")
     private LocalDateTime winnerDrawnAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_status", nullable = false, length = 20)
+    private AttendanceDeliveryStatus deliveryStatus = AttendanceDeliveryStatus.NONE;
+
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    @Column(name = "delivered_by")
+    private Long deliveredBy;
+
+    @Column(name = "delivery_memo", length = 500)
+    private String deliveryMemo;
+
     @Column(name = "drops_awarded", nullable = false)
     private int dropsAwarded = 10;
 
@@ -77,6 +91,14 @@ public class AttendanceCheckin {
     public void setWinner(boolean winner) { this.winner = winner; }
     public LocalDateTime getWinnerDrawnAt() { return winnerDrawnAt; }
     public void setWinnerDrawnAt(LocalDateTime winnerDrawnAt) { this.winnerDrawnAt = winnerDrawnAt; }
+    public AttendanceDeliveryStatus getDeliveryStatus() { return deliveryStatus; }
+    public void setDeliveryStatus(AttendanceDeliveryStatus deliveryStatus) { this.deliveryStatus = deliveryStatus; }
+    public LocalDateTime getDeliveredAt() { return deliveredAt; }
+    public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
+    public Long getDeliveredBy() { return deliveredBy; }
+    public void setDeliveredBy(Long deliveredBy) { this.deliveredBy = deliveredBy; }
+    public String getDeliveryMemo() { return deliveryMemo; }
+    public void setDeliveryMemo(String deliveryMemo) { this.deliveryMemo = deliveryMemo; }
     public int getDropsAwarded() { return dropsAwarded; }
     public void setDropsAwarded(int dropsAwarded) { this.dropsAwarded = dropsAwarded; }
     public LocalDateTime getCreatedAt() { return createdAt; }

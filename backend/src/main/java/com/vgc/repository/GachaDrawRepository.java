@@ -25,4 +25,6 @@ public interface GachaDrawRepository extends JpaRepository<GachaDraw, Long> {
     Object[] findStats(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
     List<GachaDraw> findByWinnerTrueAndCreatedAtAfterOrderByCreatedAtDesc(LocalDateTime after);
+
+    long countByUserIdAndWinnerTrueAndDeliveryStatus(Long userId, GachaDeliveryStatus status);
 }

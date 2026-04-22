@@ -1,6 +1,7 @@
 package com.vgc.repository;
 
 import com.vgc.entity.AttendanceCheckin;
+import com.vgc.entity.AttendanceDeliveryStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,4 +26,14 @@ public interface AttendanceCheckinRepository extends JpaRepository<AttendanceChe
 
     @Query("SELECT a FROM AttendanceCheckin a WHERE a.checkinDate BETWEEN :from AND :to AND a.winner = true ORDER BY a.checkinDate DESC")
     List<AttendanceCheckin> findWinnersBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("SELECT a FROM AttendanceCheckin a JOIN FETCH a.user " +
+           "WHERE a.winner = true AND a.deliveryStatus = :status " +
+           "ORDER BY a.checkinDate DESC, a.checkinAt ASC")
+    List<AttendanceCheckin> findWinnersWithUserByDeliveryStatus(@Param("status") AttendanceDeliveryStatus status);
+
+    @Query("SELECT a FROM AttendanceCheckin a WHERE a.user.id = :userId AND a.winner = true ORDER BY a.checkinDate DESC")
+    List<AttendanceCheckin> findMyWins(@Param("userId") Long userId);
+
+    long countByUserIdAndWinnerTrueAndDeliveryStatus(Long userId, AttendanceDeliveryStatus status);
 }

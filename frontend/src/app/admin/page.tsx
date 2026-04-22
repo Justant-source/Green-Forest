@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   AdminUser, AdminParty, AdminStats, Quest,
   CategoryInfo, CategoryRequestInfo,
-  AttendancePhrase, GachaPrizeInfo, AdminDeliveryItem, AdminPost,
+  AttendancePhrase, GachaPrizeInfo, AdminDeliveryItem, AdminAttendanceDeliveryItem, AdminPost,
 } from "@/types";
 import {
   getAdminCategories, createAdminCategory, deleteAdminCategory,
@@ -21,6 +21,7 @@ import {
   adminListPhrases, adminCreatePhrase, adminUpdatePhrase, adminDeletePhrase,
   adminListAllPrizes, adminCreatePrize, adminUpdatePrize, adminDeactivatePrize,
   adminListDeliveries, adminMarkDelivered,
+  adminListAttendanceDeliveries, adminMarkAttendanceDelivered,
   adminListPosts, adminUpdatePost, adminDeletePost,
 } from "@/lib/api";
 
@@ -81,6 +82,9 @@ export default function AdminPage() {
   const [attendanceTo, setAttendanceTo] = useState("");
   const [newPhrase, setNewPhrase] = useState("");
   const [newCategory, setNewCategory] = useState("");
+  const [attendanceDeliveries, setAttendanceDeliveries] = useState<AdminAttendanceDeliveryItem[]>([]);
+  const [attendanceDeliveryTab, setAttendanceDeliveryTab] = useState<"PENDING" | "DELIVERED">("PENDING");
+  const [attendanceDeliveryMemo, setAttendanceDeliveryMemo] = useState<Record<number, string>>({});
 
   // Gacha
   const [prizes, setPrizes] = useState<GachaPrizeInfo[]>([]);
@@ -122,6 +126,18 @@ export default function AdminPage() {
       }
     })();
   }, [tab, deliveryTab]);
+
+  useEffect(() => {
+    if (tab !== "attendance") return;
+    (async () => {
+      try {
+        const data = await adminListAttendanceDeliveries(attendanceDeliveryTab);
+        setAttendanceDeliveries(data);
+      } catch {
+        setAttendanceDeliveries([]);
+      }
+    })();
+  }, [tab, attendanceDeliveryTab]);
 
   const loadAllData = async () => {
     try {
@@ -516,6 +532,81 @@ export default function AdminPage() {
                 조회
               </button>
             </div>
+          </div>
+
+          {/* 출석 당첨 수령 관리 */}
+          <div>
+            <h3 className="font-semibold text-sm mb-3">출석 당첨 수령 관리</h3>
+            <div className="flex gap-2 mb-3">
+              {(["PENDING", "DELIVERED"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setAttendanceDeliveryTab(t)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    attendanceDeliveryTab === t ? "bg-forest-500 text-white" : "bg-white border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {t === "PENDING" ? "미수령" : "수령완료"}
+                </button>
+              ))}
+            </div>
+            {attendanceDeliveries.length === 0 ? (
+              <div className="text-center text-gray-400 text-sm py-6 bg-white rounded-xl border">
+                {attendanceDeliveryTab === "PENDING" ? "미수령 당첨자가 없습니다" : "수령 완료 내역이 없습니다"}
+              </div>
+            ) : (
+              <div className="space-y-2 max-w-2xl">
+                {attendanceDeliveries.map((d) => (
+                  <div key={d.id} className={`bg-white rounded-xl border-l-4 p-4 ${d.deliveryStatus === "PENDING" ? "border-orange-400" : "border-green-400"}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-gray-800">{d.userName}</span>
+                          <span className="text-gray-400 text-xs">({d.userNickname} / {d.userEmail})</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${d.deliveryStatus === "PENDING" ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"}`}>
+                            {d.deliveryStatus === "PENDING" ? "미수령" : "수령완료"}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          당첨일 {d.winDate} · 출석시각 {new Date(d.checkinAt).toLocaleString("ko-KR")}
+                          {d.winnerDrawnAt && <> · 추첨 {new Date(d.winnerDrawnAt).toLocaleString("ko-KR")}</>}
+                        </div>
+                        {d.message && <div className="text-xs text-gray-600 mt-1">한마디: {d.message}</div>}
+                        {d.deliveryStatus === "DELIVERED" && (
+                          <div className="text-xs text-green-700 mt-1">
+                            전달완료 {d.deliveredAt && new Date(d.deliveredAt).toLocaleString("ko-KR")}
+                            {d.deliveryMemo && <span className="ml-2 text-gray-500">메모: {d.deliveryMemo}</span>}
+                          </div>
+                        )}
+                      </div>
+                      {d.deliveryStatus === "PENDING" && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <input
+                            type="text"
+                            placeholder="메모 (선택)"
+                            value={attendanceDeliveryMemo[d.id] ?? ""}
+                            onChange={(e) => setAttendanceDeliveryMemo(prev => ({ ...prev, [d.id]: e.target.value }))}
+                            className="px-2 py-1 border border-gray-300 rounded-lg text-xs w-28 focus:outline-none focus:ring-1 focus:ring-forest-500"
+                          />
+                          <button
+                            onClick={async () => {
+                              try {
+                                await adminMarkAttendanceDelivered(d.id, attendanceDeliveryMemo[d.id]);
+                                const updated = await adminListAttendanceDeliveries(attendanceDeliveryTab);
+                                setAttendanceDeliveries(updated);
+                              } catch { alert("처리 실패"); }
+                            }}
+                            className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 whitespace-nowrap"
+                          >
+                            수령 완료
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

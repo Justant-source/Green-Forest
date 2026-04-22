@@ -686,6 +686,24 @@ public class AdminController {
         return ResponseEntity.ok(attendancePhraseRepository.findAll());
     }
 
+    @GetMapping("/attendance/deliveries")
+    public ResponseEntity<List<com.vgc.dto.AdminAttendanceDeliveryDto>> listAttendanceDeliveries(
+            @RequestParam(defaultValue = "PENDING") String status) {
+        com.vgc.entity.AttendanceDeliveryStatus s =
+                com.vgc.entity.AttendanceDeliveryStatus.valueOf(status);
+        return ResponseEntity.ok(attendanceService.listDeliveries(s));
+    }
+
+    @PatchMapping("/attendance/deliveries/{checkinId}/deliver")
+    public ResponseEntity<com.vgc.dto.AdminAttendanceDeliveryDto> markAttendanceDelivered(
+            @PathVariable Long checkinId,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        String memo = body != null ? body.get("memo") : null;
+        return ResponseEntity.ok(attendanceService.markDelivered(checkinId, admin.getId(), memo));
+    }
+
     // ===== 뽑기 관리 =====
 
     @PostMapping(value = "/gacha/prizes", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -750,6 +750,18 @@ export async function getRandomPhrases(count = 3): Promise<AttendancePhrase[]> {
   return res.json();
 }
 
+export async function getMyAttendanceWins(): Promise<import("@/types").MyAttendanceWin[]> {
+  const res = await fetch(`${BASE_URL}/attendance/me/wins`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function getMyPendingRewards(): Promise<{ attendance: number; gacha: number; total: number }> {
+  const res = await fetch(`${BASE_URL}/attendance/me/pending-rewards`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
 // ===== 뽑기 =====
 export async function getGachaPrizes(): Promise<GachaPrizeInfo[]> {
   const res = await fetch(`${BASE_URL}/gacha/prizes`, { headers: authHeaders() });
@@ -932,6 +944,22 @@ export async function adminListDeliveries(status = "PENDING"): Promise<import("@
 
 export async function adminMarkDelivered(drawId: number, memo?: string): Promise<GachaDrawRecord> {
   const res = await fetch(`${BASE_URL}/admin/gacha/deliveries/${drawId}/deliver`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ memo }),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminListAttendanceDeliveries(status = "PENDING"): Promise<import("@/types").AdminAttendanceDeliveryItem[]> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/deliveries?status=${status}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminMarkAttendanceDelivered(checkinId: number, memo?: string): Promise<import("@/types").AdminAttendanceDeliveryItem> {
+  const res = await fetch(`${BASE_URL}/admin/attendance/deliveries/${checkinId}/deliver`, {
     method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify({ memo }),

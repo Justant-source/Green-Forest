@@ -221,6 +221,7 @@ public class AttendanceService {
         AttendanceCheckin winner = checkins.get(idx);
         winner.setWinner(true);
         winner.setWinnerDrawnAt(LocalDateTime.now(KST));
+        winner.setDeliveryStatus(AttendanceDeliveryStatus.PENDING);
         checkinRepository.save(winner);
 
         // 알림 생성
@@ -265,6 +266,43 @@ public class AttendanceService {
         result.put("checkinId", winner.getId());
         result.put("totalCheckins", checkins.size());
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.vgc.dto.AdminAttendanceDeliveryDto> listDeliveries(AttendanceDeliveryStatus status) {
+        return checkinRepository.findWinnersWithUserByDeliveryStatus(status).stream()
+                .map(com.vgc.dto.AdminAttendanceDeliveryDto::from)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public com.vgc.dto.AdminAttendanceDeliveryDto markDelivered(Long checkinId, Long adminId, String memo) {
+        AttendanceCheckin c = checkinRepository.findById(checkinId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "출석 기록 없음"));
+        if (!c.isWinner()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "당첨자가 아닙니다");
+        }
+        c.setDeliveryStatus(AttendanceDeliveryStatus.DELIVERED);
+        c.setDeliveredAt(LocalDateTime.now(KST));
+        c.setDeliveredBy(adminId);
+        c.setDeliveryMemo(memo);
+        return com.vgc.dto.AdminAttendanceDeliveryDto.from(checkinRepository.save(c));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getMyWins(Long userId) {
+        return checkinRepository.findMyWins(userId).stream().map(c -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", c.getId());
+            m.put("date", c.getCheckinDate().toString());
+            m.put("checkinAt", c.getCheckinAt().toString());
+            m.put("winnerDrawnAt", c.getWinnerDrawnAt() != null ? c.getWinnerDrawnAt().toString() : null);
+            m.put("message", c.getMessage());
+            m.put("deliveryStatus", c.getDeliveryStatus().name());
+            m.put("deliveryMemo", c.getDeliveryMemo());
+            m.put("deliveredAt", c.getDeliveredAt() != null ? c.getDeliveredAt().toString() : null);
+            return m;
+        }).collect(Collectors.toList());
     }
 
     private int calculateStreak(Long userId, LocalDate from) {
