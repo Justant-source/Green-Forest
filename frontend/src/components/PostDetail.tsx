@@ -4,11 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Post, CategoryInfo } from "@/types";
-import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, deletePost, startConversation, toMediaUrl } from "@/lib/api";
+import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, deletePost, toMediaUrl } from "@/lib/api";
 import { updatePostStatus } from "@/lib/api-post-status";
 import { useAuth } from "@/context/AuthContext";
 import CommentSection from "./CommentSection";
 import PostContent from "./PostContent";
+import BingoBoardView from "./events/photobingo/BingoBoardView";
+import { parsePhotoBingoMarker } from "@/lib/events/postMarker";
 
 interface PostDetailProps {
   postId: number;
@@ -135,7 +137,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
               {catInfo?.label || post.category}
             </span>
             {post.status && post.categoryHasStatus && (
-              isLoggedIn && nickname === post.authorNickname ? (
+              isLoggedIn && post.isAuthor ? (
                 <select
                   value={post.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
@@ -152,16 +154,22 @@ export default function PostDetail({ postId }: PostDetailProps) {
               )
             )}
           </div>
-          {isLoggedIn && (nickname === post.authorNickname || isAdmin) && (
+          {isLoggedIn && (post.isAuthor || isAdmin) && (
             <div className="flex gap-2">
-              {nickname === post.authorNickname && (
-                <Link
-                  href={`/posts/${post.id}/edit`}
-                  className="px-4 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  수정
-                </Link>
-              )}
+              {post.isAuthor && (() => {
+                // 빙고 글은 일반 글 수정 화면으로 보내면 원본 마커 주석이 노출된다.
+                // 빙고 참여 화면(/events/{eventId})으로 바로 보내 사진 업로드 UI를 열어준다.
+                const bingo = parsePhotoBingoMarker(post.content).bingo;
+                const editHref = bingo ? `/events/${bingo.eventId}` : `/posts/${post.id}/edit`;
+                return (
+                  <Link
+                    href={editHref}
+                    className="px-4 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    수정
+                  </Link>
+                );
+              })()}
               <button
                 onClick={async () => {
                   if (!confirm("정말 삭제하시겠습니까?")) return;
@@ -183,23 +191,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
         <h1 className="text-2xl font-bold mt-3">{post.title}</h1>
         <div className="flex gap-4 text-sm text-gray-500 mt-2">
           {post.authorNickname && (
-            isLoggedIn && nickname !== post.authorNickname ? (
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await startConversation(post.authorNickname!);
-                    router.push(`/conversations/${res.conversationId}`);
-                  } catch {
-                    alert("대화를 시작할 수 없습니다.");
-                  }
-                }}
-                className="text-gray-700 font-medium hover:text-forest-500 transition-colors cursor-pointer"
-              >
-                {post.authorNickname}
-              </button>
-            ) : (
-              <span className="text-gray-700 font-medium">{post.authorNickname}</span>
-            )
+            <span className="text-gray-700 font-medium">{post.authorNickname}</span>
           )}
           <span>조회 {post.viewCount}</span>
           <span>좋아요 {post.likeCount}</span>
@@ -208,6 +200,11 @@ export default function PostDetail({ postId }: PostDetailProps) {
       </div>
 
       {(() => {
+        const parsed = parsePhotoBingoMarker(post.content);
+        if (parsed.bingo) {
+          // 빙고 글은 캐러셀 대신 3x3 보드 뷰로 렌더
+          return <BingoBoardView payload={parsed.bingo} />;
+        }
         const urls = post.imageUrls && post.imageUrls.length > 0
           ? post.imageUrls
           : post.imageUrl ? [post.imageUrl] : [];
@@ -227,7 +224,9 @@ export default function PostDetail({ postId }: PostDetailProps) {
             }}
           >
             <img
-              src={toMediaUrl(urls[carouselIndex])}
+              src={toMediaUrl(urls[carouselIndex], "md")}
+              srcSet={`${toMediaUrl(urls[carouselIndex], "sm")} 400w, ${toMediaUrl(urls[carouselIndex], "md")} 900w`}
+              sizes="(max-width: 640px) 100vw, 768px"
               alt={`${post.title} ${carouselIndex + 1}`}
               className="w-full rounded-xl"
             />
@@ -275,7 +274,12 @@ export default function PostDetail({ postId }: PostDetailProps) {
         </div>
       )}
 
-      <PostContent content={post.content} />
+      {(() => {
+        const { cleanContent, bingo } = parsePhotoBingoMarker(post.content);
+        const text = bingo ? cleanContent : post.content;
+        if (!text) return null;
+        return <PostContent content={text} />;
+      })()}
 
       <div className="flex items-center gap-4 pt-4 border-t">
         {isLoggedIn ? (

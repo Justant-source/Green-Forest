@@ -11,7 +11,8 @@ import java.util.List;
     @Index(name = "idx_posts_author_created", columnList = "author_id, createdAt DESC"),
     @Index(name = "idx_posts_created", columnList = "createdAt DESC"),
     @Index(name = "idx_posts_quest", columnList = "quest_id"),
-    @Index(name = "idx_posts_category_created", columnList = "category, createdAt DESC")
+    @Index(name = "idx_posts_category_created", columnList = "category, createdAt DESC"),
+    @Index(name = "idx_posts_photo_bingo_submission", columnList = "photo_bingo_submission_id", unique = true)
 })
 public class Post {
     @Id
@@ -51,6 +52,10 @@ public class Post {
     @Column(name = "is_anonymous", nullable = false)
     private boolean anonymous = false;
 
+    /** 사진 빙고 이벤트로 자동 생성/연동된 Post 여부. 빙고 이외 일반 글은 null. */
+    @Column(name = "photo_bingo_submission_id")
+    private Long photoBingoSubmissionId;
+
     // --- 기존 필드 ---
 
     private LocalDateTime createdAt;
@@ -88,4 +93,6 @@ public class Post {
     public void setQuestId(Long questId) { this.questId = questId; }
     public boolean isAnonymous() { return anonymous; }
     public void setAnonymous(boolean anonymous) { this.anonymous = anonymous; }
+    public Long getPhotoBingoSubmissionId() { return photoBingoSubmissionId; }
+    public void setPhotoBingoSubmissionId(Long photoBingoSubmissionId) { this.photoBingoSubmissionId = photoBingoSubmissionId; }
 }

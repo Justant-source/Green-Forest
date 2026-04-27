@@ -37,8 +37,9 @@ public class PostController {
     }
 
     @GetMapping("/{id}")
-    public PostResponse getPost(@PathVariable Long id) {
-        return postService.getPost(id);
+    public PostResponse getPost(@PathVariable Long id, Authentication authentication) {
+        String email = authentication != null ? authentication.getName() : null;
+        return postService.getPost(id, email);
     }
 
     @PostMapping

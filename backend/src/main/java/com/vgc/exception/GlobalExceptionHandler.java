@@ -38,8 +38,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleRuntime(RuntimeException e) {
         activityLogService.logSystemError("RUNTIME_ERROR", e.getMessage(), e);
+        String message = e.getMessage() != null ? e.getMessage() : "서버 오류가 발생했습니다";
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("message", "서버 오류가 발생했습니다"));
+                .body(Map.of("message", message));
     }
 
     @ExceptionHandler(Exception.class)

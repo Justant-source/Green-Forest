@@ -174,7 +174,7 @@ public class DropService {
         completion.setPost(post);
         questCompletionRepository.save(completion);
 
-        recordTransaction(author, finalDrops, DropReasonType.EVENT_QUEST,
+        recordTransaction(author, finalDrops, DropReasonType.QUEST_COMPLETION,
                 "퀘스트 '" + quest.getTitle() + "' 인증 보상", post.getId(), quest.getId());
 
         notificationService.createNotification(author, NotificationType.DROP_AWARD,
@@ -398,6 +398,15 @@ public class DropService {
     @Transactional
     public void awardAttendance(User user) {
         recordTransaction(user, 10, DropReasonType.ATTENDANCE, "출석 보상", null, null);
+    }
+
+    /**
+     * 퀘스트 이벤트(사진 빙고 등) 보상 지급
+     */
+    @Transactional
+    public void awardEventReward(User user, int amount, String memo) {
+        if (amount <= 0) return;
+        recordTransaction(user, amount, DropReasonType.EVENT_REWARD, memo, null, null);
     }
 
     @Transactional

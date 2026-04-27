@@ -1,5 +1,6 @@
 package com.vgc.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.vgc.entity.Post;
 import com.vgc.entity.PostImage;
 import java.time.LocalDateTime;
@@ -24,6 +25,7 @@ public class PostResponse {
     private List<String> imageUrls;
     private Long questId;
     private boolean anonymous;
+    private boolean isAuthor;
     private int dropsAwarded;
     private List<String> taggedNicknames;
 
@@ -77,6 +79,9 @@ public class PostResponse {
     public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
     public Long getQuestId() { return questId; }
     public boolean isAnonymous() { return anonymous; }
+    @JsonProperty("isAuthor")
+    public boolean isAuthor() { return isAuthor; }
+    public void setIsAuthor(boolean isAuthor) { this.isAuthor = isAuthor; }
     public int getDropsAwarded() { return dropsAwarded; }
     public void setDropsAwarded(int dropsAwarded) { this.dropsAwarded = dropsAwarded; }
     public List<String> getTaggedNicknames() { return taggedNicknames; }

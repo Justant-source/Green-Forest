@@ -118,6 +118,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/quests/**").authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()
 
+                        // 8-5. 이벤트(사진 빙고 등 타임어택 활동) - mode/list/detail 공개, 참여는 인증 필요
+                        .requestMatchers(HttpMethod.GET, "/api/events/mode").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/events").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/events/*").permitAll()
+                        .requestMatchers("/api/events/**").authenticated()
+
                         // 9. 유저 프로필 업데이트 - 인증 필요
                         .requestMatchers("/api/users/**").authenticated()
 

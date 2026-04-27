@@ -48,6 +48,45 @@
 - **`docker stop/rm/restart` 명령 실행 전, 반드시 `docker ps --filter name=...` 으로 대상 컨테이너만 나열한 후 사용자에게 확인을 받아라.** prod 컨테이너가 목록에 포함되어 있으면 즉시 중단하고 사용자에게 보고해라.
 - **prod 이미지를 빌드할 때는 `-p green-forest-prod` 프로젝트명을 항상 명시해라.** 프로젝트명 없이 빌드하면 기본 태그가 prod와 겹칠 수 있다.
 - **prod DB는 `validate` DDL 모드이므로 새 엔티티 추가 시 반드시 DDL SQL을 prod DB에 직접 적용해야 한다.** dev DB에서 `mysqldump --no-data`로 스키마를 추출하여 prod에 적용하는 방식을 표준으로 사용해라.
+- **prod 에러는 stdout이 아닌 파일로만 간다.** `docker logs greenforest-backend-prod`에 배너만 보이면 로그 볼륨을 직접 확인해라: `docker run --rm -v green-forest-prod_logs_prod:/app/logs --entrypoint="" green-forest-prod-backend:latest sh -c "tail -100 /app/logs/error.log"`
+
+## 🗄️ Prod DB 마이그레이션 규칙 (재발 방지)
+
+**사고 경위 (2026-04-27):** 이벤트 테이블 마이그레이션 SQL을 수작업으로 작성하면서 Hibernate 6.x가 기대하는 타입과 다른 타입을 사용해 prod 백엔드가 재시작 루프에 빠짐.
+
+### Hibernate 6.x (Spring Boot 3.x) 타입 매핑 규칙
+
+- **`@Enumerated(EnumType.STRING)` → MySQL `ENUM(...)` 타입.** VARCHAR(50)으로 생성하면 schema-validate 실패. 반드시 enum 값을 모두 열거한 `ENUM(...)` 컬럼으로 생성해야 한다.
+  ```sql
+  -- ❌ 잘못된 방식
+  MODIFY COLUMN reason_type VARCHAR(50) NOT NULL;
+  -- ✅ 올바른 방식
+  MODIFY COLUMN reason_type ENUM('VALUE1','VALUE2','VALUE3') NOT NULL;
+  ```
+- **`LocalDateTime` 필드 → MySQL `DATETIME(6)` 타입 (microsecond precision 필수).** `DATETIME`(precision 없음)으로 생성하면 schema-validate 실패.
+  ```sql
+  -- ❌ 잘못된 방식
+  created_at DATETIME NOT NULL
+  -- ✅ 올바른 방식
+  created_at DATETIME(6) NOT NULL
+  ```
+
+### prod 마이그레이션 SQL 작성 표준
+
+1. **새 테이블 생성 시:** dev DB에서 `SHOW CREATE TABLE <테이블명>;`으로 Hibernate가 실제 생성한 DDL을 복사해서 사용해라. 직접 작성하지 마라.
+2. **컬럼 타입 변경 시:** dev 스키마의 정확한 타입을 `INFORMATION_SCHEMA.COLUMNS`로 확인 후 동일하게 적용해라.
+3. **prod 배포 전 체크리스트:**
+   - `docker exec greenforest-mysql-dev mysql ... -e "SHOW CREATE TABLE <new_table>;"` 로 dev 스키마 확인
+   - 마이그레이션 SQL의 컬럼 타입이 dev 스키마와 100% 일치하는지 검증
+   - prod에 적용 후 `docker run --rm -v green-forest-prod_logs_prod:/app/logs --entrypoint="" green-forest-prod-backend:latest sh -c "tail -50 /app/logs/app.log"` 로 `Started VgcApplication` 확인
+
+## 🔒 실 사용자 계정 보호 (재발 방지)
+
+**사고 경위 (2026-04-22):** API 엔드포인트 테스트를 위해 prod 실 사용자(heesik.jeon)의 비밀번호를 임의로 변경함. dev DB에 해당 계정이 없어 원래 비밀번호를 복원하지 못하는 사고 발생.
+
+- **실 사용자(prod DB) 비밀번호를 테스트 목적으로 절대 변경하지 마라.** BCrypt 단방향 해시라 원복이 불가능하다.
+- **API 인증 테스트가 필요할 때는 전용 테스트 계정(gm, admin)만 사용해라.** 일반 사용자 계정에 손대지 마라.
+- **부득이하게 비밀번호를 변경했다면, 변경 전 해시값을 반드시 메모해두고 즉시 원복해라.** 원복하지 못한 경우 사용자에게 즉시 보고해라.
 
 ## 📦 환경 파일 규약 (local 금지)
 - **환경 구분 이름은 `dev` / `prod` 두 가지만 사용한다.** `local` 이라는 이름은 더 이상 쓰지 않는다.

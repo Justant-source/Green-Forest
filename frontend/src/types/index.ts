@@ -24,6 +24,7 @@ export interface Post {
   liked?: boolean;
   questId?: number | null;
   anonymous?: boolean;
+  isAuthor?: boolean;
   dropsAwarded?: number;
   taggedNicknames?: string[];
 }

@@ -3,6 +3,7 @@ import "./globals.css";
 import dynamic from "next/dynamic";
 import { AuthProvider } from "@/context/AuthContext";
 import { CategoryProvider } from "@/context/CategoryContext";
+import { EventModeProvider } from "@/context/EventModeContext";
 import { notoSansKR } from "@/lib/fonts";
 
 const Header = dynamic(() => import("@/components/Header"), { ssr: false });
@@ -22,11 +23,13 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body className={`${notoSansKR.className} bg-forest-50 min-h-screen pb-16`} suppressHydrationWarning>
         <AuthProvider>
-          <CategoryProvider>
-            <Header />
-            <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
-            <BottomNav />
-          </CategoryProvider>
+          <EventModeProvider>
+            <CategoryProvider>
+              <Header />
+              <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
+              <BottomNav />
+            </CategoryProvider>
+          </EventModeProvider>
         </AuthProvider>
       </body>
     </html>

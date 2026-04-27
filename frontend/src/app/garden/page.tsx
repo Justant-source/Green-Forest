@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { logout } from "@/lib/auth";
 import { getMe, getMyPosts, getMyBookmarks, getMyDropHistory, updateMyProfile, changePassword, getMyPlantGrowth, getMyAttendanceWins, getGachaHistory } from "@/lib/api";
 import { User, Post, DropTransaction, PageResponse, PlantGrowth, MyAttendanceWin, GachaDrawRecord } from "@/types";
 import GridItem from "@/components/GridItem";
@@ -239,11 +240,9 @@ export default function GardenPage() {
                   setPwSaving(true);
                   try {
                     await changePassword(currentPw, newPw);
-                    alert("비밀번호가 변경되었습니다.");
-                    setShowPwChange(false);
-                    setCurrentPw("");
-                    setNewPw("");
-                    setNewPwConfirm("");
+                    alert("비밀번호가 변경되었습니다. 다시 로그인해주세요.");
+                    logout();
+                    router.push("/login");
                   } catch {
                     alert("현재 비밀번호가 올바르지 않습니다.");
                   } finally {

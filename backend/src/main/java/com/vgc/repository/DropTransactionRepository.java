@@ -51,4 +51,13 @@ public interface DropTransactionRepository extends JpaRepository<DropTransaction
     int countByUserIdAndReasonTypeAndRelatedPostId(Long userId, DropReasonType reasonType, Long relatedPostId);
 
     List<DropTransaction> findByUserIdAndReasonTypeAndRelatedPostId(Long userId, DropReasonType reasonType, Long relatedPostId);
+
+    // ── 관리자 이력 조회 (필터/페이징) ──
+    @Query(value = "SELECT d FROM DropTransaction d JOIN FETCH d.user ORDER BY d.createdAt DESC",
+           countQuery = "SELECT COUNT(d) FROM DropTransaction d")
+    Page<DropTransaction> findAllForAdmin(Pageable pageable);
+
+    @Query(value = "SELECT d FROM DropTransaction d JOIN FETCH d.user WHERE d.reasonType IN :types ORDER BY d.createdAt DESC",
+           countQuery = "SELECT COUNT(d) FROM DropTransaction d WHERE d.reasonType IN :types")
+    Page<DropTransaction> findByReasonTypesForAdmin(@Param("types") List<DropReasonType> types, Pageable pageable);
 }

@@ -19,16 +19,24 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
+    private static final long EXPIRATION_MS = 24 * 60 * 60 * 1000L;
+
     public String generateToken(String email) {
+        Date now = new Date();
         return Jwts.builder()
                 .subject(email)
-                .issuedAt(new Date())
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + EXPIRATION_MS))
                 .signWith(key)
                 .compact();
     }
 
     public String extractEmail(String token) {
         return getClaims(token).getSubject();
+    }
+
+    public Date extractIssuedAt(String token) {
+        return getClaims(token).getIssuedAt();
     }
 
     public boolean validateToken(String token) {

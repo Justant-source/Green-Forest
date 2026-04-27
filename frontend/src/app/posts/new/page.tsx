@@ -144,7 +144,7 @@ function NewPostPageInner() {
       router.push(`/posts/${newPost.id}`);
     } catch (error) {
       console.error("Failed to create post:", error);
-      alert("게시글 작성에 실패했습니다.");
+      alert(error instanceof Error ? error.message : "게시글 작성에 실패했습니다.");
     } finally {
       setSubmitting(false);
     }
@@ -207,7 +207,7 @@ function NewPostPageInner() {
           <div>
             <h2 className="text-lg font-semibold text-gray-800 mb-4">어떤 글을 작성하시겠어요?</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {categories.map((cat) => {
+              {categories.filter((cat) => cat.name !== "이벤트").map((cat) => {
                 const disabled = cat.name === "퀘스트";
                 return (
                   <button

@@ -24,8 +24,10 @@ import {
   adminListAttendanceDeliveries, adminMarkAttendanceDelivered,
   adminListPosts, adminUpdatePost, adminDeletePost,
 } from "@/lib/api";
+import EventAdminTab from "@/components/events/photobingo/admin/EventAdminTab";
+import DropHistoryPanel from "@/components/admin/DropHistoryPanel";
 
-type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha" | "posts";
+type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha" | "posts" | "events";
 
 const PLANT_OPTIONS = [
   { value: "TABLE_PALM", label: "테이블야자" },
@@ -184,6 +186,7 @@ export default function AdminPage() {
     { key: "posts", label: "게시글" },
     { key: "parties", label: "파티" },
     { key: "quests", label: "퀘스트" },
+    { key: "events", label: "이벤트" },
     { key: "drops", label: "물방울" },
     { key: "categories", label: "게시판" },
     { key: "attendance", label: "출석" },
@@ -361,66 +364,73 @@ export default function AdminPage() {
 
       {/* Drops */}
       {tab === "drops" && (
-        <div className="max-w-lg space-y-4">
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => setDropMode("award")}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${dropMode === "award" ? "bg-forest-500 text-white" : "bg-white border text-gray-700"}`}
+        <div className="space-y-6">
+          <div className="max-w-lg space-y-4">
+            <h3 className="font-semibold text-gray-800">수동 지급 / 차감</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDropMode("award")}
+                className={`px-4 py-2 rounded-full text-sm font-medium ${dropMode === "award" ? "bg-forest-500 text-white" : "bg-white border text-gray-700"}`}
+              >
+                지급
+              </button>
+              <button
+                onClick={() => setDropMode("deduct")}
+                className={`px-4 py-2 rounded-full text-sm font-medium ${dropMode === "deduct" ? "bg-red-500 text-white" : "bg-white border text-gray-700"}`}
+              >
+                차감
+              </button>
+            </div>
+            <select
+              value={dropUserId ?? ""}
+              onChange={(e) => setDropUserId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-forest-500"
             >
-              지급
-            </button>
+              <option value="">유저 선택</option>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.nickname} | {u.name} | {u.email}</option>)}
+            </select>
+            <input
+              type="number"
+              value={dropAmount}
+              onChange={(e) => setDropAmount(e.target.value)}
+              placeholder="물방울 수량"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+            />
+            <input
+              type="text"
+              value={dropReason}
+              onChange={(e) => setDropReason(e.target.value)}
+              placeholder="사유"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
+            />
             <button
-              onClick={() => setDropMode("deduct")}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${dropMode === "deduct" ? "bg-red-500 text-white" : "bg-white border text-gray-700"}`}
+              onClick={async () => {
+                if (!dropUserId || !dropAmount || !dropReason) { alert("모든 항목을 입력하세요."); return; }
+                try {
+                  if (dropMode === "award") {
+                    await awardDrops(dropUserId, Number(dropAmount), dropReason);
+                  } else {
+                    await deductDrops(dropUserId, Number(dropAmount), dropReason);
+                  }
+                  alert(`물방울 ${dropMode === "award" ? "지급" : "차감"} 완료`);
+                  setDropAmount("");
+                  setDropReason("");
+                  setDropUserId(null);
+                  const updatedUsers = await getAdminUsers();
+                  setUsers(updatedUsers);
+                } catch { alert("실패"); }
+              }}
+              className={`px-6 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+                dropMode === "award" ? "bg-forest-500 hover:bg-forest-600" : "bg-red-500 hover:bg-red-600"
+              }`}
             >
-              차감
+              {dropMode === "award" ? "지급" : "차감"}
             </button>
           </div>
-          <select
-            value={dropUserId ?? ""}
-            onChange={(e) => setDropUserId(e.target.value ? Number(e.target.value) : null)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-forest-500"
-          >
-            <option value="">유저 선택</option>
-            {users.map((u) => <option key={u.id} value={u.id}>{u.nickname} | {u.name} | {u.email}</option>)}
-          </select>
-          <input
-            type="number"
-            value={dropAmount}
-            onChange={(e) => setDropAmount(e.target.value)}
-            placeholder="물방울 수량"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
-          />
-          <input
-            type="text"
-            value={dropReason}
-            onChange={(e) => setDropReason(e.target.value)}
-            placeholder="사유"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
-          />
-          <button
-            onClick={async () => {
-              if (!dropUserId || !dropAmount || !dropReason) { alert("모든 항목을 입력하세요."); return; }
-              try {
-                if (dropMode === "award") {
-                  await awardDrops(dropUserId, Number(dropAmount), dropReason);
-                } else {
-                  await deductDrops(dropUserId, Number(dropAmount), dropReason);
-                }
-                alert(`물방울 ${dropMode === "award" ? "지급" : "차감"} 완료`);
-                setDropAmount("");
-                setDropReason("");
-                setDropUserId(null);
-                const updatedUsers = await getAdminUsers();
-                setUsers(updatedUsers);
-              } catch { alert("실패"); }
-            }}
-            className={`px-6 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
-              dropMode === "award" ? "bg-forest-500 hover:bg-forest-600" : "bg-red-500 hover:bg-red-600"
-            }`}
-          >
-            {dropMode === "award" ? "지급" : "차감"}
-          </button>
+
+          <div className="border-t pt-6">
+            <DropHistoryPanel />
+          </div>
         </div>
       )}
 
@@ -1148,6 +1158,9 @@ export default function AdminPage() {
       {tab === "posts" && (
         <PostsPanel categories={categories} />
       )}
+
+      {/* Quest Events */}
+      {tab === "events" && <EventAdminTab />}
     </div>
   );
 }

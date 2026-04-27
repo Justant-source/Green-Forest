@@ -25,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -103,12 +106,15 @@ public class PostService {
         });
     }
 
-    public PostResponse getPost(Long id) {
+    public PostResponse getPost(Long id, String currentUserEmail) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setViewCount(post.getViewCount() + 1);
         postRepository.save(post);
         PostResponse response = PostResponse.from(post, commentRepository.countByPostId(post.getId()));
+        if (currentUserEmail != null && post.getAuthor() != null) {
+            response.setIsAuthor(currentUserEmail.equals(post.getAuthor().getEmail()));
+        }
 
         // categoryHasStatus 필드 추가
         var category = categoryRepository.findByName(post.getCategory());
@@ -136,7 +142,10 @@ public class PostService {
 
         // 동료칭찬 주 1회 제한
         if ("동료칭찬".equals(category) && dropService.hasPraisedThisWeek(author.getId())) {
-            throw new RuntimeException("동료 칭찬은 주 1회만 작성할 수 있습니다.");
+            LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+            throw new RuntimeException(String.format(
+                "동료 칭찬은 주 1회만 작성할 수 있습니다. 다음 작성은 %d월 %d일(월요일)부터 가능합니다.",
+                nextMonday.getMonthValue(), nextMonday.getDayOfMonth()));
         }
 
         Post post = new Post();

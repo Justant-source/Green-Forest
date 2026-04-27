@@ -16,11 +16,26 @@ export const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_IMAGE_BASE_URL || "http://
  * 이미지 경로를 /api/media/ 경유 URL로 변환한다.
  * - 기업 프록시가 /uploads/ 를 차단해도 /api/media/ 는 허용됨
  * - 대소문자 구분 없이 파일을 찾는 FileServeController 사용
+ * - size="sm" (모바일, ~400px) / "md" (PC, ~900px) 썸네일을 on-demand 요청 가능
  */
-export function toMediaUrl(path: string | null | undefined): string {
+export type MediaSize = "sm" | "md";
+
+export function toMediaUrl(path: string | null | undefined, size?: MediaSize): string {
   if (!path) return "";
   const filename = path.replace(/^\/uploads\//, "");
-  return `${IMAGE_BASE_URL}/api/media/${filename}`;
+  const qs = size ? `?size=${size}` : "";
+  return `${IMAGE_BASE_URL}/api/media/${filename}${qs}`;
+}
+
+/** srcset 에 쓰일 sm/md 두 벌의 URL 을 한 번에 얻는다. */
+export function mediaSrcSet(path: string | null | undefined): { src: string; srcSet: string } | null {
+  if (!path) return null;
+  const sm = toMediaUrl(path, "sm");
+  const md = toMediaUrl(path, "md");
+  return {
+    src: md,
+    srcSet: `${sm} 400w, ${md} 900w`,
+  };
 }
 
 function authHeaders(): HeadersInit {
@@ -62,7 +77,11 @@ export async function getPosts(
 }
 
 export async function getPost(id: number): Promise<Post> {
-  const res = await fetch(`${BASE_URL}/posts/${id}`, { cache: "no-store" });
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/posts/${id}`, {
+    cache: "no-store",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
   if (!res.ok) throw new Error("Failed to fetch post");
   return res.json();
 }
@@ -76,7 +95,8 @@ export async function createPost(formData: FormData): Promise<Post> {
   });
   if (!res.ok) {
     handleUnauthorized(res);
-    throw new Error("Failed to create post");
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message || "게시글 작성에 실패했습니다.");
   }
   return res.json();
 }

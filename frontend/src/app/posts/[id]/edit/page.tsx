@@ -7,6 +7,7 @@ import { CategoryInfo } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import CategoryRequestModal from "@/components/CategoryRequestModal";
 import { compressImage } from "@/lib/imageCompression";
+import { parsePhotoBingoMarker } from "@/lib/events/postMarker";
 
 export default function EditPostPage() {
   const router = useRouter();
@@ -40,9 +41,16 @@ export default function EditPostPage() {
 
     getPost(postId)
       .then((post) => {
-        if (post.authorNickname !== nickname) {
+        if (!post.isAuthor) {
           alert("본인이 작성한 글만 수정할 수 있습니다.");
           router.replace(`/posts/${postId}`);
+          return;
+        }
+        // 빙고 이벤트로 자동 생성된 글은 일반 글 수정 UI로 들어가면 원본 마커가 노출된다.
+        // 빙고 참여 화면으로 이동시킨다.
+        const bingo = parsePhotoBingoMarker(post.content).bingo;
+        if (bingo) {
+          router.replace(`/events/${bingo.eventId}`);
           return;
         }
         setTitle(post.title);

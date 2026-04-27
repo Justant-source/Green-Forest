@@ -12,7 +12,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.vgc.repository.UserRepository;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
+import java.util.Date;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -35,11 +38,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             if (jwtUtil.validateToken(token)) {
                 String email = jwtUtil.extractEmail(token);
-                if (userRepository.existsByEmail(email)) {
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
+                userRepository.findByEmail(email).ifPresent(user -> {
+                    Date issuedAt = jwtUtil.extractIssuedAt(token);
+                    LocalDateTime tokenIssuedAt = issuedAt.toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime();
+                    LocalDateTime passwordChangedAt = user.getPasswordChangedAt();
+                    if (passwordChangedAt == null || tokenIssuedAt.isAfter(passwordChangedAt)) {
+                        UsernamePasswordAuthenticationToken auth =
+                                new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    }
+                });
             }
         }
 

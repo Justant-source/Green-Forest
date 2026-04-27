@@ -4,7 +4,7 @@ public enum DropReasonType {
     DAILY_QUEST("일일퀘스트"),
     WEEKLY_QUEST("주간퀘스트"),
     MONTHLY_QUEST("월간퀘스트"),
-    EVENT_QUEST("이벤트퀘스트"),
+    QUEST_COMPLETION("퀘스트완수"),
     TAG_BONUS("태깅보너스"),
     GM_AWARD("GM수동지급"),
     GM_DEDUCT("GM수동차감"),
@@ -14,7 +14,8 @@ public enum DropReasonType {
     GIFT_SENT("선물보냄"),
     ATTENDANCE("출석"),
     ATTENDANCE_WINNER("출석당첨커피"),
-    GACHA_BET("뽑기차감");
+    GACHA_BET("뽑기차감"),
+    EVENT_REWARD("이벤트보상");
 
     private final String label;
 

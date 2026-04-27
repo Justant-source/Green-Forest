@@ -7,7 +7,8 @@ public enum NotificationType {
     QUEST_CREATED("퀘스트생성"),
     QUEST_DEADLINE("퀘스트마감임박"),
     HAZARD("위해요소"),
-    ANNOUNCEMENT("공지");
+    ANNOUNCEMENT("공지"),
+    EVENT_REWARD("이벤트보상");
 
     private final String label;
 

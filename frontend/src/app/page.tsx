@@ -4,12 +4,18 @@ import { Suspense } from "react";
 import GridFeed from "@/components/GridFeed";
 import GachaRecentWinsTicker from "@/components/GachaRecentWinsTicker";
 import WeeklyReportBanner from "@/components/WeeklyReportBanner";
+import EventModeBanner from "@/components/events/EventModeBanner";
+import { useEventMode } from "@/context/EventModeContext";
 
 function HomeContent() {
+  const { mode } = useEventMode();
+  const isEvent = mode === "ACTIVE";
+
   return (
     <div className="space-y-4">
-      <WeeklyReportBanner />
-      <GachaRecentWinsTicker />
+      {isEvent && <EventModeBanner />}
+      {!isEvent && <WeeklyReportBanner />}
+      {!isEvent && <GachaRecentWinsTicker />}
       <GridFeed initialCategory={null} />
     </div>
   );
