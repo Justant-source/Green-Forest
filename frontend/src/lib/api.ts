@@ -6,6 +6,7 @@ import {
   AttendanceCheckinInfo, TodayBoard, AttendanceMonth, AttendancePhrase,
   GachaPrizeInfo, GachaDrawResult, GachaDrawRecord, GachaRecentWin, GachaQuota, PlazaWinner,
   PlantGrowth, AdminCreatePrizeRequest, AdminUpdatePrizeRequest,
+  Survey, SurveyOption, SurveyNotice,
 } from "@/types";
 import { getToken, logout } from "@/lib/auth";
 
@@ -1093,4 +1094,149 @@ export async function adminDeletePost(id: number): Promise<void> {
     headers: authHeaders(),
   });
   if (!res.ok) throw res;
+}
+
+// ========== 설문(투표) ==========
+
+export async function createSurvey(formData: FormData): Promise<{ postId: number; surveyId: number }> {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/surveys`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message || "설문 생성에 실패했습니다.");
+  }
+  return res.json();
+}
+
+export async function getSurveyByPost(postId: number): Promise<Survey> {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/surveys/by-post/${postId}`, {
+    cache: "no-store",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error("설문을 불러오지 못했습니다.");
+  return res.json();
+}
+
+export async function voteOnSurvey(surveyId: number, optionId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/surveys/${surveyId}/vote`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ optionId }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message || "투표에 실패했습니다.");
+  }
+}
+
+export async function addSurveyOption(surveyId: number, text: string): Promise<SurveyOption> {
+  const res = await fetch(`${BASE_URL}/surveys/${surveyId}/options`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message || "옵션 추가에 실패했습니다.");
+  }
+  return res.json();
+}
+
+export async function getSurveyNotices(): Promise<SurveyNotice[]> {
+  const res = await fetch(`${BASE_URL}/surveys/notices`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function closeSurveyByPost(postId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/surveys/close-by-post/${postId}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "투표 종료 실패");
+    throw new Error(msg);
+  }
+}
+
+export async function deleteSurveyOption(surveyId: number, optionId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/surveys/${surveyId}/options/${optionId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "삭제 실패");
+    throw new Error(msg);
+  }
+}
+
+export async function addAdminSurveyOption(
+  surveyId: number,
+  text: string | null,
+  image: File | null
+): Promise<SurveyOption> {
+  const fd = new FormData();
+  if (text) fd.append("text", text);
+  if (image) fd.append("image", image);
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/surveys/${surveyId}/admin-options`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "옵션 추가 실패");
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+export async function updateSurveyMeta(surveyId: number, title: string, closesAt: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/surveys/${surveyId}/meta`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ title, closesAt }),
+  });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "수정 실패");
+    throw new Error(msg);
+  }
+}
+
+export async function updateSurveyOption(
+  surveyId: number,
+  optionId: number,
+  text: string | null,
+  image: File | null
+): Promise<void> {
+  const fd = new FormData();
+  if (text !== null) fd.append("text", text);
+  if (image) fd.append("image", image);
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/surveys/${surveyId}/options/${optionId}`, {
+    method: "PATCH",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "옵션 수정 실패");
+    throw new Error(msg);
+  }
+}
+
+export async function closeSurvey(surveyId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/surveys/${surveyId}/close`, {
+    method: "PATCH",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "투표 종료 실패");
+    throw new Error(msg);
+  }
 }

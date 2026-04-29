@@ -4,6 +4,40 @@ export interface CategoryInfo {
   label: string;
   color: string;
   hasStatus?: boolean;
+  adminOnly?: boolean;
+}
+
+export type SurveyOptionType = "TEXT_ONLY" | "IMAGE_ONLY" | "TEXT_AND_IMAGE";
+
+export interface SurveyOption {
+  id: number;
+  type: SurveyOptionType;
+  text: string | null;
+  imageUrl: string | null;
+  voteCount: number;
+  voted: boolean;
+  addedByUser: boolean;
+}
+
+export interface Survey {
+  id: number;
+  postId: number;
+  closesAt: string;
+  anonymous: boolean;
+  allowOptionAddByUser: boolean;
+  allowMultiSelect: boolean;
+  notice: boolean;
+  closed: boolean;
+  totalVotes: number;
+  options: SurveyOption[];
+  hasVoted: boolean;
+}
+
+export interface SurveyNotice {
+  surveyId: number;
+  postId: number;
+  title: string;
+  closesAt: string;
 }
 
 export interface Post {
@@ -341,6 +375,7 @@ export interface PlantGrowth {
   praisesReceived: number;
   nextStageScore: number;
   lastGrownAt: string | null;
+  todayCaps?: Record<string, { used: number; cap: number }>;
 }
 
 // 관리자용

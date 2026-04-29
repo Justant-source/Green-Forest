@@ -8,6 +8,7 @@ public class CategoryResponse {
     private String label;
     private String color;
     private boolean hasStatus;
+    private boolean adminOnly;
 
     public static CategoryResponse from(Category category) {
         CategoryResponse response = new CategoryResponse();
@@ -16,6 +17,7 @@ public class CategoryResponse {
         response.label = category.getLabel();
         response.color = category.getColor();
         response.hasStatus = category.isHasStatus();
+        response.adminOnly = category.isAdminOnly();
         return response;
     }
 
@@ -24,4 +26,5 @@ public class CategoryResponse {
     public String getLabel() { return label; }
     public String getColor() { return color; }
     public boolean isHasStatus() { return hasStatus; }
+    public boolean isAdminOnly() { return adminOnly; }
 }

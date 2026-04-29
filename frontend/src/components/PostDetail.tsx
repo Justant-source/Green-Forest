@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Post, CategoryInfo } from "@/types";
-import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, deletePost, toMediaUrl } from "@/lib/api";
+import { getPost, getCategories, toggleLike, getLikeStatus, toggleBookmark, getBookmarkStatus, deletePost, toMediaUrl, closeSurveyByPost } from "@/lib/api";
 import { updatePostStatus } from "@/lib/api-post-status";
 import { useAuth } from "@/context/AuthContext";
 import CommentSection from "./CommentSection";
 import PostContent from "./PostContent";
 import BingoBoardView from "./events/photobingo/BingoBoardView";
+import SurveyView from "./SurveyView";
 import { parsePhotoBingoMarker } from "@/lib/events/postMarker";
 
 interface PostDetailProps {
@@ -157,10 +158,12 @@ export default function PostDetail({ postId }: PostDetailProps) {
           {isLoggedIn && (post.isAuthor || isAdmin) && (
             <div className="flex gap-2">
               {post.isAuthor && (() => {
-                // 빙고 글은 일반 글 수정 화면으로 보내면 원본 마커 주석이 노출된다.
-                // 빙고 참여 화면(/events/{eventId})으로 바로 보내 사진 업로드 UI를 열어준다.
                 const bingo = parsePhotoBingoMarker(post.content).bingo;
-                const editHref = bingo ? `/events/${bingo.eventId}` : `/posts/${post.id}/edit`;
+                const editHref = bingo
+                  ? `/events/${bingo.eventId}`
+                  : post.category === "survey"
+                  ? `/posts/${post.id}/survey-edit`
+                  : `/posts/${post.id}/edit`;
                 return (
                   <Link
                     href={editHref}
@@ -170,6 +173,23 @@ export default function PostDetail({ postId }: PostDetailProps) {
                   </Link>
                 );
               })()}
+              {isAdmin && post.category === "survey" && (
+                <button
+                  onClick={async () => {
+                    if (!confirm("투표를 지금 종료하시겠습니까?")) return;
+                    try {
+                      await closeSurveyByPost(post.id);
+                      const updated = await getPost(post.id);
+                      setPost(updated);
+                    } catch (e: unknown) {
+                      alert(e instanceof Error ? e.message : "종료에 실패했습니다.");
+                    }
+                  }}
+                  className="px-4 py-1.5 border border-orange-300 rounded-lg text-sm font-medium text-orange-600 hover:bg-orange-50 transition-colors"
+                >
+                  종료
+                </button>
+              )}
               <button
                 onClick={async () => {
                   if (!confirm("정말 삭제하시겠습니까?")) return;
@@ -274,12 +294,25 @@ export default function PostDetail({ postId }: PostDetailProps) {
         </div>
       )}
 
-      {(() => {
-        const { cleanContent, bingo } = parsePhotoBingoMarker(post.content);
-        const text = bingo ? cleanContent : post.content;
-        if (!text) return null;
-        return <PostContent content={text} />;
-      })()}
+      {post.category === "survey" ? (
+        <SurveyView
+          postId={post.id}
+          onImageSelect={(url) => {
+            const urls = post.imageUrls && post.imageUrls.length > 0
+              ? post.imageUrls
+              : post.imageUrl ? [post.imageUrl] : [];
+            const idx = urls.indexOf(url);
+            if (idx !== -1) setCarouselIndex(idx);
+          }}
+        />
+      ) : (
+        (() => {
+          const { cleanContent, bingo } = parsePhotoBingoMarker(post.content);
+          const text = bingo ? cleanContent : post.content;
+          if (!text) return null;
+          return <PostContent content={text} />;
+        })()
+      )}
 
       <div className="flex items-center gap-4 pt-4 border-t">
         {isLoggedIn ? (

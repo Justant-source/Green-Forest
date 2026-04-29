@@ -134,8 +134,11 @@ public class PostService {
 
     @Transactional
     public PostResponse createPost(PostRequest request, List<MultipartFile> images, User author) throws IOException {
-        // 카테고리 검증 (긍정문구, 동료칭찬, 퀘스트만 허용)
+        // 카테고리 검증 (긍정문구, 동료칭찬, 퀘스트만 허용; survey는 SurveyController 전용)
         String category = request.getCategory();
+        if ("survey".equals(category)) {
+            throw new RuntimeException("설문 카테고리는 관리자 전용 API로만 작성할 수 있습니다.");
+        }
         if (!List.of("긍정문구", "동료칭찬", "퀘스트").contains(category)) {
             throw new RuntimeException("유효하지 않은 카테고리입니다. (긍정문구/동료칭찬/퀘스트)");
         }
@@ -167,6 +170,11 @@ public class PostService {
 
         // 물방울 자동 지급 (핵심 로직)
         int dropsAwarded = dropService.awardDropsForPost(author, saved, category, taggedUsers);
+        plantGrowthService.onPostCreated(
+            author.getId(),
+            saved.getId(),
+            saved.getContent() != null ? saved.getContent().length() : 0
+        );
 
         activityLogService.logPostCreate(author.getId(), author.getNickname(), category, saved.getId());
 
@@ -215,6 +223,9 @@ public class PostService {
         if (alreadyLiked) {
             postLikeRepository.deleteByUserIdAndPostId(user.getId(), post.getId());
             post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+            if (post.getAuthor() != null) {
+                plantGrowthService.onLikeRemoved(post.getAuthor().getId(), post.getId());
+            }
         } else {
             PostLike postLike = new PostLike();
             postLike.setUser(user);
@@ -223,7 +234,7 @@ public class PostService {
             post.setLikeCount(post.getLikeCount() + 1);
             dropService.awardDropsForLike(user, post);
             if (post.getAuthor() != null) {
-                plantGrowthService.onLikeReceived(post.getAuthor().getId());
+                plantGrowthService.onLikeReceived(post.getAuthor().getId(), post.getId());
             }
         }
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Post } from "@/types";
-import { toMediaUrl, toggleBookmark, mediaSrcSet } from "@/lib/api";
+import { toMediaUrl, toggleBookmark, mediaSrcSet, MediaSize } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useCategories } from "@/context/CategoryContext";
 import TitleCard from "./TitleCard";
@@ -28,6 +28,7 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
       "동료칭찬": "칭",
       "퀘스트": "퀘",
       "이벤트": "이",
+      "survey": "설",
     };
 
     const colorMap: Record<string, string> = {
@@ -91,6 +92,11 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
         </button>
       )}
       {(() => {
+        // 설문 이미지 썸네일 (이미지 옵션이 있는 설문)
+        if (post.category === "survey" && post.imageUrls && post.imageUrls.length > 0) {
+          return <SurveyImageThumbnail imageUrls={post.imageUrls} likeCount={post.likeCount} />;
+        }
+
         const bingo = parsePhotoBingoMarker(post.content).bingo;
         if (bingo) {
           const cells = [...bingo.cells].sort((a, b) => a.idx - b.idx);
@@ -163,5 +169,88 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
         );
       })()}
     </Link>
+  );
+}
+
+/**
+ * 설문 이미지 옵션 썸네일 그리드
+ *
+ * 레이아웃 규칙:
+ * N=1: 단일 이미지
+ * N=2: 2열 나란히
+ * N=3: 3열 나란히
+ * N=4: 2×2 격자
+ * N=5: 3×2, 6번째 셀 = "5장" 라벨
+ * N=6: 3×2 모두 채움
+ * N=7: 3×2, 6번째 셀 = "+2" 오버레이 (5장 보임)
+ * N=8: 3×2, 6번째 셀 = "+3" 오버레이 (5장 보임)
+ * N=9: 3×3 모두 채움
+ */
+function SurveyImageThumbnail({
+  imageUrls,
+  likeCount,
+}: {
+  imageUrls: string[];
+  likeCount: number;
+}) {
+  const n = Math.min(imageUrls.length, 9);
+
+  const getGrid = (n: number): { cols: number; rows: number } => {
+    if (n <= 2) return { cols: n, rows: 1 };
+    if (n === 3) return { cols: 3, rows: 1 };
+    if (n === 4) return { cols: 2, rows: 2 };
+    if (n <= 6) return { cols: 3, rows: 2 };
+    return { cols: 3, rows: 3 };
+  };
+
+  const { cols, rows } = getGrid(n);
+  const totalCells = cols * rows;
+
+  // 마지막 셀에 라벨/오버레이가 필요한 경우 (n < totalCells 이거나 총개수 초과)
+  const needsLastLabel = n < totalCells || imageUrls.length > totalCells;
+  const imagesShown = needsLastLabel ? totalCells - 1 : n;
+  const hiddenCount = imageUrls.length - imagesShown;
+
+  const getLastCellLabel = () => {
+    if (n === 5) return "5장";
+    if (hiddenCount > 0) return `+${hiddenCount}`;
+    return null;
+  };
+
+  const lastLabel = getLastCellLabel();
+
+  return (
+    <div className="relative aspect-[4/5] bg-gray-200">
+      <div
+        className="absolute inset-0 p-[2px]"
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gridTemplateRows: `repeat(${rows}, 1fr)`,
+          gap: "2px",
+        }}
+      >
+        {imageUrls.slice(0, imagesShown).map((url, i) => (
+          <div key={i} className="relative overflow-hidden bg-gray-300">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={toMediaUrl(url, "sm" as MediaSize)}
+              loading="lazy"
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ))}
+        {lastLabel && (
+          <div className="flex items-center justify-center bg-gray-800/75 text-white">
+            <span className="font-semibold text-sm">{lastLabel}</span>
+          </div>
+        )}
+      </div>
+      {/* 좋아요 카운트 */}
+      <div className="absolute bottom-2 right-2 text-[10px] sm:text-xs text-white bg-black/50 rounded-full px-2 py-0.5">
+        <span>♥ {likeCount}</span>
+      </div>
+    </div>
   );
 }

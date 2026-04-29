@@ -8,6 +8,7 @@ import { notoSansKR } from "@/lib/fonts";
 
 const Header = dynamic(() => import("@/components/Header"), { ssr: false });
 const BottomNav = dynamic(() => import("@/components/BottomNav"), { ssr: false });
+const SurveyNoticeBanner = dynamic(() => import("@/components/SurveyNoticeBanner"), { ssr: false });
 
 export const metadata: Metadata = {
   title: "그린메이커 - 식물 RPG 커뮤니티",
@@ -26,7 +27,10 @@ export default function RootLayout({
           <EventModeProvider>
             <CategoryProvider>
               <Header />
-              <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
+              <main className="max-w-7xl mx-auto px-4 py-6">
+                <SurveyNoticeBanner />
+                {children}
+              </main>
               <BottomNav />
             </CategoryProvider>
           </EventModeProvider>

@@ -124,6 +124,19 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/events/*").permitAll()
                         .requestMatchers("/api/events/**").authenticated()
 
+                        // 8-6. 설문 - 조회 공개, 생성/투표/옵션추가 인증 필요
+                        .requestMatchers(HttpMethod.GET, "/api/surveys/notices").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/surveys/by-post/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/surveys").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/surveys/*/vote").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/surveys/*/options").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/surveys/*/close").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/surveys/close-by-post/*").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/surveys/*/meta").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/surveys/*/options/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/surveys/*/options/*").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/surveys/*/admin-options").authenticated()
+
                         // 9. 유저 프로필 업데이트 - 인증 필요
                         .requestMatchers("/api/users/**").authenticated()
 

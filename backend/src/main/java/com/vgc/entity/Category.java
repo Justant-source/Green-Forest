@@ -20,6 +20,9 @@ public class Category {
 
     private boolean hasStatus = false;
 
+    @Column(name = "admin_only", nullable = false)
+    private boolean adminOnly = false;
+
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -46,6 +49,8 @@ public class Category {
     public void setColor(String color) { this.color = color; }
     public boolean isHasStatus() { return hasStatus; }
     public void setHasStatus(boolean hasStatus) { this.hasStatus = hasStatus; }
+    public boolean isAdminOnly() { return adminOnly; }
+    public void setAdminOnly(boolean adminOnly) { this.adminOnly = adminOnly; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

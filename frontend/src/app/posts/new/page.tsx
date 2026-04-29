@@ -6,11 +6,12 @@ import { createPost, getCategories, getQuests, searchUsers } from "@/lib/api";
 import { CategoryInfo, Quest } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { compressImage } from "@/lib/imageCompression";
+import SurveyCreateForm from "@/components/SurveyCreateForm";
 
 function NewPostPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoggedIn, authLoaded, nickname } = useAuth();
+  const { isLoggedIn, authLoaded, nickname, isAdmin } = useAuth();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
@@ -207,7 +208,10 @@ function NewPostPageInner() {
           <div>
             <h2 className="text-lg font-semibold text-gray-800 mb-4">어떤 글을 작성하시겠어요?</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {categories.filter((cat) => cat.name !== "이벤트").map((cat) => {
+              {categories
+                .filter((cat) => cat.name !== "이벤트")
+                .filter((cat) => !cat.adminOnly || isAdmin)
+                .map((cat) => {
                 const disabled = cat.name === "퀘스트";
                 return (
                   <button
@@ -236,6 +240,8 @@ function NewPostPageInner() {
             </div>
           </div>
         </div>
+      ) : category === "survey" ? (
+        <SurveyCreateForm onCancel={() => { setCategorySelected(false); setCategory(""); }} />
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="flex items-center justify-between mb-4">
