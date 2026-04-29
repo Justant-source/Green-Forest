@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Comment } from "@/types";
-import { getComments, addComment, getCommentCount, updateComment, deleteComment, startConversation } from "@/lib/api";
+import { getComments, addComment, updateComment, deleteComment, startConversation } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -279,21 +279,24 @@ function updateCommentInTree(comments: Comment[], commentId: number, updated: Co
   });
 }
 
+function countComments(list: Comment[]): number {
+  return list.reduce((sum, c) => sum + 1 + countComments(c.replies ?? []), 0);
+}
+
 export default function CommentSection({ postId }: CommentSectionProps) {
   const { isLoggedIn, nickname } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const totalCount = countComments(comments);
+
   useEffect(() => {
     getComments(postId).then(setComments).catch(console.error);
-    getCommentCount(postId).then(setTotalCount).catch(console.error);
   }, [postId]);
 
   const handleReplyAdded = (parentId: number, newReply: Comment) => {
     setComments((prev) => addReplyToTree(prev, parentId, { ...newReply, replies: newReply.replies || [] }));
-    setTotalCount((prev) => prev + 1);
   };
 
   const handleCommentUpdated = (commentId: number, updated: Comment) => {
@@ -312,7 +315,6 @@ export default function CommentSection({ postId }: CommentSectionProps) {
     try {
       const newComment = await addComment(postId, content.trim());
       setComments((prev) => [{ ...newComment, replies: newComment.replies || [] }, ...prev]);
-      setTotalCount((prev) => prev + 1);
       setContent("");
     } catch (error) {
       console.error("Failed to add comment:", error);
