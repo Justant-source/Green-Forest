@@ -127,6 +127,7 @@ public class SecurityConfig {
                         // 8-6. 설문 - 조회 공개, 생성/투표/옵션추가 인증 필요
                         .requestMatchers(HttpMethod.GET, "/api/surveys/notices").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/surveys/by-post/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/surveys/*/votes").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/surveys").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/surveys/*/vote").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/surveys/*/options").authenticated()

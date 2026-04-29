@@ -2,15 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { Survey, SurveyOption } from "@/types";
-import { getSurveyByPost, voteOnSurvey, addSurveyOption, closeSurvey } from "@/lib/api";
+import { getSurveyByPost, voteOnSurvey, addSurveyOption, closeSurvey, getSurveyVotes } from "@/lib/api";
 import { toMediaUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { SurveyVoteDetail } from "@/types";
 
 export default function SurveyView({ postId, onImageSelect }: { postId: number; onImageSelect?: (url: string) => void }) {
   const { isLoggedIn, isAdmin, authLoaded } = useAuth();
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [newOptionText, setNewOptionText] = useState("");
+  const [voteDetails, setVoteDetails] = useState<SurveyVoteDetail[] | null>(null);
+  const [showVotes, setShowVotes] = useState(false);
+  const [loadingVotes, setLoadingVotes] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -37,6 +41,7 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
     if (survey.closed || !isLoggedIn) return;
     try {
       await voteOnSurvey(survey.id, optionId);
+      setVoteDetails(null); // 현황 캐시 무효화
       await load();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "투표 실패");
@@ -50,6 +55,21 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
       await load();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "종료 실패");
+    }
+  };
+
+  const handleToggleVotes = async () => {
+    if (showVotes) { setShowVotes(false); return; }
+    if (voteDetails) { setShowVotes(true); return; }
+    if (!survey) return;
+    setLoadingVotes(true);
+    try {
+      setVoteDetails(await getSurveyVotes(survey.id));
+      setShowVotes(true);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "불러오기 실패");
+    } finally {
+      setLoadingVotes(false);
     }
   };
 
@@ -89,6 +109,49 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
           </span>
         </div>
       </div>
+
+      {/* 관리자 — 투표 현황 */}
+      {authLoaded && isAdmin && (
+        <div>
+          <button
+            onClick={handleToggleVotes}
+            disabled={loadingVotes}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 underline underline-offset-2 disabled:opacity-50"
+          >
+            {loadingVotes ? "불러오는 중..." : showVotes ? "투표 현황 닫기" : "투표 현황 보기"}
+          </button>
+
+          {showVotes && voteDetails && (
+            <div className="mt-2 border border-indigo-100 rounded-lg overflow-hidden">
+              {voteDetails.map((d, i) => (
+                <div key={d.optionId} className={`px-3 py-2 ${i !== 0 ? "border-t border-indigo-100" : ""}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    {d.imageUrl && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={toMediaUrl(d.imageUrl, "sm")} alt="" className="w-6 h-6 object-cover rounded flex-shrink-0" />
+                    )}
+                    <span className="text-xs font-semibold text-gray-700 truncate">
+                      {d.text || "(이미지 옵션)"}
+                    </span>
+                    <span className="ml-auto text-xs text-gray-400 shrink-0">{d.voteCount}표</span>
+                  </div>
+                  {d.voters.length === 0 ? (
+                    <p className="text-[11px] text-gray-400 pl-1">투표 없음</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1 pl-1">
+                      {d.voters.map((v) => (
+                        <span key={v.userId} className="inline-block px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px]">
+                          {v.nickname}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 옵션 목록 */}
       <div className="space-y-2">

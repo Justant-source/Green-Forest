@@ -179,6 +179,12 @@ public class SurveyController {
         return ResponseEntity.noContent().build();
     }
 
+    /** 관리자 전용 — 옵션별 투표자 목록. */
+    @GetMapping("/{surveyId}/votes")
+    public List<Map<String, Object>> getVotes(@PathVariable Long surveyId, Authentication auth) {
+        return surveyService.getVoteDetails(surveyId, currentAdmin(auth));
+    }
+
     @GetMapping("/notices")
     public List<Map<String, Object>> notices() {
         return surveyService.getActiveNoticeBanners();

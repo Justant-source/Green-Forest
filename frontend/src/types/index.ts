@@ -40,6 +40,20 @@ export interface SurveyNotice {
   closesAt: string;
 }
 
+export interface SurveyVoter {
+  userId: number;
+  nickname: string;
+  votedAt: string;
+}
+
+export interface SurveyVoteDetail {
+  optionId: number;
+  text: string | null;
+  imageUrl: string | null;
+  voteCount: number;
+  voters: SurveyVoter[];
+}
+
 export interface Post {
   id: number;
   title: string;

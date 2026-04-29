@@ -1154,6 +1154,15 @@ export async function getSurveyNotices(): Promise<SurveyNotice[]> {
   return res.json();
 }
 
+export async function getSurveyVotes(surveyId: number): Promise<SurveyVoteDetail[]> {
+  const res = await fetch(`${BASE_URL}/surveys/${surveyId}/votes`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("투표 현황을 불러오지 못했습니다.");
+  return res.json();
+}
+
 export async function closeSurveyByPost(postId: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/surveys/close-by-post/${postId}`, {
     method: "PATCH",

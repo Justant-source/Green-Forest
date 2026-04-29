@@ -414,6 +414,38 @@ public class SurveyService {
         surveyRepository.save(survey);
     }
 
+    /** 관리자 전용 — 설문 ID 기준 옵션별 투표자 목록 조회. */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getVoteDetails(Long surveyId, User admin) {
+        if (!"ADMIN".equals(admin.getRole()))
+            throw new IllegalArgumentException("관리자만 조회할 수 있습니다.");
+
+        surveyRepository.findById(surveyId)
+            .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
+
+        List<SurveyOption> options = optionRepository.findBySurveyIdOrderByDisplayOrderAscIdAsc(surveyId);
+
+        Map<Long, List<SurveyVote>> byOption = voteRepository.findBySurveyId(surveyId)
+            .stream().collect(java.util.stream.Collectors.groupingBy(v -> v.getOption().getId()));
+
+        return options.stream().map(o -> {
+            List<SurveyVote> votes = byOption.getOrDefault(o.getId(), Collections.emptyList());
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("optionId", o.getId());
+            m.put("text", o.getTextContent());
+            m.put("imageUrl", o.getImageUrl());
+            m.put("voteCount", votes.size());
+            m.put("voters", votes.stream().map(v -> {
+                Map<String, Object> voter = new LinkedHashMap<>();
+                voter.put("userId", v.getUser().getId());
+                voter.put("nickname", v.getUser().getNickname());
+                voter.put("votedAt", v.getCreatedAt().toString());
+                return voter;
+            }).toList());
+            return m;
+        }).toList();
+    }
+
     /** 현재 활성 공지 배너 목록. */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getActiveNoticeBanners() {

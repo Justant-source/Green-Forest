@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface SurveyVoteRepository extends JpaRepository<SurveyVote, Long> {
     List<SurveyVote> findBySurveyIdAndUserId(Long surveyId, Long userId);
+    List<SurveyVote> findBySurveyId(Long surveyId);
     boolean existsByUserIdAndOptionId(Long userId, Long optionId);
     long countBySurveyIdAndUserId(Long surveyId, Long userId);
 
