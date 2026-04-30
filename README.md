@@ -397,7 +397,7 @@ docker exec greenforest-backend-prod tail -f /app/logs/error.log
 
 - **DB**: `mysqldump` → gzip 압축 (`db_YYYY-MM-DD.sql.gz`)
 - **로그**: `app.log`, `error.log`, `activity.log` + `archive/` → gzip 압축
-- **보관**: 30일, 이전 스냅샷은 자동 삭제
+- **보관**: **14일**, 이전 스냅샷은 자동 삭제
 
 ### 수동 실행
 
@@ -413,12 +413,18 @@ docker exec greenforest-backend-prod tail -f /app/logs/error.log
 BACKUP_BASE_DIR=/data/backups ./scripts/backup-prod.sh
 ```
 
-### 크론 자동화 (서버에서 설정)
+### 크론 자동화
 
+서버 타임존(Asia/Seoul, KST)이 설정되어 있어 아래 crontab이 **매일 새벽 3시 KST**에 실행된다.
+현재 서버에 등록된 crontab (`crontab -l`):
+
+```
+0 3 * * * /home/justant/Data/Green-Forest/scripts/backup-prod.sh >> /var/log/greenforest-backup.log 2>&1
+```
+
+크론 실행 로그 확인:
 ```bash
-# crontab -e
-# 매일 새벽 3시 KST (UTC 18:00) 실행
-0 18 * * * /home/justant/Data/Green-Forest/scripts/backup-prod.sh >> /var/log/greenforest-backup.log 2>&1
+tail -f /var/log/greenforest-backup.log
 ```
 
 ---
@@ -445,3 +451,52 @@ docker compose -p green-forest-prod -f docker-compose.prod.yml down
 # 중지 + 볼륨 삭제 (데이터 초기화 — 절대 prod에서 쓰지 말 것)
 docker compose -p green-forest-dev -f docker-compose.dev.yml down -v
 ```
+
+---
+
+## 기능 이력
+
+### 2026-04-30
+
+#### 관리자 뽑기 기록 조회
+- 관리자 페이지 > 뽑기 탭 하단에 "뽑기 기록 조회" 섹션 추가
+- 필터: 닉네임, 날짜 범위, 상품별, 당첨만 보기
+- 통계: 총 뽑기 수 / 당첨 수 / 실제 당첨률 표시
+- 테이블: 날짜, 닉네임, 상품명, 금액, 드랍 소모량, 확률, RNG값, 당첨 여부, 수령 상태
+- 페이지네이션 (30건/페이지)
+- 관련 파일: `GachaDrawRepository.java`, `GachaService.java`, `GachaController.java`, `frontend/src/app/admin/page.tsx`, `frontend/src/lib/api.ts`, `frontend/src/types/index.ts`
+
+#### 설문/투표 기능
+- 게시글 카테고리에 "설문" 타입 추가 (관리자 전용 작성)
+- 투표 항목(텍스트/이미지), 마감일, 복수선택, 익명, 공지 옵션 설정 가능
+- 사용자 투표 / 결과 실시간 표시 / 진행률 바
+- 사용자가 직접 옵션 추가 기능 (allowOptionAddByUser)
+- 관리자: 투표 현황 보기(항목별 투표자 목록), 즉시 종료
+- 관련 테이블: `surveys`, `survey_options`, `survey_votes`
+- 관련 파일: `SurveyView.tsx`, `SurveyCreateForm.tsx`, `api.ts`
+
+#### 식물 성장 점수 로그
+- 식물 레벨업 점수 획득 이력 기록 (`growth_score_log` 테이블)
+- 점수 획득 이유 enum: `POST`, `COMMENT`, `ATTENDANCE`, `QUEST`, `GIFT_RECEIVED`, `ADMIN`
+- 관련 파일: `GrowthScoreLog.java`, `GrowthScoreReason.java`, `GrowthScoreLogRepository.java`, `PlantGrowth.java`
+
+#### 댓글 수 버그 수정
+- 게시글 상세 페이지 "댓글 0개" 표시 버그 수정
+- 별도 API 호출 제거, 트리 구조 재귀 카운트(`countComments`)로 정확히 집계
+- 관련 파일: `frontend/src/components/CommentSection.tsx`
+
+#### 관리자 뽑기 기록 — 상품별 필터 추가
+- 뽑기 기록 조회에 상품 선택 드롭다운 추가 (기존: 닉네임/날짜/당첨만 → 추가: 상품별)
+- 상품 목록은 기존 `prizes` state 재사용, 추가 API 호출 없음
+- 관련 파일: `GachaDrawRepository.java`, `GachaService.java`, `GachaController.java`, `api.ts`, `admin/page.tsx`
+
+#### 출석 추첨 중복 당첨 버그 수정
+- **원인:** `@EnableWebSocketMessageBroker`가 생성하는 `messageBrokerTaskScheduler` (pool=4) 빈이 Spring Boot `TaskSchedulingAutoConfiguration`의 `@ConditionalOnMissingBean(TaskScheduler.class)` 조건을 막아, `@Scheduled` 태스크 전체가 WebSocket 4-스레드 스케줄러를 공유하게 됨. 11:00:00에 `AttendanceScheduler`와 `EventScheduler`가 동시 실행되면서 `drawDailyWinner`가 두 번 호출되어 당첨자가 2명 선정됨.
+- **수정 1:** `config/SchedulingConfig.java` 신규 추가 — `"taskScheduler"` 이름으로 단일 스레드(pool=1) 전용 스케줄러 등록. `ScheduledAnnotationBeanPostProcessor`가 이름 기준으로 이 빈을 우선 선택하여 WebSocket 스케줄러와 분리됨.
+- **수정 2:** `service/AttendanceDrawCoordinator.java` 신규 추가 — `ReentrantLock`으로 추첨 진입점 직렬화. 스케줄러와 관리자 API 어느 경로로 호출되어도 동시 실행 차단.
+- 관련 파일: `SchedulingConfig.java`, `AttendanceDrawCoordinator.java`, `AttendanceScheduler.java`, `AdminController.java`
+
+#### DB 자동 백업 크론 등록
+- `scripts/backup-prod.sh` 보관 기간 30일 → **14일** 변경
+- 서버 crontab에 `0 3 * * *` (KST 매일 새벽 3시) 자동 실행 등록
+- 로그: `/var/log/greenforest-backup.log`

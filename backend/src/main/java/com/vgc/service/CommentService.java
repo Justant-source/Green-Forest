@@ -56,7 +56,7 @@ public class CommentService {
         Comment saved = commentRepository.save(comment);
         dropService.awardDropsForComment(author, post);
         if (post.getAuthor() != null && !post.getAuthor().getId().equals(author.getId())) {
-            plantGrowthService.onCommentReceived(post.getAuthor().getId());
+            plantGrowthService.onCommentReceived(post.getAuthor().getId(), saved.getId(), author.getId());
         }
         return saved;
     }
@@ -84,7 +84,11 @@ public class CommentService {
         }
         comment.setDeleted(true);
         comment.setContent("삭제된 메시지입니다");
-        return commentRepository.save(comment);
+        Comment deleted = commentRepository.save(comment);
+        if (comment.getPost() != null && comment.getPost().getAuthor() != null) {
+            plantGrowthService.onCommentRemoved(comment.getPost().getAuthor().getId(), comment.getId());
+        }
+        return deleted;
     }
 
     private boolean isAncestorDeleted(Comment comment) {

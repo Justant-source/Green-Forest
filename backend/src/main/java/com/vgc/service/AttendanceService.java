@@ -3,6 +3,7 @@ package com.vgc.service;
 import com.vgc.entity.*;
 import com.vgc.repository.AttendanceCheckinRepository;
 import com.vgc.repository.AttendancePhraseRepository;
+import com.vgc.repository.PlantGrowthRepository;
 import com.vgc.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,8 @@ public class AttendanceService {
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService;
     private final OutboundEventService outboundEventService;
+    private final PlantGrowthRepository plantGrowthRepository;
+    private final PlantGrowthService plantGrowthService;
 
     public AttendanceService(AttendanceCheckinRepository checkinRepository,
                              AttendancePhraseRepository phraseRepository,
@@ -38,7 +41,9 @@ public class AttendanceService {
                              DropService dropService,
                              UserRepository userRepository,
                              ActivityLogService activityLogService,
-                             OutboundEventService outboundEventService) {
+                             OutboundEventService outboundEventService,
+                             PlantGrowthRepository plantGrowthRepository,
+                             PlantGrowthService plantGrowthService) {
         this.checkinRepository = checkinRepository;
         this.phraseRepository = phraseRepository;
         this.notificationService = notificationService;
@@ -46,6 +51,8 @@ public class AttendanceService {
         this.userRepository = userRepository;
         this.activityLogService = activityLogService;
         this.outboundEventService = outboundEventService;
+        this.plantGrowthRepository = plantGrowthRepository;
+        this.plantGrowthService = plantGrowthService;
     }
 
     @Transactional
@@ -76,9 +83,11 @@ public class AttendanceService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "오늘 이미 출석하셨습니다");
         }
 
-        String plantType = user.getPlantType() != null ? user.getPlantType().name() : "DEFAULT";
+        int growthStage = plantGrowthRepository.findByUserId(user.getId())
+                .map(PlantGrowth::getStage)
+                .orElse(0);
         String jobClass = user.getJobClass() != null ? user.getJobClass().name() : "DEFAULT";
-        String stampStyle = plantType + "_" + jobClass;
+        String stampStyle = growthStage + "_" + jobClass;
 
         AttendanceCheckin checkin = new AttendanceCheckin();
         checkin.setUser(user);
@@ -98,13 +107,15 @@ public class AttendanceService {
         }
 
         checkinRepository.save(checkin);
+        int streak = calculateStreak(user.getId(), today);
+        plantGrowthService.onAttendance(user.getId(), checkin.getId());
+        plantGrowthService.onAttendanceStreak(user.getId(), streak, checkin.getId());
         dropService.awardAttendance(user);
         activityLogService.logAttendance(user.getId(), user.getNickname(), 10);
 
         long todayCount = checkinRepository.countByCheckinDate(today);
         long monthCount = checkinRepository.countByUserIdAndCheckinDateBetween(
                 user.getId(), today.withDayOfMonth(1), today);
-        int streak = calculateStreak(user.getId(), today);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("checkinId", checkin.getId());
@@ -257,6 +268,7 @@ public class AttendanceService {
         attendancePayload.put("drawnAt", LocalDateTime.now(KST).toString());
         attendancePayload.put("participants", participants);
         outboundEventService.publish("ATTENDANCE_WINNER", attendancePayload);
+        plantGrowthService.onAttendanceDrawWin(winner.getUser().getId(), winner.getId());
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("skipped", false);

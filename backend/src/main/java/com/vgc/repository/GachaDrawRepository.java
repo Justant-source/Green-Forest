@@ -27,4 +27,44 @@ public interface GachaDrawRepository extends JpaRepository<GachaDraw, Long> {
     List<GachaDraw> findByWinnerTrueAndCreatedAtAfterOrderByCreatedAtDesc(LocalDateTime after);
 
     long countByUserIdAndWinnerTrueAndDeliveryStatus(Long userId, GachaDeliveryStatus status);
+
+    @Query(value = "SELECT d FROM GachaDraw d JOIN FETCH d.user u WHERE " +
+                   "(:nickname IS NULL OR u.nickname LIKE %:nickname%) AND " +
+                   "(:from IS NULL OR d.createdAt >= :from) AND " +
+                   "(:to IS NULL OR d.createdAt <= :to) AND " +
+                   "(:prizeId IS NULL OR d.prize.id = :prizeId) AND " +
+                   "(:winnerOnly = false OR d.winner = true)",
+           countQuery = "SELECT COUNT(d) FROM GachaDraw d JOIN d.user u WHERE " +
+                        "(:nickname IS NULL OR u.nickname LIKE %:nickname%) AND " +
+                        "(:from IS NULL OR d.createdAt >= :from) AND " +
+                        "(:to IS NULL OR d.createdAt <= :to) AND " +
+                        "(:prizeId IS NULL OR d.prize.id = :prizeId) AND " +
+                        "(:winnerOnly = false OR d.winner = true)")
+    Page<GachaDraw> findAdminDraws(
+            @Param("nickname") String nickname,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("prizeId") Long prizeId,
+            @Param("winnerOnly") boolean winnerOnly,
+            Pageable pageable);
+
+    @Query("SELECT COUNT(d) FROM GachaDraw d JOIN d.user u WHERE " +
+           "(:nickname IS NULL OR u.nickname LIKE %:nickname%) AND " +
+           "(:from IS NULL OR d.createdAt >= :from) AND " +
+           "(:to IS NULL OR d.createdAt <= :to) AND " +
+           "(:prizeId IS NULL OR d.prize.id = :prizeId)")
+    long countTotalForStats(@Param("nickname") String nickname,
+                            @Param("from") LocalDateTime from,
+                            @Param("to") LocalDateTime to,
+                            @Param("prizeId") Long prizeId);
+
+    @Query("SELECT COUNT(d) FROM GachaDraw d JOIN d.user u WHERE d.winner = true AND " +
+           "(:nickname IS NULL OR u.nickname LIKE %:nickname%) AND " +
+           "(:from IS NULL OR d.createdAt >= :from) AND " +
+           "(:to IS NULL OR d.createdAt <= :to) AND " +
+           "(:prizeId IS NULL OR d.prize.id = :prizeId)")
+    long countWinsForStats(@Param("nickname") String nickname,
+                           @Param("from") LocalDateTime from,
+                           @Param("to") LocalDateTime to,
+                           @Param("prizeId") Long prizeId);
 }

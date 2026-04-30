@@ -23,6 +23,7 @@ import {
   adminListDeliveries, adminMarkDelivered,
   adminListAttendanceDeliveries, adminMarkAttendanceDelivered,
   adminListPosts, adminUpdatePost, adminDeletePost,
+  adminGetDrawHistory,
 } from "@/lib/api";
 import EventAdminTab from "@/components/events/photobingo/admin/EventAdminTab";
 import DropHistoryPanel from "@/components/admin/DropHistoryPanel";
@@ -108,6 +109,11 @@ export default function AdminPage() {
   const [deliveries, setDeliveries] = useState<AdminDeliveryItem[]>([]);
   const [deliveryTab, setDeliveryTab] = useState<"PENDING" | "DELIVERED">("PENDING");
   const [deliveryMemo, setDeliveryMemo] = useState<Record<number, string>>({});
+
+  // 뽑기 기록
+  const [drawHistory, setDrawHistory] = useState<import("@/types").AdminDrawHistoryPage | null>(null);
+  const [drawLoading, setDrawLoading] = useState(false);
+  const [drawFilter, setDrawFilter] = useState({ nickname: "", from: "", to: "", prizeId: 0, winnerOnly: false, page: 0 });
 
   useEffect(() => {
     if (!isLoggedIn || !isAdmin) {
@@ -1032,6 +1038,146 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* 뽑기 기록 */}
+            <div className="bg-white rounded-xl shadow p-6">
+              <h3 className="font-semibold text-sm mb-4">뽑기 기록 조회</h3>
+              {/* 필터 */}
+              <div className="flex flex-wrap gap-3 mb-4">
+                <input
+                  type="text"
+                  placeholder="닉네임"
+                  value={drawFilter.nickname}
+                  onChange={(e) => setDrawFilter((f) => ({ ...f, nickname: e.target.value, page: 0 }))}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm w-36"
+                />
+                <select
+                  value={drawFilter.prizeId}
+                  onChange={(e) => setDrawFilter((f) => ({ ...f, prizeId: Number(e.target.value), page: 0 }))}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                >
+                  <option value={0}>전체 상품</option>
+                  {prizes.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={drawFilter.from}
+                  onChange={(e) => setDrawFilter((f) => ({ ...f, from: e.target.value, page: 0 }))}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+                <span className="self-center text-gray-400 text-sm">~</span>
+                <input
+                  type="date"
+                  value={drawFilter.to}
+                  onChange={(e) => setDrawFilter((f) => ({ ...f, to: e.target.value, page: 0 }))}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+                <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={drawFilter.winnerOnly}
+                    onChange={(e) => setDrawFilter((f) => ({ ...f, winnerOnly: e.target.checked, page: 0 }))}
+                    className="w-4 h-4"
+                  />
+                  당첨만
+                </label>
+                <button
+                  onClick={async () => {
+                    setDrawLoading(true);
+                    try {
+                      const data = await adminGetDrawHistory({ ...drawFilter, size: 30 });
+                      setDrawHistory(data);
+                    } catch { alert("불러오기 실패"); }
+                    finally { setDrawLoading(false); }
+                  }}
+                  disabled={drawLoading}
+                  className="px-4 py-1.5 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 disabled:opacity-50"
+                >
+                  {drawLoading ? "조회 중..." : "조회"}
+                </button>
+              </div>
+
+              {/* 통계 요약 */}
+              {drawHistory && (
+                <div className="flex flex-wrap gap-4 mb-4 p-3 bg-gray-50 rounded-lg text-sm">
+                  <span>총 뽑기: <b>{drawHistory.totalDrawsInFilter.toLocaleString()}회</b></span>
+                  <span>당첨: <b className="text-forest-600">{drawHistory.totalWinsInFilter.toLocaleString()}회</b></span>
+                  <span>실제 당첨률: <b className="text-indigo-600">{(drawHistory.actualWinRate * 100).toFixed(2)}%</b></span>
+                  <span className="text-gray-400 text-xs self-center">전체 {drawHistory.totalElements.toLocaleString()}건 중 현재 페이지</span>
+                </div>
+              )}
+
+              {/* 테이블 */}
+              {drawHistory && (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 text-gray-500">
+                          <th className="px-2 py-2 text-left font-medium">날짜</th>
+                          <th className="px-2 py-2 text-left font-medium">닉네임</th>
+                          <th className="px-2 py-2 text-left font-medium">상품명</th>
+                          <th className="px-2 py-2 text-right font-medium">금액</th>
+                          <th className="px-2 py-2 text-right font-medium">드랍소모</th>
+                          <th className="px-2 py-2 text-right font-medium">확률</th>
+                          <th className="px-2 py-2 text-right font-medium">RNG</th>
+                          <th className="px-2 py-2 text-center font-medium">당첨</th>
+                          <th className="px-2 py-2 text-center font-medium">수령</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {drawHistory.items.map((d) => (
+                          <tr key={d.id} className={`border-t border-gray-100 ${d.isWinner ? "bg-yellow-50" : ""}`}>
+                            <td className="px-2 py-1.5 text-gray-500 whitespace-nowrap">{new Date(d.createdAt).toLocaleString("ko-KR")}</td>
+                            <td className="px-2 py-1.5 font-medium">{d.userNickname}</td>
+                            <td className="px-2 py-1.5 text-gray-700">{d.prizeName}</td>
+                            <td className="px-2 py-1.5 text-right">{d.prizeCashValue.toLocaleString()}원</td>
+                            <td className="px-2 py-1.5 text-right">{d.dropsSpent}</td>
+                            <td className="px-2 py-1.5 text-right">{(d.winProbability * 100).toFixed(3)}%</td>
+                            <td className="px-2 py-1.5 text-right text-gray-400">{(d.rngValue * 100).toFixed(3)}%</td>
+                            <td className="px-2 py-1.5 text-center">{d.isWinner ? <span className="text-yellow-600 font-bold">당첨</span> : <span className="text-gray-300">-</span>}</td>
+                            <td className="px-2 py-1.5 text-center text-gray-500">{d.isWinner ? d.deliveryStatus : "-"}</td>
+                          </tr>
+                        ))}
+                        {drawHistory.items.length === 0 && (
+                          <tr><td colSpan={9} className="px-2 py-4 text-center text-gray-400">조회 결과가 없습니다</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* 페이지네이션 */}
+                  <div className="flex justify-center gap-2 mt-3">
+                    <button
+                      disabled={drawFilter.page === 0}
+                      onClick={async () => {
+                        const next = { ...drawFilter, page: drawFilter.page - 1 };
+                        setDrawFilter(next);
+                        setDrawLoading(true);
+                        try { setDrawHistory(await adminGetDrawHistory({ ...next, size: 30 })); }
+                        catch { alert("불러오기 실패"); }
+                        finally { setDrawLoading(false); }
+                      }}
+                      className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-40"
+                    >이전</button>
+                    <span className="px-3 py-1 text-sm text-gray-600">{drawFilter.page + 1} / {drawHistory.totalPages}</span>
+                    <button
+                      disabled={drawFilter.page + 1 >= drawHistory.totalPages}
+                      onClick={async () => {
+                        const next = { ...drawFilter, page: drawFilter.page + 1 };
+                        setDrawFilter(next);
+                        setDrawLoading(true);
+                        try { setDrawHistory(await adminGetDrawHistory({ ...next, size: 30 })); }
+                        catch { alert("불러오기 실패"); }
+                        finally { setDrawLoading(false); }
+                      }}
+                      className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-40"
+                    >다음</button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         );

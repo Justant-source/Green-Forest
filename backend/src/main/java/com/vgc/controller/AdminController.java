@@ -15,6 +15,7 @@ import com.vgc.service.DropService;
 import com.vgc.service.NotificationService;
 import com.vgc.service.QuestService;
 import com.vgc.service.AttendanceService;
+import com.vgc.service.AttendanceDrawCoordinator;
 import com.vgc.service.GachaService;
 import com.vgc.service.ImageStorageService;
 import com.vgc.service.PostService;
@@ -60,6 +61,7 @@ public class AdminController {
     private final AttendanceCheckinRepository attendanceCheckinRepository;
     private final AttendancePhraseRepository attendancePhraseRepository;
     private final AttendanceService attendanceService;
+    private final AttendanceDrawCoordinator attendanceDrawCoordinator;
     private final GachaPrizeRepository gachaPrizeRepository;
     private final GachaDrawRepository gachaDrawRepository;
     private final GachaService gachaService;
@@ -80,6 +82,7 @@ public class AdminController {
                            AttendanceCheckinRepository attendanceCheckinRepository,
                            AttendancePhraseRepository attendancePhraseRepository,
                            AttendanceService attendanceService,
+                           AttendanceDrawCoordinator attendanceDrawCoordinator,
                            GachaPrizeRepository gachaPrizeRepository,
                            GachaDrawRepository gachaDrawRepository,
                            GachaService gachaService,
@@ -98,6 +101,7 @@ public class AdminController {
         this.attendanceCheckinRepository = attendanceCheckinRepository;
         this.attendancePhraseRepository = attendancePhraseRepository;
         this.attendanceService = attendanceService;
+        this.attendanceDrawCoordinator = attendanceDrawCoordinator;
         this.gachaPrizeRepository = gachaPrizeRepository;
         this.gachaDrawRepository = gachaDrawRepository;
         this.gachaService = gachaService;
@@ -636,7 +640,7 @@ public class AdminController {
     @PostMapping("/attendance/draw-winner")
     public ResponseEntity<Map<String, Object>> drawWinner(@RequestParam String date) {
         LocalDate d = LocalDate.parse(date);
-        return ResponseEntity.ok(attendanceService.drawDailyWinner(d));
+        return ResponseEntity.ok(attendanceDrawCoordinator.draw(d));
     }
 
     @GetMapping("/attendance/winners")

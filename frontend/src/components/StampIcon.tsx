@@ -7,20 +7,31 @@ interface Props {
   size?: number;
 }
 
-const PLANT_EMOJI: Record<string, string> = {
-  CACTUS: "🌵",
-  ROSE: "🌹",
-  SUNFLOWER: "🌻",
-  TULIP: "🌷",
-  TREE: "🌳",
-  BAMBOO: "🎋",
-  CLOVER: "🍀",
-  MUSHROOM: "🍄",
+// 성장 단계 이모지: 0=씨앗, 1=새싹, 2=잎2장, 3=꽃봉오리, 4=꽃, 5=열매
+const STAGE_EMOJI = ["🌱", "🌿", "🍃", "🌸", "🌺", "🍎"];
+const STAGE_COLOR = [
+  "bg-green-100",
+  "bg-emerald-100",
+  "bg-lime-100",
+  "bg-pink-100",
+  "bg-rose-100",
+  "bg-amber-100",
+];
+
+// 구형 stampStyle(plantType_jobClass) 하위호환용
+const LEGACY_PLANT_EMOJI: Record<string, string> = {
   TABLE: "🌴",
   SPATHIPHYLLUM: "🌿",
   HONG: "🌱",
   ORANGE: "🌸",
   DEFAULT: "🌱",
+};
+const LEGACY_PLANT_COLOR: Record<string, string> = {
+  TABLE: "bg-emerald-100",
+  SPATHIPHYLLUM: "bg-teal-100",
+  HONG: "bg-lime-100",
+  ORANGE: "bg-orange-100",
+  DEFAULT: "bg-green-100",
 };
 
 const JOB_EMOJI: Record<string, string> = {
@@ -34,21 +45,24 @@ const JOB_EMOJI: Record<string, string> = {
   DEFAULT: "⭐",
 };
 
-const PLANT_COLOR: Record<string, string> = {
-  TABLE: "bg-emerald-100",
-  SPATHIPHYLLUM: "bg-teal-100",
-  HONG: "bg-lime-100",
-  ORANGE: "bg-orange-100",
-  DEFAULT: "bg-green-100",
-};
-
 export default function StampIcon({ stampStyle, winner = false, size = 48 }: Props) {
   const parts = stampStyle.split("_");
-  const plant = parts[0];
+  const stageNum = parseInt(parts[0], 10);
+  const isNewFormat = !isNaN(stageNum) && parts.length === 2;
   const job = parts[parts.length - 1];
-  const plantEmoji = PLANT_EMOJI[plant] ?? PLANT_EMOJI.DEFAULT;
   const jobEmoji = JOB_EMOJI[job] ?? JOB_EMOJI.DEFAULT;
-  const bgColor = PLANT_COLOR[plant] ?? PLANT_COLOR.DEFAULT;
+
+  let plantEmoji: string;
+  let bgColor: string;
+  if (isNewFormat) {
+    const stage = Math.min(Math.max(stageNum, 0), 5);
+    plantEmoji = STAGE_EMOJI[stage];
+    bgColor = STAGE_COLOR[stage];
+  } else {
+    const plant = parts[0];
+    plantEmoji = LEGACY_PLANT_EMOJI[plant] ?? LEGACY_PLANT_EMOJI.DEFAULT;
+    bgColor = LEGACY_PLANT_COLOR[plant] ?? LEGACY_PLANT_COLOR.DEFAULT;
+  }
 
   const crownSize = Math.round(size * 0.38);
   const crownOffset = Math.round(size * 0.28);

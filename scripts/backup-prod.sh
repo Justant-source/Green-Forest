@@ -1,18 +1,18 @@
 #!/bin/bash
 # prod DB + 활동 로그 일간 백업 스크립트
-# 보관 기간: 30일 (30일 이전 스냅샷 자동 삭제)
+# 보관 기간: 14일 (14일 이전 스냅샷 자동 삭제)
 #
 # 사용법:
 #   ./scripts/backup-prod.sh
 #
-# 크론 설정 (매일 새벽 3시 KST):
-#   0 18 * * * /path/to/green-forest/scripts/backup-prod.sh >> /var/log/greenforest-backup.log 2>&1
+# 크론 설정 (매일 새벽 3시 KST, 서버 타임존 Asia/Seoul):
+#   0 3 * * * /home/justant/Data/Green-Forest/scripts/backup-prod.sh >> /var/log/greenforest-backup.log 2>&1
 
 set -euo pipefail
 
 # ===== 설정 =====
 BACKUP_BASE_DIR="${BACKUP_BASE_DIR:-/home/justant/backups/green-forest}"
-RETAIN_DAYS=30
+RETAIN_DAYS=14
 DATE=$(date +%Y-%m-%d)
 BACKUP_DIR="${BACKUP_BASE_DIR}/${DATE}"
 
@@ -61,7 +61,7 @@ docker cp "${BACKEND_CONTAINER}:/app/logs/archive" "${LOGS_BACKUP_DIR}/" 2>/dev/
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] archive 로그 백업 완료" || \
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARN: archive 폴더 없음 (건너뜀)"
 
-# ===== 3. 30일 이전 스냅샷 삭제 =====
+# ===== 3. 14일 이전 스냅샷 삭제 =====
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] 오래된 백업 정리 (보관 기간: ${RETAIN_DAYS}일)..."
 find "$BACKUP_BASE_DIR" -maxdepth 1 -type d -name "????-??-??" \
     -mtime +${RETAIN_DAYS} -exec rm -rf {} \; -print | \

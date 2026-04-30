@@ -9,15 +9,15 @@ import java.time.ZoneId;
 @Component
 public class AttendanceScheduler {
 
-    private final AttendanceService attendanceService;
+    private final AttendanceDrawCoordinator coordinator;
 
-    public AttendanceScheduler(AttendanceService attendanceService) {
-        this.attendanceService = attendanceService;
+    public AttendanceScheduler(AttendanceDrawCoordinator coordinator) {
+        this.coordinator = coordinator;
     }
 
     @Scheduled(cron = "0 0 11 * * MON-FRI", zone = "Asia/Seoul")
     public void drawDailyWinner() {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-        attendanceService.drawDailyWinner(today);
+        coordinator.draw(today);
     }
 }

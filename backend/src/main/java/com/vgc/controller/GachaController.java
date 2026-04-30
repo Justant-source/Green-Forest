@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +77,22 @@ public class GachaController {
         result.put("expectedReward", dto.getExpectedReward());
         result.put("totalActivePrizes", dto.getTotalActivePrizes());
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/admin/draws")
+    public ResponseEntity<Map<String, Object>> adminDrawHistory(
+            Authentication authentication,
+            @RequestParam(required = false) String nickname,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) Long prizeId,
+            @RequestParam(defaultValue = "false") boolean winnerOnly,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
+        User admin = getUser(authentication);
+        LocalDateTime fromDt = (from != null && !from.isBlank()) ? LocalDate.parse(from).atStartOfDay() : null;
+        LocalDateTime toDt   = (to   != null && !to.isBlank())   ? LocalDate.parse(to).atTime(23, 59, 59) : null;
+        return ResponseEntity.ok(gachaService.getAdminDrawHistory(nickname, fromDt, toDt, prizeId, winnerOnly, page, size, admin));
     }
 
     private User getUser(Authentication authentication) {

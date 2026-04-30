@@ -453,3 +453,27 @@ export interface AdminUpdatePrizeRequest {
   displayOrder?: number;
   tier?: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
 }
+
+export interface AdminDrawRecord {
+  id: number;
+  userNickname: string;
+  prizeName: string;
+  prizeCashValue: number;
+  dropsSpent: number;
+  winProbability: number;
+  rngValue: number;
+  isWinner: boolean;
+  deliveryStatus: string;
+  createdAt: string;
+}
+
+export interface AdminDrawHistoryPage {
+  items: AdminDrawRecord[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+  totalDrawsInFilter: number;
+  totalWinsInFilter: number;
+  actualWinRate: number;
+}

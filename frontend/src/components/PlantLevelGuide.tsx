@@ -8,11 +8,32 @@ interface Props {
 
 const STAGES = [
   { label: "씨앗",    emoji: "🌱", minScore: 0   },
-  { label: "새싹",    emoji: "🌿", minScore: 10  },
-  { label: "잎2장",   emoji: "🍃", minScore: 30  },
-  { label: "꽃봉오리", emoji: "🌸", minScore: 70  },
-  { label: "꽃",     emoji: "🌺", minScore: 150 },
-  { label: "열매",    emoji: "🍎", minScore: 300 },
+  { label: "새싹",    emoji: "🌿", minScore: 20  },
+  { label: "잎2장",   emoji: "🍃", minScore: 80  },
+  { label: "꽃봉오리", emoji: "🌸", minScore: 200 },
+  { label: "꽃",     emoji: "🌺", minScore: 400 },
+  { label: "열매",    emoji: "🍎", minScore: 700 },
+];
+
+type EarnAction = {
+  label: string;
+  score: string;
+  hint?: string;
+  capKey?: string;
+};
+
+const EARN_ACTIONS: EarnAction[] = [
+  { label: "출석 체크",   score: "+2점",  hint: "매일 1회" },
+  { label: "연속 7일",   score: "+5점",  hint: "평생 1회" },
+  { label: "연속 30일",  score: "+15점", hint: "평생 1회" },
+  { label: "연속 100일", score: "+50점", hint: "평생 1회" },
+  { label: "추첨 당첨",  score: "+10점", hint: "11시 추첨" },
+  { label: "게시글 작성", score: "+2점",  hint: "30자↑·일3회", capKey: "POST_CREATED" },
+  { label: "좋아요 받기", score: "+1점",  hint: "일 10점",   capKey: "LIKE_RECEIVED" },
+  { label: "댓글 받기",  score: "+3점",  hint: "일 15점",   capKey: "COMMENT_RECEIVED" },
+  { label: "칭찬 태그",  score: "+10점", hint: "일 20점",   capKey: "PRAISE_RECEIVED" },
+  { label: "가챠 당첨",  score: "+5점",  hint: "당첨 시" },
+  { label: "첫 활동",    score: "+5점",  hint: "각 1회" },
 ];
 
 export default function PlantLevelGuide({ growth }: Props) {
@@ -66,20 +87,35 @@ export default function PlantLevelGuide({ growth }: Props) {
 
       {/* 점수 획득 방법 */}
       <div className="bg-blue-50 rounded-xl p-3">
-        <div className="text-xs font-semibold text-blue-700 mb-2">점수 획득 방법</div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-white rounded-lg py-2 px-1">
-            <div className="text-[11px] font-semibold text-gray-700">좋아요 받기</div>
-            <div className="text-xs text-forest-600 font-bold">+1점</div>
-          </div>
-          <div className="bg-white rounded-lg py-2 px-1">
-            <div className="text-[11px] font-semibold text-gray-700">댓글 받기</div>
-            <div className="text-xs text-forest-600 font-bold">+3점</div>
-          </div>
-          <div className="bg-white rounded-lg py-2 px-1">
-            <div className="text-[11px] font-semibold text-gray-700">칭찬 태그</div>
-            <div className="text-xs text-forest-600 font-bold">+10점</div>
-          </div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-semibold text-blue-700">점수 획득 방법</div>
+          <div className="text-[10px] text-blue-400">← 밀어서 더보기 →</div>
+        </div>
+        <div
+          className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {EARN_ACTIONS.map((a, i) => {
+            const cap = a.capKey && growth.todayCaps?.[a.capKey];
+            return (
+              <div
+                key={i}
+                className="snap-start flex-shrink-0 basis-[calc(33.333%-0.34rem)] min-h-[60px] bg-white rounded-lg py-2 px-1 text-center flex flex-col items-center justify-center"
+              >
+                <div className="text-[11px] font-semibold text-gray-700 leading-tight w-full truncate text-center" title={a.label}>
+                  {a.label}
+                </div>
+                <div className="text-xs text-forest-600 font-bold mt-0.5">{a.score}</div>
+                {cap ? (
+                  <div className="text-[9px] text-gray-400 mt-0.5">
+                    오늘 {cap.used}/{cap.cap}
+                  </div>
+                ) : a.hint ? (
+                  <div className="text-[9px] text-gray-400 mt-0.5">{a.hint}</div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
         <div className="text-[10px] text-blue-500 mt-2">
           현재: 좋아요 {growth.likesReceived}회 · 댓글 {growth.commentsReceived}회 · 칭찬태그 {growth.praisesReceived}회

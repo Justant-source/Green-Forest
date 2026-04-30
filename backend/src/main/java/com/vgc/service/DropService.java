@@ -230,7 +230,7 @@ public class DropService {
                             + "님이 회원님을 태깅했어요! 💧" + tagDrops + " 물방울 획득!",
                     post.getId(), null);
 
-            plantGrowthService.onPraiseReceived(taggedUser.getId());
+            plantGrowthService.onPraiseReceived(taggedUser.getId(), post.getId());
             totalTagBonus += tagDrops;
         }
 
@@ -252,6 +252,7 @@ public class DropService {
         postTagRepository.findByPostId(post.getId()).stream()
                 .filter(pt -> pt.getTaggedUser().getId().equals(taggedUser.getId()))
                 .forEach(postTagRepository::delete);
+        plantGrowthService.onPraiseRevoked(taggedUser.getId(), post.getId());
     }
 
     /**
@@ -276,7 +277,7 @@ public class DropService {
                         + "님이 회원님을 태깅했어요! 💧5 물방울 획득!",
                 post.getId(), null);
 
-        plantGrowthService.onPraiseReceived(taggedUser.getId());
+        plantGrowthService.onPraiseReceived(taggedUser.getId(), post.getId());
     }
 
     /**

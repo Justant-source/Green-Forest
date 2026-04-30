@@ -40,6 +40,7 @@ public class GachaService {
     private final ActivityLogService activityLogService;
     private final ImageStorageService imageStorageService;
     private final OutboundEventService outboundEventService;
+    private final PlantGrowthService plantGrowthService;
 
     public GachaService(GachaPrizeRepository prizeRepository,
                         GachaDrawRepository drawRepository,
@@ -48,7 +49,8 @@ public class GachaService {
                         NotificationService notificationService,
                         ActivityLogService activityLogService,
                         ImageStorageService imageStorageService,
-                        OutboundEventService outboundEventService) {
+                        OutboundEventService outboundEventService,
+                        PlantGrowthService plantGrowthService) {
         this.prizeRepository = prizeRepository;
         this.drawRepository = drawRepository;
         this.userRepository = userRepository;
@@ -57,6 +59,7 @@ public class GachaService {
         this.activityLogService = activityLogService;
         this.imageStorageService = imageStorageService;
         this.outboundEventService = outboundEventService;
+        this.plantGrowthService = plantGrowthService;
     }
 
     @Async
@@ -166,6 +169,7 @@ public class GachaService {
             gachaPayload.put("todayDrawNumber", todayCount + 1);
             gachaPayload.put("dailyDrawLimit", DAILY_DRAW_LIMIT);
             outboundEventService.publish("GACHA_WIN", gachaPayload);
+            plantGrowthService.onGachaWin(user.getId(), saved.getId());
         }
 
         long remainingToday = DAILY_DRAW_LIMIT - todayCount - 1;
@@ -342,6 +346,51 @@ public class GachaService {
         }
 
         return new GachaStatsDto(remaining, DAILY_DRAW_LIMIT, todayCount, DRAW_COST, expectedReward, totalActivePrizes);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAdminDrawHistory(String nickname, LocalDateTime from, LocalDateTime to,
+                                                    Long prizeId, boolean winnerOnly, int page, int size, User admin) {
+        if (!"ADMIN".equals(admin.getRole()))
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "관리자만 접근 가능합니다");
+
+        String nicknameParam = (nickname == null || nickname.isBlank()) ? null : nickname;
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(page, size,
+                        org.springframework.data.domain.Sort.by("createdAt").descending());
+
+        Page<GachaDraw> drawPage = drawRepository.findAdminDraws(nicknameParam, from, to, prizeId, winnerOnly, pageable);
+
+        long totalForStats = drawRepository.countTotalForStats(nicknameParam, from, to, prizeId);
+        long winsForStats  = drawRepository.countWinsForStats(nicknameParam, from, to, prizeId);
+        BigDecimal actualWinRate = totalForStats == 0 ? BigDecimal.ZERO :
+                new BigDecimal(winsForStats).divide(new BigDecimal(totalForStats), 5, RoundingMode.HALF_UP);
+
+        List<Map<String, Object>> items = drawPage.getContent().stream().map(d -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", d.getId());
+            m.put("userNickname", d.getUser().getNickname());
+            m.put("prizeName", d.getPrizeName());
+            m.put("prizeCashValue", d.getPrizeCashValue());
+            m.put("dropsSpent", d.getDropsSpent());
+            m.put("winProbability", d.getWinProbability());
+            m.put("rngValue", d.getRngValue());
+            m.put("isWinner", d.isWinner());
+            m.put("deliveryStatus", d.getDeliveryStatus().name());
+            m.put("createdAt", d.getCreatedAt().toString());
+            return m;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("items", items);
+        result.put("totalElements", drawPage.getTotalElements());
+        result.put("totalPages", drawPage.getTotalPages());
+        result.put("page", drawPage.getNumber());
+        result.put("size", drawPage.getSize());
+        result.put("totalDrawsInFilter", totalForStats);
+        result.put("totalWinsInFilter", winsForStats);
+        result.put("actualWinRate", actualWinRate);
+        return result;
     }
 
     @Transactional(readOnly = true)

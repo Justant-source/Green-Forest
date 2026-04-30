@@ -34,6 +34,21 @@ public class PlantGrowth {
     @Column(name = "last_grown_at")
     private LocalDateTime lastGrownAt;
 
+    @Column(name = "last_stage_up_score", nullable = false)
+    private int lastStageUpScore = 0;
+
+    @Column(name = "attendance_score", nullable = false)
+    private int attendanceScore = 0;
+
+    @Column(name = "post_score", nullable = false)
+    private int postScore = 0;
+
+    @Column(name = "gacha_score", nullable = false)
+    private int gachaScore = 0;
+
+    @Column(name = "onboarding_score", nullable = false)
+    private int onboardingScore = 0;
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
@@ -63,5 +78,15 @@ public class PlantGrowth {
     public void setPraisesReceived(int praisesReceived) { this.praisesReceived = praisesReceived; }
     public LocalDateTime getLastGrownAt() { return lastGrownAt; }
     public void setLastGrownAt(LocalDateTime lastGrownAt) { this.lastGrownAt = lastGrownAt; }
+    public int getLastStageUpScore() { return lastStageUpScore; }
+    public void setLastStageUpScore(int lastStageUpScore) { this.lastStageUpScore = lastStageUpScore; }
+    public int getAttendanceScore() { return attendanceScore; }
+    public void setAttendanceScore(int attendanceScore) { this.attendanceScore = attendanceScore; }
+    public int getPostScore() { return postScore; }
+    public void setPostScore(int postScore) { this.postScore = postScore; }
+    public int getGachaScore() { return gachaScore; }
+    public void setGachaScore(int gachaScore) { this.gachaScore = gachaScore; }
+    public int getOnboardingScore() { return onboardingScore; }
+    public void setOnboardingScore(int onboardingScore) { this.onboardingScore = onboardingScore; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

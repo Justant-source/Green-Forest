@@ -7,6 +7,7 @@ import {
   GachaPrizeInfo, GachaDrawResult, GachaDrawRecord, GachaRecentWin, GachaQuota, PlazaWinner,
   PlantGrowth, AdminCreatePrizeRequest, AdminUpdatePrizeRequest,
   Survey, SurveyOption, SurveyNotice, SurveyVoteDetail,
+  AdminDrawHistoryPage,
 } from "@/types";
 import { getToken, logout } from "@/lib/auth";
 
@@ -997,6 +998,28 @@ export async function adminGetGachaStats(from: string, to: string): Promise<any>
 
 export async function adminSimulateEv(prizeId: number, ev: number): Promise<any> {
   const res = await fetch(`${BASE_URL}/admin/gacha/simulate?prizeId=${prizeId}&ev=${ev}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminGetDrawHistory(params: {
+  nickname?: string;
+  from?: string;
+  to?: string;
+  prizeId?: number;
+  winnerOnly?: boolean;
+  page?: number;
+  size?: number;
+}): Promise<AdminDrawHistoryPage> {
+  const q = new URLSearchParams();
+  if (params.nickname) q.set("nickname", params.nickname);
+  if (params.from) q.set("from", params.from);
+  if (params.to) q.set("to", params.to);
+  if (params.prizeId && params.prizeId > 0) q.set("prizeId", String(params.prizeId));
+  if (params.winnerOnly) q.set("winnerOnly", "true");
+  if (params.page !== undefined) q.set("page", String(params.page));
+  if (params.size !== undefined) q.set("size", String(params.size));
+  const res = await fetch(`${BASE_URL}/gacha/admin/draws?${q}`, { headers: authHeaders() });
   if (!res.ok) throw res;
   return res.json();
 }
