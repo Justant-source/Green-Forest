@@ -6,7 +6,7 @@ import {
   AttendanceCheckinInfo, TodayBoard, AttendanceMonth, AttendancePhrase,
   GachaPrizeInfo, GachaDrawResult, GachaDrawRecord, GachaRecentWin, GachaQuota, PlazaWinner,
   PlantGrowth, AdminCreatePrizeRequest, AdminUpdatePrizeRequest,
-  Survey, SurveyOption, SurveyNotice,
+  Survey, SurveyOption, SurveyNotice, SurveyVoteDetail,
 } from "@/types";
 import { getToken, logout } from "@/lib/auth";
 
