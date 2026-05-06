@@ -439,6 +439,7 @@ public class SurveyService {
                 Map<String, Object> voter = new LinkedHashMap<>();
                 voter.put("userId", v.getUser().getId());
                 voter.put("nickname", v.getUser().getNickname());
+                voter.put("name", v.getUser().getName());
                 voter.put("votedAt", v.getCreatedAt().toString());
                 return voter;
             }).toList());

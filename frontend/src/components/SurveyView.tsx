@@ -141,7 +141,8 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
                     <div className="flex flex-wrap gap-1 pl-1">
                       {d.voters.map((v) => (
                         <span key={v.userId} className="inline-block px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px]">
-                          {v.nickname}
+                          {v.name || v.nickname}
+                          <span className="text-indigo-400 ml-0.5">({v.nickname})</span>
                         </span>
                       ))}
                     </div>

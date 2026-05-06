@@ -43,6 +43,7 @@ export interface SurveyNotice {
 export interface SurveyVoter {
   userId: number;
   nickname: string;
+  name: string;
   votedAt: string;
 }
 
