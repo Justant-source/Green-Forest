@@ -26,6 +26,7 @@ public class GachaService {
 
     private static final int DRAW_COST = 30;
     private static final int DAILY_DRAW_LIMIT = 3;
+    private static final int ADMIN_DAILY_DRAW_LIMIT = 500;
     private static final BigDecimal DROP_CASH_VALUE = new BigDecimal("20");
     private static final BigDecimal MAX_EV_MULTIPLIER = new BigDecimal("1.50");
     private static final BigDecimal MIN_EV_MULTIPLIER = new BigDecimal("1.00");
@@ -96,14 +97,16 @@ public class GachaService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "물방울이 부족합니다 (30 필요)");
         }
 
-        // 오늘 뽑기 횟수 체크
+        // 오늘 뽑기 횟수 체크 (ADMIN은 제한 없음)
         ZonedDateTime kstNow = ZonedDateTime.now(KST);
         LocalDateTime todayStart = kstNow.toLocalDate().atStartOfDay();
         LocalDateTime todayEnd = todayStart.plusDays(1);
         long todayCount = drawRepository.countByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
-        if (todayCount >= DAILY_DRAW_LIMIT) {
+        boolean isAdmin = "ADMIN".equals(user.getRole());
+        int effectiveDailyLimit = isAdmin ? ADMIN_DAILY_DRAW_LIMIT : DAILY_DRAW_LIMIT;
+        if (todayCount >= effectiveDailyLimit) {
             activityLogService.logGachaLimitExceeded(userId, user.getNickname());
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "오늘 뽑기 횟수(" + DAILY_DRAW_LIMIT + "회)를 초과했습니다");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "오늘 뽑기 횟수(" + effectiveDailyLimit + "회)를 초과했습니다");
         }
 
         // 확률 계산
@@ -172,7 +175,7 @@ public class GachaService {
             plantGrowthService.onGachaWin(user.getId(), saved.getId());
         }
 
-        long remainingToday = DAILY_DRAW_LIMIT - todayCount - 1;
+        long remainingToday = Math.max(0, effectiveDailyLimit - todayCount - 1);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("drawId", saved.getId());
         result.put("isWinner", isWinner);
@@ -214,12 +217,15 @@ public class GachaService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getRemainingDrawsToday(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow();
         ZonedDateTime kstNow = ZonedDateTime.now(KST);
         LocalDateTime todayStart = kstNow.toLocalDate().atStartOfDay();
         LocalDateTime todayEnd = todayStart.plusDays(1);
         long usedToday = drawRepository.countByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
-        long remaining = Math.max(0, DAILY_DRAW_LIMIT - usedToday);
-        return Map.of("remainingToday", remaining, "limit", DAILY_DRAW_LIMIT);
+        boolean isAdmin = "ADMIN".equals(user.getRole());
+        int effectiveDailyLimit = isAdmin ? ADMIN_DAILY_DRAW_LIMIT : DAILY_DRAW_LIMIT;
+        long remaining = Math.max(0, effectiveDailyLimit - usedToday);
+        return Map.of("remainingToday", remaining, "limit", effectiveDailyLimit);
     }
 
     @Transactional
@@ -314,7 +320,10 @@ public class GachaService {
         LocalDateTime todayStart = kstNow.toLocalDate().atStartOfDay();
         LocalDateTime todayEnd = todayStart.plusDays(1);
         long todayCount = drawRepository.countByUserIdAndCreatedAtBetween(userId, todayStart, todayEnd);
-        long remaining = Math.max(0, DAILY_DRAW_LIMIT - todayCount);
+        User statUser = userRepository.findById(userId).orElseThrow();
+        boolean isAdmin = "ADMIN".equals(statUser.getRole());
+        int effectiveDailyLimit = isAdmin ? ADMIN_DAILY_DRAW_LIMIT : DAILY_DRAW_LIMIT;
+        long remaining = Math.max(0, effectiveDailyLimit - todayCount);
 
         // 활성 상품 목록
         List<GachaPrize> activePrizes = prizeRepository.findByActiveTrueAndRemainingStockGreaterThanOrderByDisplayOrderAscIdAsc(0);
@@ -345,7 +354,7 @@ public class GachaService {
             }
         }
 
-        return new GachaStatsDto(remaining, DAILY_DRAW_LIMIT, todayCount, DRAW_COST, expectedReward, totalActivePrizes);
+        return new GachaStatsDto(remaining, effectiveDailyLimit, todayCount, DRAW_COST, expectedReward, totalActivePrizes);
     }
 
     @Transactional(readOnly = true)
