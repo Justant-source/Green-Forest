@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { PlazaWinner } from "@/types";
-import { getPlazaWinners, getActiveAnnouncement, AnnouncementItem } from "@/lib/api";
+import { getPlazaWinners, getActiveAnnouncements, AnnouncementItem } from "@/lib/api";
 
 function formatRelativeTime(createdAt: string): string {
   const diff = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000);
@@ -22,12 +22,12 @@ export default function GachaRecentWinsTicker() {
 
   useEffect(() => {
     const load = async () => {
-      const [winners, ann] = await Promise.all([
+      const [winners, announcements] = await Promise.all([
         getPlazaWinners().catch(() => [] as PlazaWinner[]),
-        getActiveAnnouncement(),
+        getActiveAnnouncements(),
       ]);
       const list: TickerItem[] = [];
-      if (ann) list.push({ kind: "announcement", data: ann });
+      announcements.forEach((ann) => list.push({ kind: "announcement", data: ann }));
       winners.forEach((w) => list.push({ kind: "winner", data: w }));
       setItems(list);
     };
@@ -52,16 +52,17 @@ export default function GachaRecentWinsTicker() {
 
   const renderContent = () => {
     if (item.kind === "announcement") {
+      const isBirthday = item.data.type === "BIRTHDAY";
       return (
         <button
           onClick={() => setPopup(item.data)}
           className="flex items-baseline gap-2 min-w-0 text-left hover:opacity-80 transition-opacity"
         >
           <span className="truncate text-gray-700">
-            <span className="mr-1">📢</span>
+            <span className="mr-1">{isBirthday ? "🎉" : "📢"}</span>
             <strong>{item.data.title}</strong>
           </span>
-          <span className="shrink-0 text-blue-400 text-xs underline">자세히</span>
+          <span className={`shrink-0 text-xs underline ${isBirthday ? "text-pink-400" : "text-blue-400"}`}>자세히</span>
         </button>
       );
     }
@@ -87,14 +88,16 @@ export default function GachaRecentWinsTicker() {
   };
 
   const isAnn = item.kind === "announcement";
+  const isBirthdayAnn = isAnn && item.data.type === "BIRTHDAY";
 
   return (
     <>
       <div className={`border rounded-lg px-3 py-2 flex items-center gap-2 text-sm overflow-hidden h-9 ${
+        isBirthdayAnn ? "bg-pink-50 border-pink-200" :
         isAnn ? "bg-blue-50 border-blue-200" : "bg-yellow-50 border-yellow-200"
       }`}>
-        <span className={`font-bold shrink-0 ${isAnn ? "text-blue-500" : "text-yellow-500"}`}>
-          {isAnn ? "공지" : "당첨"}
+        <span className={`font-bold shrink-0 ${isBirthdayAnn ? "text-pink-500" : isAnn ? "text-blue-500" : "text-yellow-500"}`}>
+          {isBirthdayAnn ? "생일" : isAnn ? "공지" : "당첨"}
         </span>
         <div
           className="flex-1 min-w-0 transition-all duration-300"

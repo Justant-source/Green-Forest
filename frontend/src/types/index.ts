@@ -217,6 +217,15 @@ export interface AdminUser {
   partyId: number | null;
   partyName: string | null;
   totalDrops: number;
+  birthDate?: string | null;
+}
+
+export interface UpcomingBirthday {
+  userId: number;
+  name: string;
+  nickname: string;
+  birthDate: string;
+  daysUntil: number;
 }
 
 export interface AdminPost {

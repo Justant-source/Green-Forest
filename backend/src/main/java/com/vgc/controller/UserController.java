@@ -219,6 +219,7 @@ public class UserController {
         map.put("partyId", user.getParty() != null ? user.getParty().getId() : null);
         map.put("partyName", user.getParty() != null ? user.getParty().getName() : null);
         map.put("totalDrops", user.getTotalDrops());
+        map.put("birthDate", user.getBirthDate() != null ? user.getBirthDate().toString() : null);
         map.put("createdAt", user.getCreatedAt().toString());
         return map;
     }

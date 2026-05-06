@@ -10,6 +10,7 @@ import com.vgc.repository.AttendancePhraseRepository;
 import com.vgc.repository.GachaPrizeRepository;
 import com.vgc.repository.GachaDrawRepository;
 import com.vgc.repository.AnnouncementRepository;
+import com.vgc.repository.BirthdayAcknowledgementRepository;
 import com.vgc.service.CategoryService;
 import com.vgc.service.DropService;
 import com.vgc.service.NotificationService;
@@ -66,6 +67,7 @@ public class AdminController {
     private final GachaDrawRepository gachaDrawRepository;
     private final GachaService gachaService;
     private final AnnouncementRepository announcementRepository;
+    private final BirthdayAcknowledgementRepository birthdayAcknowledgementRepository;
     private final ImageStorageService imageStorageService;
     private final PostService postService;
 
@@ -87,6 +89,7 @@ public class AdminController {
                            GachaDrawRepository gachaDrawRepository,
                            GachaService gachaService,
                            AnnouncementRepository announcementRepository,
+                           BirthdayAcknowledgementRepository birthdayAcknowledgementRepository,
                            ImageStorageService imageStorageService,
                            PostService postService) {
         this.categoryService = categoryService;
@@ -106,6 +109,7 @@ public class AdminController {
         this.gachaDrawRepository = gachaDrawRepository;
         this.gachaService = gachaService;
         this.announcementRepository = announcementRepository;
+        this.birthdayAcknowledgementRepository = birthdayAcknowledgementRepository;
         this.imageStorageService = imageStorageService;
         this.postService = postService;
     }
@@ -289,6 +293,7 @@ public class AdminController {
             map.put("partyId", u.getParty() != null ? u.getParty().getId() : null);
             map.put("partyName", u.getParty() != null ? u.getParty().getName() : null);
             map.put("totalDrops", u.getTotalDrops());
+            map.put("birthDate", u.getBirthDate() != null ? u.getBirthDate().toString() : null);
             result.add(map);
         }
         return result;
@@ -366,6 +371,11 @@ public class AdminController {
             }
         }
 
+        if (body.containsKey("birthDate")) {
+            String bd = (String) body.get("birthDate");
+            user.setBirthDate((bd != null && !bd.isBlank()) ? LocalDate.parse(bd) : null);
+        }
+
         userRepository.save(user);
         return Map.of("status", "updated");
     }
@@ -405,7 +415,8 @@ public class AdminController {
             "DELETE FROM category_requests WHERE requester_id = :uid",
             "DELETE FROM messages WHERE sender_id = :uid",
             "DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = :uid OR user2_id = :uid)",
-            "DELETE FROM conversations WHERE user1_id = :uid OR user2_id = :uid"
+            "DELETE FROM conversations WHERE user1_id = :uid OR user2_id = :uid",
+            "DELETE FROM birthday_acknowledgement WHERE admin_user_id = :uid OR target_user_id = :uid"
         };
         for (String sql : deletes) {
             entityManager.createNativeQuery(sql).setParameter("uid", id).executeUpdate();
@@ -573,6 +584,10 @@ public class AdminController {
         ann.setTitle(body.get("title"));
         ann.setContent(body.get("content"));
         ann.setActive(false);
+        String typeStr = body.get("type");
+        ann.setType(typeStr != null && typeStr.equals("BIRTHDAY")
+            ? com.vgc.entity.AnnouncementType.BIRTHDAY
+            : com.vgc.entity.AnnouncementType.MANUAL);
         return ResponseEntity.ok(announcementRepository.save(ann));
     }
 
@@ -581,9 +596,10 @@ public class AdminController {
     public ResponseEntity<com.vgc.entity.Announcement> activateAnnouncement(
             @PathVariable Long id, Authentication authentication) {
         getAdminUser(authentication);
-        announcementRepository.deactivateAll();
         com.vgc.entity.Announcement ann = announcementRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("공지 없음"));
+        // 같은 type의 기존 활성 공지만 비활성화 (다른 type 공지는 유지)
+        announcementRepository.deactivateAllByType(ann.getType());
         ann.setActive(true);
         return ResponseEntity.ok(announcementRepository.save(ann));
     }
@@ -879,5 +895,91 @@ public class AdminController {
         User admin = getAdminUser(authentication);
         postService.deletePost(id, admin);
         return Map.of("status", "deleted");
+    }
+
+    // ========== 생일 관리 ==========
+
+    @GetMapping("/birthdays/upcoming")
+    public ResponseEntity<List<Map<String, Object>>> getUpcomingBirthdays(Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        LocalDate today = LocalDate.now();
+        List<User> usersWithBirthday = userRepository.findAllWithBirthDate();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (User u : usersWithBirthday) {
+            LocalDate bd = u.getBirthDate();
+            // 이번 해 생일 계산 (2월 29일 → 비윤년이면 2월 28일)
+            LocalDate thisYearBirthday;
+            try {
+                thisYearBirthday = LocalDate.of(today.getYear(), bd.getMonthValue(), bd.getDayOfMonth());
+            } catch (java.time.DateTimeException e) {
+                thisYearBirthday = LocalDate.of(today.getYear(), bd.getMonthValue(), bd.getMonthValue() == 2 ? 28 : bd.getDayOfMonth());
+            }
+
+            // 이미 지났으면 내년 생일로
+            if (thisYearBirthday.isBefore(today)) {
+                try {
+                    thisYearBirthday = LocalDate.of(today.getYear() + 1, bd.getMonthValue(), bd.getDayOfMonth());
+                } catch (java.time.DateTimeException e) {
+                    thisYearBirthday = LocalDate.of(today.getYear() + 1, bd.getMonthValue(), bd.getMonthValue() == 2 ? 28 : bd.getDayOfMonth());
+                }
+            }
+
+            long daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, thisYearBirthday);
+            if (daysUntil < 0 || daysUntil > 7) continue;
+
+            int birthYear = thisYearBirthday.getYear();
+            // 이미 확인(acknowledge)한 경우 제외
+            if (birthdayAcknowledgementRepository.existsByAdminUserIdAndTargetUserIdAndBirthYear(
+                    admin.getId(), u.getId(), birthYear)) continue;
+
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("userId", u.getId());
+            entry.put("name", u.getName());
+            entry.put("nickname", u.getNickname());
+            entry.put("birthDate", bd.toString());
+            entry.put("daysUntil", daysUntil);
+            result.add(entry);
+        }
+
+        result.sort(java.util.Comparator.comparingLong(m -> (long) m.get("daysUntil")));
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/birthdays/{targetUserId}/acknowledge")
+    public ResponseEntity<Void> acknowledgeBirthday(@PathVariable Long targetUserId,
+                                                     Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        User target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다."));
+
+        LocalDate bd = target.getBirthDate();
+        if (bd == null) return ResponseEntity.badRequest().build();
+
+        LocalDate today = LocalDate.now();
+        LocalDate thisYearBirthday;
+        try {
+            thisYearBirthday = LocalDate.of(today.getYear(), bd.getMonthValue(), bd.getDayOfMonth());
+        } catch (java.time.DateTimeException e) {
+            thisYearBirthday = LocalDate.of(today.getYear(), bd.getMonthValue(), 28);
+        }
+        if (thisYearBirthday.isBefore(today)) {
+            try {
+                thisYearBirthday = LocalDate.of(today.getYear() + 1, bd.getMonthValue(), bd.getDayOfMonth());
+            } catch (java.time.DateTimeException e) {
+                thisYearBirthday = LocalDate.of(today.getYear() + 1, bd.getMonthValue(), 28);
+            }
+        }
+        int birthYear = thisYearBirthday.getYear();
+
+        if (!birthdayAcknowledgementRepository.existsByAdminUserIdAndTargetUserIdAndBirthYear(
+                admin.getId(), target.getId(), birthYear)) {
+            com.vgc.entity.BirthdayAcknowledgement ack = new com.vgc.entity.BirthdayAcknowledgement();
+            ack.setAdminUser(admin);
+            ack.setTargetUser(target);
+            ack.setBirthYear(birthYear);
+            birthdayAcknowledgementRepository.save(ack);
+        }
+        return ResponseEntity.ok().build();
     }
 }

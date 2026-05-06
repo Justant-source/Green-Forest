@@ -2,6 +2,7 @@ package com.vgc.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.vgc.entity.AnnouncementType;
 
 @Entity
 @Table(name = "announcements")
@@ -15,6 +16,10 @@ public class Announcement {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AnnouncementType type = AnnouncementType.MANUAL;
 
     @Column(nullable = false)
     private boolean active = false;
@@ -30,6 +35,8 @@ public class Announcement {
     public void setTitle(String title) { this.title = title; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+    public AnnouncementType getType() { return type; }
+    public void setType(AnnouncementType type) { this.type = type; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public LocalDateTime getCreatedAt() { return createdAt; }

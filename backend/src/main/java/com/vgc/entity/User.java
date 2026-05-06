@@ -2,6 +2,7 @@ package com.vgc.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -63,6 +64,9 @@ public class User {
     @Column(name = "earned_drops", nullable = false)
     private int earnedDrops = 0;
 
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
     // --- 기존 필드 ---
 
     private LocalDateTime createdAt;
@@ -113,4 +117,6 @@ public class User {
     public void setEarnedDrops(int earnedDrops) { this.earnedDrops = earnedDrops; }
     public boolean isPlantLocked() { return plantLocked; }
     public void setPlantLocked(boolean plantLocked) { this.plantLocked = plantLocked; }
+    public LocalDate getBirthDate() { return birthDate; }
+    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
 }

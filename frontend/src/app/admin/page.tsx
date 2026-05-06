@@ -7,6 +7,7 @@ import {
   AdminUser, AdminParty, AdminStats, Quest,
   CategoryInfo, CategoryRequestInfo,
   AttendancePhrase, GachaPrizeInfo, AdminDeliveryItem, AdminAttendanceDeliveryItem, AdminPost,
+  UpcomingBirthday,
 } from "@/types";
 import {
   getAdminCategories, createAdminCategory, deleteAdminCategory,
@@ -24,6 +25,7 @@ import {
   adminListAttendanceDeliveries, adminMarkAttendanceDelivered,
   adminListPosts, adminUpdatePost, adminDeletePost,
   adminGetDrawHistory,
+  getUpcomingBirthdays, acknowledgeBirthday,
 } from "@/lib/api";
 import EventAdminTab from "@/components/events/photobingo/admin/EventAdminTab";
 import DropHistoryPanel from "@/components/admin/DropHistoryPanel";
@@ -115,6 +117,9 @@ export default function AdminPage() {
   const [drawLoading, setDrawLoading] = useState(false);
   const [drawFilter, setDrawFilter] = useState({ nickname: "", from: "", to: "", prizeId: 0, winnerOnly: false, page: 0 });
 
+  // 다가오는 생일
+  const [upcomingBirthdays, setUpcomingBirthdays] = useState<UpcomingBirthday[]>([]);
+
   useEffect(() => {
     if (!isLoggedIn || !isAdmin) {
       router.replace("/");
@@ -149,7 +154,7 @@ export default function AdminPage() {
 
   const loadAllData = async () => {
     try {
-      const [s, u, p, q, cats, reqs, phr, prz, anns] = await Promise.all([
+      const [s, u, p, q, cats, reqs, phr, prz, anns, birthdays] = await Promise.all([
         getAdminStats(),
         getAdminUsers(),
         getAdminParties(),
@@ -159,6 +164,7 @@ export default function AdminPage() {
         adminListPhrases(),
         adminListAllPrizes(),
         adminListAnnouncements(),
+        getUpcomingBirthdays(),
       ]);
       setStats(s);
       setUsers(u);
@@ -169,6 +175,7 @@ export default function AdminPage() {
       setPhrases(phr);
       setPrizes([...prz].sort((a, b) => a.displayOrder - b.displayOrder));
       setAnnouncements(anns);
+      setUpcomingBirthdays(birthdays);
     } catch (error) {
       console.error("Failed to load admin data:", error);
     } finally {
@@ -229,6 +236,45 @@ export default function AdminPage() {
             <StatCard label="이번달 물방울" value={stats.monthlyDropsIssued ?? 0} />
             <StatCard label="이번달 거래" value={stats.monthlyTransactions} />
           </div>
+
+          {/* 다가오는 생일 위젯 */}
+          <div className="bg-white rounded-xl shadow p-6">
+            <h3 className="font-semibold mb-3">🎂 다가오는 생일 (7일 이내)</h3>
+            {upcomingBirthdays.length === 0 ? (
+              <p className="text-sm text-gray-400">이번 주 생일자가 없습니다.</p>
+            ) : (
+              <div className="space-y-2">
+                {upcomingBirthdays.map((b) => (
+                  <div key={b.userId} className="flex items-center gap-3 border-l-4 border-orange-400 bg-orange-50 rounded-r-lg px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-sm text-gray-800">{b.name}</span>
+                      <span className="ml-2 text-xs text-gray-500">@{b.nickname}</span>
+                      <span className="ml-2 text-xs text-orange-600 font-medium">
+                        {b.daysUntil === 0 ? "🎉 오늘!" : `D-${b.daysUntil}`}
+                      </span>
+                      <span className="ml-2 text-xs text-gray-400">
+                        ({b.birthDate.slice(5).replace("-", "/")})
+                      </span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await acknowledgeBirthday(b.userId);
+                          setUpcomingBirthdays((prev) => prev.filter((x) => x.userId !== b.userId));
+                        } catch {
+                          alert("처리 실패");
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-green-500 text-white text-xs font-medium rounded-lg hover:bg-green-600 shrink-0"
+                    >
+                      확인
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {stats.partyStats.length > 0 && (
             <div>
               <h3 className="font-semibold mb-3">파티별 물방울</h3>
@@ -1328,7 +1374,7 @@ function UsersPanel({
   parties: AdminParty[];
 }) {
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<{ nickname: string; name: string; email: string; role: "USER" | "ADMIN"; } | null>(null);
+  const [form, setForm] = useState<{ nickname: string; name: string; email: string; role: "USER" | "ADMIN"; birthDate: string; } | null>(null);
   const [keyword, setKeyword] = useState("");
 
   const filtered = users.filter((u) => {
@@ -1343,7 +1389,7 @@ function UsersPanel({
 
   const openEdit = (u: AdminUser) => {
     setEditingId(u.id);
-    setForm({ nickname: u.nickname, name: u.name ?? "", email: u.email, role: u.role === "ADMIN" ? "ADMIN" : "USER" });
+    setForm({ nickname: u.nickname, name: u.name ?? "", email: u.email, role: u.role === "ADMIN" ? "ADMIN" : "USER", birthDate: u.birthDate ?? "" });
   };
 
   const save = async (u: AdminUser) => {
@@ -1354,8 +1400,9 @@ function UsersPanel({
         name: form.name,
         email: form.email,
         role: form.role,
+        birthDate: form.birthDate || null,
       });
-      setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, nickname: form.nickname, name: form.name, email: form.email, role: form.role } : x));
+      setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, nickname: form.nickname, name: form.name, email: form.email, role: form.role, birthDate: form.birthDate || null } : x));
       setEditingId(null);
       setForm(null);
     } catch (e: any) {
@@ -1386,6 +1433,7 @@ function UsersPanel({
                 {u.plantType ? PLANT_OPTIONS.find((p) => p.value === u.plantType)?.label : "미선택"}
                 {u.partyName && ` | ${u.partyName}`}
                 {` | 물방울: ${u.totalDrops.toLocaleString()}`}
+                {u.birthDate && ` | 🎂 ${u.birthDate.slice(5).replace("-", "/")}`}
               </div>
             </div>
             <select
@@ -1455,6 +1503,10 @@ function UsersPanel({
                     <option value="USER">일반</option>
                     <option value="ADMIN">관리자</option>
                   </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">생일</label>
+                  <input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                 </div>
               </div>
               <div className="text-[11px] text-gray-400">※ 물방울은 이 페이지에서 수정할 수 없습니다. 지급·차감은 "물방울" 탭을 이용하세요.</div>

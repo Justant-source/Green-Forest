@@ -5,6 +5,8 @@ import com.vgc.repository.AnnouncementRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/announcements")
 public class AnnouncementController {
@@ -19,5 +21,11 @@ public class AnnouncementController {
         return announcementRepository.findTopByActiveTrueOrderByCreatedAtDesc()
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
+    }
+
+    @GetMapping("/active-list")
+    public ResponseEntity<List<Announcement>> getActiveList() {
+        List<Announcement> list = announcementRepository.findAllByActiveTrueOrderByCreatedAtDesc();
+        return ResponseEntity.ok(list);
     }
 }

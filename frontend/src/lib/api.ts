@@ -593,6 +593,7 @@ export async function updateAdminUser(id: number, data: {
   name?: string;
   email?: string;
   role?: "USER" | "ADMIN";
+  birthDate?: string | null;
 }): Promise<void> {
   const res = await fetch(`${BASE_URL}/admin/users/${id}`, {
     method: "PUT",
@@ -1030,6 +1031,7 @@ export interface AnnouncementItem {
   title: string;
   content: string;
   active: boolean;
+  type: "MANUAL" | "BIRTHDAY";
   createdAt: string;
 }
 
@@ -1040,6 +1042,14 @@ export async function getActiveAnnouncement(): Promise<AnnouncementItem | null> 
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
+}
+
+export async function getActiveAnnouncements(): Promise<AnnouncementItem[]> {
+  try {
+    const res = await fetch(`${BASE_URL}/announcements/active-list`, { cache: "no-store" });
+    if (!res.ok) return [];
+    return res.json();
+  } catch { return []; }
 }
 
 export async function adminListAnnouncements(): Promise<AnnouncementItem[]> {
@@ -1078,6 +1088,24 @@ export async function adminDeactivateAllAnnouncements(): Promise<void> {
 export async function adminDeleteAnnouncement(id: number): Promise<void> {
   const res = await fetch(`${BASE_URL}/admin/announcements/${id}`, {
     method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
+}
+
+// ===== 관리자 - 생일 =====
+export async function getUpcomingBirthdays(): Promise<import("@/types").UpcomingBirthday[]> {
+  const res = await fetch(`${BASE_URL}/admin/birthdays/upcoming`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function acknowledgeBirthday(targetUserId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/birthdays/${targetUserId}/acknowledge`, {
+    method: "POST",
     headers: authHeaders(),
   });
   if (!res.ok) throw res;
