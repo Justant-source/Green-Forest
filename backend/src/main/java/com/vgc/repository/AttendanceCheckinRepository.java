@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,6 +27,11 @@ public interface AttendanceCheckinRepository extends JpaRepository<AttendanceChe
 
     @Query("SELECT a FROM AttendanceCheckin a WHERE a.checkinDate BETWEEN :from AND :to AND a.winner = true ORDER BY a.checkinDate DESC")
     List<AttendanceCheckin> findWinnersBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("SELECT a FROM AttendanceCheckin a JOIN FETCH a.user WHERE a.winner = true AND " +
+           "(a.winnerDrawnAt >= :cutoff OR (a.winnerDrawnAt IS NULL AND a.checkinDate >= :cutoffDate)) " +
+           "ORDER BY a.checkinDate DESC")
+    List<AttendanceCheckin> findRecentWinners(@Param("cutoff") LocalDateTime cutoff, @Param("cutoffDate") LocalDate cutoffDate);
 
     @Query("SELECT a FROM AttendanceCheckin a JOIN FETCH a.user " +
            "WHERE a.winner = true AND a.deliveryStatus = :status " +

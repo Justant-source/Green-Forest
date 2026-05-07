@@ -34,15 +34,14 @@ public class PlazaController {
 
     @GetMapping("/winners")
     public List<Map<String, Object>> getWeeklyWinners() {
-        LocalDate today = LocalDate.now(KST);
-        LocalDate weekAgo = today.minusDays(7);
-        LocalDateTime weekAgoDateTime = weekAgo.atStartOfDay();
+        LocalDateTime cutoff = LocalDateTime.now(KST).minusHours(72);
+        LocalDate cutoffDate = cutoff.toLocalDate();
 
         List<Map<String, Object>> result = new ArrayList<>();
 
-        // 뽑기 당첨 (최근 7일)
+        // 뽑기 당첨 (최근 72시간)
         List<GachaDraw> gachaWins = gachaDrawRepository
-                .findByWinnerTrueAndCreatedAtAfterOrderByCreatedAtDesc(weekAgoDateTime);
+                .findByWinnerTrueAndCreatedAtAfterOrderByCreatedAtDesc(cutoff);
         for (GachaDraw draw : gachaWins) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("type", "GACHA");
@@ -52,9 +51,9 @@ public class PlazaController {
             result.add(item);
         }
 
-        // 출석 당첨 (최근 7일)
+        // 출석 당첨 (최근 72시간)
         List<AttendanceCheckin> attendanceWins = attendanceCheckinRepository
-                .findWinnersBetween(weekAgo, today);
+                .findRecentWinners(cutoff, cutoffDate);
         for (AttendanceCheckin checkin : attendanceWins) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("type", "ATTENDANCE");
