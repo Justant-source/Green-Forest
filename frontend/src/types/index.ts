@@ -28,6 +28,7 @@ export interface Survey {
   allowMultiSelect: boolean;
   notice: boolean;
   closed: boolean;
+  requiresShipping: boolean;
   totalVotes: number;
   options: SurveyOption[];
   hasVoted: boolean;
@@ -118,6 +119,34 @@ export interface User {
   partyId: number | null;
   partyName: string | null;
   totalDrops: number;
+  createdAt: string;
+  zipcode?: string | null;
+  addressMain?: string | null;
+  addressDetail?: string | null;
+  phone?: string | null;
+}
+
+export interface AdminSurveyDelivery {
+  id: number;
+  surveyId: number;
+  surveyTitle: string;
+  userId: number;
+  userNickname: string;
+  userName: string;
+  optionId: number;
+  optionText: string | null;
+  optionImageUrl: string | null;
+  recipientName: string;
+  recipientPhone: string;
+  recipientZipcode: string;
+  recipientAddressMain: string;
+  recipientAddressDetail: string | null;
+  deliveryStatus: "PENDING" | "SHIPPED" | "DELIVERED" | "CANCELED";
+  deliveryStatusLabel: string;
+  trackingNumber: string | null;
+  deliveredAt: string | null;
+  deliveredBy: number | null;
+  deliveryMemo: string | null;
   createdAt: string;
 }
 

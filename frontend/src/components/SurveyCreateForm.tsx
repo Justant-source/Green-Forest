@@ -30,6 +30,7 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
   const [allowOptionAddByUser, setAllowOptionAddByUser] = useState(false);
   const [allowMultiSelect, setAllowMultiSelect] = useState(false);
   const [notice, setNotice] = useState(false);
+  const [requiresShipping, setRequiresShipping] = useState(false);
   const [options, setOptions] = useState<OptionDraft[]>([newOption(), newOption()]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -99,8 +100,9 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
       fd.append("closesAt", new Date(closesAt).toISOString().replace("Z", ""));
       fd.append("anonymous", String(anonymous));
       fd.append("allowOptionAddByUser", String(allowOptionAddByUser));
-      fd.append("allowMultiSelect", String(allowMultiSelect));
+      fd.append("allowMultiSelect", requiresShipping ? "false" : String(allowMultiSelect));
       fd.append("notice", String(notice));
+      fd.append("requiresShipping", String(requiresShipping));
       const optionsJson = options.map((o) => ({
         type: o.type,
         text: o.type === "IMAGE_ONLY" ? null : o.text.trim(),
@@ -232,8 +234,18 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
       <div className="space-y-2 bg-gray-50 rounded-lg p-3">
         <Toggle label="익명 투표" checked={anonymous} onChange={setAnonymous} />
         <Toggle label="참여자 항목 추가 허용" checked={allowOptionAddByUser} onChange={setAllowOptionAddByUser} />
-        <Toggle label="복수 선택 허용" checked={allowMultiSelect} onChange={setAllowMultiSelect} />
+        <Toggle
+          label="복수 선택 허용"
+          checked={allowMultiSelect}
+          onChange={setAllowMultiSelect}
+          disabled={requiresShipping}
+        />
         <Toggle label="공지로 등록 (상단 배너 노출)" checked={notice} onChange={setNotice} />
+        <Toggle
+          label="상품 배송 대상 설문"
+          checked={requiresShipping}
+          onChange={(v) => { setRequiresShipping(v); if (v) setAllowMultiSelect(false); }}
+        />
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
@@ -262,17 +274,20 @@ function Toggle({
   label,
   checked,
   onChange,
+  disabled,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+    <label className={`flex items-center gap-2 text-sm text-gray-700 ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}>
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
         className="w-4 h-4 accent-forest-500"
       />
       {label}

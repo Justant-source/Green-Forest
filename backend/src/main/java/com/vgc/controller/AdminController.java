@@ -70,6 +70,7 @@ public class AdminController {
     private final BirthdayAcknowledgementRepository birthdayAcknowledgementRepository;
     private final ImageStorageService imageStorageService;
     private final PostService postService;
+    private final com.vgc.service.SurveyDeliveryService surveyDeliveryService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -91,7 +92,8 @@ public class AdminController {
                            AnnouncementRepository announcementRepository,
                            BirthdayAcknowledgementRepository birthdayAcknowledgementRepository,
                            ImageStorageService imageStorageService,
-                           PostService postService) {
+                           PostService postService,
+                           com.vgc.service.SurveyDeliveryService surveyDeliveryService) {
         this.categoryService = categoryService;
         this.userRepository = userRepository;
         this.dropService = dropService;
@@ -112,6 +114,7 @@ public class AdminController {
         this.birthdayAcknowledgementRepository = birthdayAcknowledgementRepository;
         this.imageStorageService = imageStorageService;
         this.postService = postService;
+        this.surveyDeliveryService = surveyDeliveryService;
     }
 
     private User getAdminUser(Authentication authentication) {
@@ -981,5 +984,30 @@ public class AdminController {
             birthdayAcknowledgementRepository.save(ack);
         }
         return ResponseEntity.ok().build();
+    }
+
+    // ========== 설문 배송 관리 ==========
+
+    @GetMapping("/survey-deliveries")
+    public ResponseEntity<List<com.vgc.dto.AdminSurveyDeliveryDto>> listSurveyDeliveries(
+            @RequestParam(required = false) Long surveyId,
+            @RequestParam(defaultValue = "PENDING") String status,
+            Authentication authentication) {
+        getAdminUser(authentication);
+        com.vgc.entity.SurveyDeliveryStatus deliveryStatus =
+                com.vgc.entity.SurveyDeliveryStatus.valueOf(status);
+        return ResponseEntity.ok(surveyDeliveryService.list(surveyId, deliveryStatus));
+    }
+
+    @PatchMapping("/survey-deliveries/{id}")
+    public ResponseEntity<com.vgc.dto.AdminSurveyDeliveryDto> updateSurveyDelivery(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        String status = body != null ? body.get("status") : null;
+        String trackingNumber = body != null ? body.get("trackingNumber") : null;
+        String memo = body != null ? body.get("memo") : null;
+        return ResponseEntity.ok(surveyDeliveryService.update(id, admin.getId(), status, trackingNumber, memo));
     }
 }

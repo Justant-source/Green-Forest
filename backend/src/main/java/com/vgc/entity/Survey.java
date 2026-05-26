@@ -31,6 +31,9 @@ public class Survey {
     @Column(name = "is_notice", nullable = false)
     private boolean notice = false;
 
+    @Column(name = "requires_shipping", nullable = false)
+    private boolean requiresShipping = false;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -57,6 +60,8 @@ public class Survey {
     public void setAllowMultiSelect(boolean allowMultiSelect) { this.allowMultiSelect = allowMultiSelect; }
     public boolean isNotice() { return notice; }
     public void setNotice(boolean notice) { this.notice = notice; }
+    public boolean isRequiresShipping() { return requiresShipping; }
+    public void setRequiresShipping(boolean requiresShipping) { this.requiresShipping = requiresShipping; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public List<SurveyOption> getOptions() { return options; }

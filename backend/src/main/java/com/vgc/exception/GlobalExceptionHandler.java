@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -20,6 +21,14 @@ public class GlobalExceptionHandler {
 
     public GlobalExceptionHandler(ActivityLogService activityLogService) {
         this.activityLogService = activityLogService;
+    }
+
+    @ExceptionHandler(ProfileIncompleteException.class)
+    public ResponseEntity<Map<String, String>> handleProfileIncomplete(ProfileIncompleteException e) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("code", "PROFILE_INCOMPLETE");
+        body.put("message", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     @ExceptionHandler(ResponseStatusException.class)

@@ -8,6 +8,7 @@ public class SurveyCreateRequest {
     private boolean allowOptionAddByUser;
     private boolean allowMultiSelect;
     private boolean notice;
+    private boolean requiresShipping;
 
     public LocalDateTime getClosesAt() { return closesAt; }
     public void setClosesAt(LocalDateTime closesAt) { this.closesAt = closesAt; }
@@ -19,4 +20,6 @@ public class SurveyCreateRequest {
     public void setAllowMultiSelect(boolean allowMultiSelect) { this.allowMultiSelect = allowMultiSelect; }
     public boolean isNotice() { return notice; }
     public void setNotice(boolean notice) { this.notice = notice; }
+    public boolean isRequiresShipping() { return requiresShipping; }
+    public void setRequiresShipping(boolean requiresShipping) { this.requiresShipping = requiresShipping; }
 }

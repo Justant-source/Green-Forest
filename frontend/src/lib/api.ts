@@ -317,6 +317,10 @@ export async function updateMyProfile(data: {
   nickname?: string;
   plantName?: string;
   plantType?: string;
+  zipcode?: string;
+  addressMain?: string;
+  addressDetail?: string;
+  phone?: string;
 }): Promise<User> {
   const res = await fetch(`${BASE_URL}/users/me/profile`, {
     method: "PUT",
@@ -959,6 +963,30 @@ export async function adminDeactivatePrize(id: number): Promise<void> {
   if (!res.ok) throw res;
 }
 
+export async function adminListSurveyDeliveries(
+  status = "PENDING",
+  surveyId?: number
+): Promise<import("@/types").AdminSurveyDelivery[]> {
+  const params = new URLSearchParams({ status });
+  if (surveyId != null) params.set("surveyId", String(surveyId));
+  const res = await fetch(`${BASE_URL}/admin/survey-deliveries?${params}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminUpdateSurveyDelivery(
+  id: number,
+  data: { status?: string; trackingNumber?: string; memo?: string }
+): Promise<import("@/types").AdminSurveyDelivery> {
+  const res = await fetch(`${BASE_URL}/admin/survey-deliveries/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
 export async function adminListDeliveries(status = "PENDING"): Promise<import("@/types").AdminDeliveryItem[]> {
   const res = await fetch(`${BASE_URL}/admin/gacha/deliveries?status=${status}`, { headers: authHeaders() });
   if (!res.ok) throw res;
@@ -1174,14 +1202,28 @@ export async function getSurveyByPost(postId: number): Promise<Survey> {
   return res.json();
 }
 
-export async function voteOnSurvey(surveyId: number, optionId: number): Promise<void> {
+export class ProfileIncompleteError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProfileIncompleteError";
+  }
+}
+
+export async function voteOnSurvey(
+  surveyId: number,
+  optionId: number,
+  recipientName?: string
+): Promise<void> {
   const res = await fetch(`${BASE_URL}/surveys/${surveyId}/vote`, {
     method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({ optionId }),
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ optionId, recipientName }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => null);
+    if (data?.code === "PROFILE_INCOMPLETE") {
+      throw new ProfileIncompleteError(data.message || "배송지를 등록해 주세요.");
+    }
     throw new Error(data?.message || "투표에 실패했습니다.");
   }
 }

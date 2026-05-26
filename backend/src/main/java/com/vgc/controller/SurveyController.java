@@ -49,6 +49,7 @@ public class SurveyController {
             @RequestParam(value = "allowOptionAddByUser", defaultValue = "false") boolean allowOptionAddByUser,
             @RequestParam(value = "allowMultiSelect", defaultValue = "false") boolean allowMultiSelect,
             @RequestParam(value = "notice", defaultValue = "false") boolean notice,
+            @RequestParam(value = "requiresShipping", defaultValue = "false") boolean requiresShipping,
             @RequestParam("options") String optionsJson,
             MultipartHttpServletRequest mreq,
             Authentication authentication) throws IOException {
@@ -66,6 +67,7 @@ public class SurveyController {
         req.setAllowOptionAddByUser(allowOptionAddByUser);
         req.setAllowMultiSelect(allowMultiSelect);
         req.setNotice(notice);
+        req.setRequiresShipping(requiresShipping);
 
         Survey created = surveyService.createSurveyWithPost(admin, title, req, inputs);
 
@@ -85,12 +87,14 @@ public class SurveyController {
 
     @PostMapping("/{surveyId}/vote")
     public ResponseEntity<Void> vote(@PathVariable Long surveyId,
-                                     @RequestBody Map<String, Long> body,
+                                     @RequestBody Map<String, Object> body,
                                      Authentication auth) {
         User user = currentUser(auth);
-        Long optionId = body.get("optionId");
-        if (optionId == null) throw new IllegalArgumentException("optionId 필요");
-        surveyService.vote(surveyId, optionId, user);
+        Object optionIdObj = body.get("optionId");
+        if (optionIdObj == null) throw new IllegalArgumentException("optionId 필요");
+        Long optionId = ((Number) optionIdObj).longValue();
+        String recipientName = (String) body.get("recipientName");
+        surveyService.vote(surveyId, optionId, user, recipientName);
         return ResponseEntity.noContent().build();
     }
 
@@ -147,7 +151,7 @@ public class SurveyController {
         ));
     }
 
-    /** 설문 제목/종료일 수정 (관리자 전용). */
+    /** 설문 제목/종료일/배송여부 수정 (관리자 전용). */
     @PatchMapping("/{surveyId}/meta")
     public ResponseEntity<Void> updateMeta(
             @PathVariable Long surveyId,
@@ -157,7 +161,9 @@ public class SurveyController {
         String title = body.get("title");
         String closesAtStr = body.get("closesAt");
         LocalDateTime closesAt = closesAtStr != null ? LocalDateTime.parse(closesAtStr) : null;
-        surveyService.updateSurveyMeta(surveyId, admin, title, closesAt);
+        Boolean requiresShipping = body.containsKey("requiresShipping")
+            ? Boolean.parseBoolean(body.get("requiresShipping")) : null;
+        surveyService.updateSurveyMeta(surveyId, admin, title, closesAt, requiresShipping);
         return ResponseEntity.noContent().build();
     }
 

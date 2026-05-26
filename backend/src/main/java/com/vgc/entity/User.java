@@ -67,6 +67,18 @@ public class User {
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
+    @Column(name = "zipcode", length = 10)
+    private String zipcode;
+
+    @Column(name = "address_main", length = 200)
+    private String addressMain;
+
+    @Column(name = "address_detail", length = 200)
+    private String addressDetail;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
     // --- 기존 필드 ---
 
     private LocalDateTime createdAt;
@@ -119,4 +131,12 @@ public class User {
     public void setPlantLocked(boolean plantLocked) { this.plantLocked = plantLocked; }
     public LocalDate getBirthDate() { return birthDate; }
     public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+    public String getZipcode() { return zipcode; }
+    public void setZipcode(String zipcode) { this.zipcode = zipcode; }
+    public String getAddressMain() { return addressMain; }
+    public void setAddressMain(String addressMain) { this.addressMain = addressMain; }
+    public String getAddressDetail() { return addressDetail; }
+    public void setAddressDetail(String addressDetail) { this.addressDetail = addressDetail; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 }

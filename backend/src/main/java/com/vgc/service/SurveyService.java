@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vgc.dto.SurveyCreateRequest;
 import com.vgc.dto.SurveyOptionInput;
 import com.vgc.entity.*;
+import com.vgc.exception.ProfileIncompleteException;
 import com.vgc.repository.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -29,19 +32,25 @@ public class SurveyService {
     private final ImageStorageService imageStorageService;
     private final PostRepository postRepository;
     private final PostImageRepository postImageRepository;
+    private final UserRepository userRepository;
+    private final SurveyDeliveryService surveyDeliveryService;
 
     public SurveyService(SurveyRepository surveyRepository,
                          SurveyOptionRepository optionRepository,
                          SurveyVoteRepository voteRepository,
                          ImageStorageService imageStorageService,
                          PostRepository postRepository,
-                         PostImageRepository postImageRepository) {
+                         PostImageRepository postImageRepository,
+                         UserRepository userRepository,
+                         SurveyDeliveryService surveyDeliveryService) {
         this.surveyRepository = surveyRepository;
         this.optionRepository = optionRepository;
         this.voteRepository = voteRepository;
         this.imageStorageService = imageStorageService;
         this.postRepository = postRepository;
         this.postImageRepository = postImageRepository;
+        this.userRepository = userRepository;
+        this.surveyDeliveryService = surveyDeliveryService;
     }
 
     /** 설문 + 게시글을 한 번에 생성 (관리자 전용). */
@@ -78,7 +87,13 @@ public class SurveyService {
         survey.setClosesAt(req.getClosesAt());
         survey.setAnonymous(req.isAnonymous());
         survey.setAllowOptionAddByUser(req.isAllowOptionAddByUser());
-        survey.setAllowMultiSelect(req.isAllowMultiSelect());
+        boolean shipping = req.isRequiresShipping();
+        survey.setRequiresShipping(shipping);
+        if (shipping) {
+            survey.setAllowMultiSelect(false);
+        } else {
+            survey.setAllowMultiSelect(req.isAllowMultiSelect());
+        }
         survey.setNotice(req.isNotice());
         surveyRepository.save(survey);
 
@@ -176,11 +191,22 @@ public class SurveyService {
 
     /** 투표. allowMultiSelect 에 따라 동작 다름. 같은 옵션 다시 누르면 토글 해제. */
     @Transactional
-    public void vote(Long surveyId, Long optionId, User user) {
+    public void vote(Long surveyId, Long optionId, User user, String recipientName) {
         Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
         if (LocalDateTime.now().isAfter(survey.getClosesAt()))
             throw new IllegalArgumentException("종료된 설문입니다.");
+
+        if (survey.isRequiresShipping()) {
+            if (voteRepository.countBySurveyIdAndUserId(surveyId, user.getId()) > 0)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "배송 대상 설문은 응답을 변경할 수 없습니다.");
+            User fresh = userRepository.findById(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
+            if (fresh.getAddressMain() == null || fresh.getAddressMain().isBlank()
+                    || fresh.getPhone() == null || fresh.getPhone().isBlank()) {
+                throw new ProfileIncompleteException();
+            }
+        }
 
         SurveyOption option = optionRepository.findById(optionId)
             .orElseThrow(() -> new IllegalArgumentException("옵션을 찾을 수 없습니다."));
@@ -189,6 +215,8 @@ public class SurveyService {
 
         boolean alreadyVotedThisOption = voteRepository.existsByUserIdAndOptionId(user.getId(), optionId);
         if (alreadyVotedThisOption) {
+            if (survey.isRequiresShipping())
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "배송 대상 설문은 응답을 변경할 수 없습니다.");
             voteRepository.deleteByUserIdAndOptionId(user.getId(), optionId);
             return;
         }
@@ -202,7 +230,12 @@ public class SurveyService {
         vote.setSurvey(survey);
         vote.setOption(option);
         vote.setUser(user);
-        voteRepository.save(vote);
+        SurveyVote saved = voteRepository.save(vote);
+
+        if (survey.isRequiresShipping()) {
+            User fresh = userRepository.findById(user.getId()).orElseThrow();
+            surveyDeliveryService.createSnapshot(survey, option, fresh, saved, recipientName);
+        }
     }
 
     /** 설문 상세 조회 (옵션별 투표 수 포함). */
@@ -247,6 +280,7 @@ public class SurveyService {
         result.put("allowMultiSelect", survey.isAllowMultiSelect());
         result.put("notice", survey.isNotice());
         result.put("closed", LocalDateTime.now().isAfter(survey.getClosesAt()));
+        result.put("requiresShipping", survey.isRequiresShipping());
         result.put("totalVotes", totalVotes);
         result.put("options", options);
         result.put("hasVoted", !myVotedOptionIds.isEmpty());
@@ -382,9 +416,10 @@ public class SurveyService {
         optionRepository.save(opt);
     }
 
-    /** 관리자가 설문 제목/종료일을 수정. */
+    /** 관리자가 설문 제목/종료일/배송여부를 수정. */
     @Transactional
-    public void updateSurveyMeta(Long surveyId, User admin, String title, LocalDateTime closesAt) {
+    public void updateSurveyMeta(Long surveyId, User admin, String title,
+                                  LocalDateTime closesAt, Boolean requiresShipping) {
         if (!"ADMIN".equals(admin.getRole()))
             throw new IllegalArgumentException("관리자만 수정할 수 있습니다.");
 
@@ -397,8 +432,12 @@ public class SurveyService {
         }
         if (closesAt != null && closesAt.isAfter(LocalDateTime.now())) {
             survey.setClosesAt(closesAt);
-            surveyRepository.save(survey);
         }
+        if (requiresShipping != null) {
+            survey.setRequiresShipping(requiresShipping);
+            if (requiresShipping) survey.setAllowMultiSelect(false);
+        }
+        surveyRepository.save(survey);
     }
 
     /** 관리자가 설문을 즉시 종료. closes_at 을 현재 시각으로 당긴다. */

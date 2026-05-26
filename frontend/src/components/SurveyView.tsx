@@ -1,20 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Survey, SurveyOption } from "@/types";
-import { getSurveyByPost, voteOnSurvey, addSurveyOption, closeSurvey, getSurveyVotes } from "@/lib/api";
+import { Survey, SurveyOption, User } from "@/types";
+import { getSurveyByPost, voteOnSurvey, addSurveyOption, closeSurvey, getSurveyVotes, getMe, ProfileIncompleteError } from "@/lib/api";
 import { toMediaUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { SurveyVoteDetail } from "@/types";
+import SurveyShippingConfirmModal from "./SurveyShippingConfirmModal";
+import { useRouter } from "next/navigation";
 
 export default function SurveyView({ postId, onImageSelect }: { postId: number; onImageSelect?: (url: string) => void }) {
   const { isLoggedIn, isAdmin, authLoaded } = useAuth();
+  const router = useRouter();
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [newOptionText, setNewOptionText] = useState("");
   const [voteDetails, setVoteDetails] = useState<SurveyVoteDetail[] | null>(null);
   const [showVotes, setShowVotes] = useState(false);
   const [loadingVotes, setLoadingVotes] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ optionId: number; me: User } | null>(null);
+  const [incompleteModal, setIncompleteModal] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -36,16 +41,43 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
   if (!survey)
     return <div className="py-8 text-center text-gray-400">설문을 찾을 수 없습니다.</div>;
 
+  const doVote = async (optionId: number, recipientName?: string) => {
+    try {
+      await voteOnSurvey(survey!.id, optionId, recipientName);
+      setVoteDetails(null);
+      await load();
+    } catch (e: unknown) {
+      if (e instanceof ProfileIncompleteError) {
+        setIncompleteModal(true);
+        return;
+      }
+      alert(e instanceof Error ? e.message : "투표 실패");
+    }
+  };
+
   const handleVote = async (optionId: number, imageUrl?: string | null) => {
     if (imageUrl) onImageSelect?.(imageUrl);
     if (survey.closed || !isLoggedIn) return;
-    try {
-      await voteOnSurvey(survey.id, optionId);
-      setVoteDetails(null); // 현황 캐시 무효화
-      await load();
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "투표 실패");
+
+    if (survey.requiresShipping) {
+      if (survey.hasVoted) {
+        alert("배송 대상 설문은 응답을 변경할 수 없습니다.");
+        return;
+      }
+      try {
+        const me = await getMe();
+        if (!me.addressMain || !me.phone) {
+          setIncompleteModal(true);
+          return;
+        }
+        setConfirmModal({ optionId, me });
+      } catch {
+        alert("사용자 정보를 불러오는 데 실패했습니다.");
+      }
+      return;
     }
+
+    await doVote(optionId);
   };
 
   const handleClose = async () => {
@@ -87,6 +119,44 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
   const closesAt = new Date(survey.closesAt.endsWith("Z") ? survey.closesAt : survey.closesAt + "Z");
 
   return (
+    <>
+    {confirmModal && (
+      <SurveyShippingConfirmModal
+        user={confirmModal.me}
+        onConfirm={(recipientName) => {
+          const optionId = confirmModal.optionId;
+          setConfirmModal(null);
+          doVote(optionId, recipientName);
+        }}
+        onCancel={() => setConfirmModal(null)}
+      />
+    )}
+
+    {incompleteModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4">
+          <h2 className="text-base font-bold text-gray-800">배송지 등록 필요</h2>
+          <p className="text-sm text-gray-600">
+            이 설문은 상품 배송 대상입니다. 배송지(주소·휴대전화)를 먼저 등록해 주세요.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIncompleteModal(false)}
+              className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              취소
+            </button>
+            <button
+              onClick={() => { setIncompleteModal(false); router.push("/profile/shipping"); }}
+              className="flex-1 py-2 rounded-lg bg-forest-500 text-white text-sm font-medium hover:bg-forest-600"
+            >
+              배송지 등록하러 가기
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className="space-y-3">
       {/* 메타 정보 */}
       <div className="flex items-center justify-between text-xs text-gray-500">
@@ -94,6 +164,7 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
           {survey.allowMultiSelect && <Badge>복수 선택</Badge>}
           {survey.anonymous && <Badge>익명</Badge>}
           {survey.notice && <Badge color="amber">공지</Badge>}
+          {survey.requiresShipping && <Badge color="green">상품 배송</Badge>}
         </div>
         <div className="flex items-center gap-2">
           {authLoaded && isAdmin && !survey.closed && (
@@ -192,6 +263,7 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
 
       <div className="text-xs text-gray-400 text-right">총 {survey.totalVotes}표</div>
     </div>
+    </>
   );
 }
 
@@ -258,11 +330,12 @@ function Badge({
   color = "indigo",
 }: {
   children: React.ReactNode;
-  color?: "indigo" | "amber";
+  color?: "indigo" | "amber" | "green";
 }) {
   const colorMap: Record<string, string> = {
     indigo: "bg-indigo-50 text-indigo-700",
     amber: "bg-amber-50 text-amber-700",
+    green: "bg-forest-50 text-forest-700",
   };
   return (
     <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${colorMap[color]}`}>

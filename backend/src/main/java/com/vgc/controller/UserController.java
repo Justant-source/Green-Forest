@@ -52,7 +52,7 @@ public class UserController {
     public Map<String, Object> getUser(@PathVariable Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
-        return userToMap(user);
+        return userToPublicMap(user);
     }
 
     @GetMapping("/me")
@@ -79,6 +79,11 @@ public class UserController {
         if (body.containsKey("plantName")) {
             user.setPlantName((String) body.get("plantName"));
         }
+
+        if (body.containsKey("zipcode")) user.setZipcode((String) body.get("zipcode"));
+        if (body.containsKey("addressMain")) user.setAddressMain((String) body.get("addressMain"));
+        if (body.containsKey("addressDetail")) user.setAddressDetail((String) body.get("addressDetail"));
+        if (body.containsKey("phone")) user.setPhone((String) body.get("phone"));
 
         if (body.containsKey("plantType") && body.get("plantType") != null) {
             if (user.getPlantType() != null && user.isPlantLocked()) {
@@ -197,7 +202,7 @@ public class UserController {
         return Map.of("status", "changed");
     }
 
-    private Map<String, Object> userToMap(User user) {
+    private Map<String, Object> buildBaseMap(User user) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", user.getId());
         map.put("email", user.getEmail());
@@ -222,5 +227,20 @@ public class UserController {
         map.put("birthDate", user.getBirthDate() != null ? user.getBirthDate().toString() : null);
         map.put("createdAt", user.getCreatedAt().toString());
         return map;
+    }
+
+    /** 본인용 — 배송 정보(주소·전화) 포함. */
+    private Map<String, Object> userToMap(User user) {
+        Map<String, Object> map = buildBaseMap(user);
+        map.put("zipcode", user.getZipcode());
+        map.put("addressMain", user.getAddressMain());
+        map.put("addressDetail", user.getAddressDetail());
+        map.put("phone", user.getPhone());
+        return map;
+    }
+
+    /** 공개용 — 개인정보(주소·전화) 제외. */
+    private Map<String, Object> userToPublicMap(User user) {
+        return buildBaseMap(user);
     }
 }

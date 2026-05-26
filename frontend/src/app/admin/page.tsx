@@ -7,7 +7,7 @@ import {
   AdminUser, AdminParty, AdminStats, Quest,
   CategoryInfo, CategoryRequestInfo,
   AttendancePhrase, GachaPrizeInfo, AdminDeliveryItem, AdminAttendanceDeliveryItem, AdminPost,
-  UpcomingBirthday,
+  UpcomingBirthday, AdminSurveyDelivery,
 } from "@/types";
 import {
   getAdminCategories, createAdminCategory, deleteAdminCategory,
@@ -26,11 +26,12 @@ import {
   adminListPosts, adminUpdatePost, adminDeletePost,
   adminGetDrawHistory,
   getUpcomingBirthdays, acknowledgeBirthday,
+  adminListSurveyDeliveries, adminUpdateSurveyDelivery,
 } from "@/lib/api";
 import EventAdminTab from "@/components/events/photobingo/admin/EventAdminTab";
 import DropHistoryPanel from "@/components/admin/DropHistoryPanel";
 
-type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha" | "posts" | "events";
+type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha" | "posts" | "events" | "survey-deliveries";
 
 const PLANT_OPTIONS = [
   { value: "TABLE_PALM", label: "테이블야자" },
@@ -204,6 +205,7 @@ export default function AdminPage() {
     { key: "categories", label: "게시판" },
     { key: "attendance", label: "출석" },
     { key: "gacha", label: "뽑기" },
+    { key: "survey-deliveries", label: "설문배송" },
     { key: "announce", label: "공지" },
   ];
 
@@ -1353,6 +1355,9 @@ export default function AdminPage() {
 
       {/* Quest Events */}
       {tab === "events" && <EventAdminTab />}
+
+      {/* 설문 배송 */}
+      {tab === "survey-deliveries" && <SurveyDeliveryPanel />}
     </div>
   );
 }
@@ -1665,6 +1670,171 @@ function PostsPanel({ categories }: { categories: CategoryInfo[] }) {
           <button disabled={page === 0} onClick={() => load(page - 1)} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm disabled:opacity-30">이전</button>
           <span className="px-3 py-1.5 text-sm text-gray-600">{page + 1} / {totalPages}</span>
           <button disabled={page >= totalPages - 1} onClick={() => load(page + 1)} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm disabled:opacity-30">다음</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 설문 배송 패널 ────────────────────────────────────────────────
+function SurveyDeliveryPanel() {
+  const STATUS_LABELS: Record<string, string> = {
+    PENDING: "배송대기",
+    SHIPPED: "배송중",
+    DELIVERED: "배송완료",
+    CANCELED: "취소",
+  };
+  const [statusFilter, setStatusFilter] = useState<string>("PENDING");
+  const [items, setItems] = useState<AdminSurveyDelivery[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editStatus, setEditStatus] = useState("");
+  const [editTracking, setEditTracking] = useState("");
+  const [editMemo, setEditMemo] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setItems(await adminListSurveyDeliveries(statusFilter));
+    } catch {
+      alert("불러오기 실패");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, [statusFilter]);
+
+  const openEdit = (item: AdminSurveyDelivery) => {
+    setEditingId(item.id);
+    setEditStatus(item.deliveryStatus);
+    setEditTracking(item.trackingNumber ?? "");
+    setEditMemo(item.deliveryMemo ?? "");
+  };
+
+  const handleSave = async () => {
+    if (!editingId) return;
+    setSaving(true);
+    try {
+      await adminUpdateSurveyDelivery(editingId, {
+        status: editStatus,
+        trackingNumber: editTracking,
+        memo: editMemo,
+      });
+      setEditingId(null);
+      await load();
+    } catch {
+      alert("저장 실패");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        {Object.entries(STATUS_LABELS).map(([k, v]) => (
+          <button
+            key={k}
+            onClick={() => setStatusFilter(k)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+              statusFilter === k
+                ? "bg-forest-500 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <p className="text-gray-400 text-sm">불러오는 중...</p>
+      ) : items.length === 0 ? (
+        <p className="text-gray-400 text-sm">해당 상태의 배송 건이 없습니다.</p>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="text-xs text-gray-400">{item.surveyTitle}</div>
+                  <div className="text-sm font-semibold text-gray-800">
+                    {item.userName}({item.userNickname})
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    선택 상품: {item.optionText || "(이미지 옵션)"}
+                  </div>
+                </div>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  item.deliveryStatus === "PENDING" ? "bg-yellow-50 text-yellow-700"
+                  : item.deliveryStatus === "SHIPPED" ? "bg-blue-50 text-blue-700"
+                  : item.deliveryStatus === "DELIVERED" ? "bg-green-50 text-green-700"
+                  : "bg-gray-100 text-gray-500"
+                }`}>
+                  {item.deliveryStatusLabel}
+                </span>
+              </div>
+
+              <div className="text-xs text-gray-600 space-y-0.5">
+                <div>수령자: {item.recipientName} / {item.recipientPhone}</div>
+                <div>주소: ({item.recipientZipcode}) {item.recipientAddressMain} {item.recipientAddressDetail ?? ""}</div>
+                {item.trackingNumber && <div>운송장: {item.trackingNumber}</div>}
+                {item.deliveryMemo && <div>메모: {item.deliveryMemo}</div>}
+              </div>
+
+              {editingId === item.id ? (
+                <div className="pt-2 space-y-2 border-t border-gray-100">
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full text-sm border border-gray-200 rounded-md px-2 py-1"
+                  >
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="운송장 번호"
+                    value={editTracking}
+                    onChange={(e) => setEditTracking(e.target.value)}
+                    className="w-full text-sm border border-gray-200 rounded-md px-2 py-1"
+                  />
+                  <textarea
+                    placeholder="메모"
+                    value={editMemo}
+                    onChange={(e) => setEditMemo(e.target.value)}
+                    rows={2}
+                    className="w-full text-sm border border-gray-200 rounded-md px-2 py-1 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="flex-1 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="flex-1 py-1.5 text-xs bg-forest-500 text-white rounded-lg hover:bg-forest-600 disabled:opacity-50"
+                    >
+                      저장
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => openEdit(item)}
+                  className="text-xs text-forest-600 underline underline-offset-2 hover:text-forest-800"
+                >
+                  상태 수정
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
