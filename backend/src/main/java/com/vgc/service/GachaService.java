@@ -550,7 +550,11 @@ public class GachaService {
         }
 
         // 오늘 게시글 작성 (weight 1, survey 제외)
-        LocalDateTime todayStart = todayKST.atStartOfDay();
+        // JDBC(serverTimezone=Asia/Seoul)는 LocalDateTime을 UTC로 해석 후 KST로 +9h 변환해서 저장함.
+        // 쿼리 파라미터도 동일하게 +9h 변환되므로, KST 자정을 UTC 기준 LocalDateTime으로 넘겨야
+        // MySQL에서 KST 00:00~24:00 범위로 조회됨.
+        LocalDateTime todayStart = ZonedDateTime.of(todayKST, LocalTime.MIDNIGHT, KST)
+                .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         LocalDateTime todayEnd = todayStart.plusDays(1);
         if (postRepository.existsByAuthorIdAndCategoryNotAndCreatedAtBetween(userId, "survey", todayStart, todayEnd)) {
             totalWeights += 1;
