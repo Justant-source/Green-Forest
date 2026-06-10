@@ -44,6 +44,7 @@ interface CommentItemProps {
   postId: number;
   isLoggedIn: boolean;
   nickname: string | null;
+  isAdmin: boolean;
   ancestorDeleted: boolean;
   onReplyAdded: (parentId: number, newReply: Comment) => void;
   onCommentUpdated: (commentId: number, updated: Comment) => void;
@@ -56,6 +57,7 @@ function CommentItem({
   postId,
   isLoggedIn,
   nickname,
+  isAdmin,
   ancestorDeleted,
   onReplyAdded,
   onCommentUpdated,
@@ -68,7 +70,7 @@ function CommentItem({
   const [editContent, setEditContent] = useState(comment.content);
   const [editing, setEditing] = useState(false);
 
-  const isOwner = isLoggedIn && nickname === comment.authorName;
+  const isOwner = isLoggedIn && (nickname === comment.authorName || isAdmin);
   const replyBlocked = comment.deleted || ancestorDeleted;
 
   const handleReplySubmit = async (e: React.FormEvent) => {
@@ -234,6 +236,7 @@ function CommentItem({
               postId={postId}
               isLoggedIn={isLoggedIn}
               nickname={nickname}
+              isAdmin={isAdmin}
               ancestorDeleted={replyBlocked}
               onReplyAdded={onReplyAdded}
               onCommentUpdated={onCommentUpdated}
@@ -284,7 +287,7 @@ function countComments(list: Comment[]): number {
 }
 
 export default function CommentSection({ postId }: CommentSectionProps) {
-  const { isLoggedIn, nickname } = useAuth();
+  const { isLoggedIn, nickname, isAdmin } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -367,6 +370,7 @@ export default function CommentSection({ postId }: CommentSectionProps) {
             postId={postId}
             isLoggedIn={isLoggedIn}
             nickname={nickname}
+            isAdmin={isAdmin}
             ancestorDeleted={false}
             onReplyAdded={handleReplyAdded}
             onCommentUpdated={handleCommentUpdated}

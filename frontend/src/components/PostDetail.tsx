@@ -157,7 +157,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
           </div>
           {isLoggedIn && (post.isAuthor || isAdmin) && (
             <div className="flex gap-2">
-              {post.isAuthor && (() => {
+              {(post.isAuthor || isAdmin) && (() => {
                 const bingo = parsePhotoBingoMarker(post.content).bingo;
                 const editHref = bingo
                   ? `/events/${bingo.eventId}`

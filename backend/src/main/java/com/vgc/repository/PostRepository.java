@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
@@ -23,4 +24,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findByAuthorIdOrderByCreatedAtDesc(Long authorId, Pageable pageable);
 
     Optional<Post> findByPhotoBingoSubmissionId(Long photoBingoSubmissionId);
+
+    boolean existsByAuthorIdAndCategoryNotAndCreatedAtBetween(
+            Long authorId, String category, LocalDateTime start, LocalDateTime end);
 }

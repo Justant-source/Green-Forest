@@ -30,8 +30,12 @@ public class GachaController {
     }
 
     @GetMapping("/prizes")
-    public ResponseEntity<List<Map<String, Object>>> listPrizes() {
-        return ResponseEntity.ok(gachaService.listAvailablePrizes());
+    public ResponseEntity<List<Map<String, Object>>> listPrizes(Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.ok(gachaService.listAvailablePrizes());
+        }
+        User user = getUser(authentication);
+        return ResponseEntity.ok(gachaService.listAvailablePrizesForUser(user.getId()));
     }
 
     @PostMapping("/draw")

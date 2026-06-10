@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { GachaPrizeInfo } from "@/types";
 
 interface Props {
@@ -29,8 +29,12 @@ export default function GachaPrizeCard({
   disabled = false,
   remainingDraws = 0,
 }: Props) {
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
   const probPercent = (prize.currentProbability * 100).toFixed(2);
   const canDraw = !disabled && remainingDraws > 0 && prize.remainingStock > 0;
+  const bd = prize.probabilityBreakdown;
+  const hasBonus = bd && (bd.pityStacks > 0 || bd.factors.length > 0);
 
   return (
     <div
@@ -58,11 +62,61 @@ export default function GachaPrizeCard({
         <p className="text-sm text-gray-500 mb-2">{prize.description}</p>
       )}
 
-      <div className="flex justify-between text-xs text-gray-500 mb-3">
+      <div className="flex justify-between text-xs text-gray-500 mb-2">
         <span>현금가치: {prize.cashValue.toLocaleString()}원</span>
         <span>재고: {prize.remainingStock}개</span>
-        <span>당첨확률: {probPercent}%</span>
       </div>
+
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-semibold text-gray-800">
+          당첨확률: {probPercent}%
+          {hasBonus && bd && (
+            <span className="ml-1 text-xs font-normal text-green-600">
+              (+{((bd.pityBonus + bd.activityBonus) * 100).toFixed(2)}%p 보너스)
+            </span>
+          )}
+        </span>
+        {bd && (
+          <button
+            onClick={() => setShowBreakdown(!showBreakdown)}
+            className="text-xs text-blue-500 underline underline-offset-2"
+          >
+            {showBreakdown ? "접기" : "상세"}
+          </button>
+        )}
+      </div>
+
+      {showBreakdown && bd && (
+        <div className="bg-white/70 rounded-lg px-3 py-2 mb-3 text-xs border border-gray-200 space-y-1">
+          <div className="flex justify-between text-gray-600">
+            <span>기본 확률</span>
+            <span>{(bd.base * 100).toFixed(2)}%</span>
+          </div>
+          {bd.pityStacks > 0 && (
+            <div className="flex justify-between text-orange-600">
+              <span>미당첨 스택 ({bd.pityStacks}회)</span>
+              <span>+{(bd.pityBonus * 100).toFixed(2)}%p</span>
+            </div>
+          )}
+          {bd.factors.length > 0 && (
+            <>
+              <div className="border-t border-gray-200 pt-1 text-purple-700 font-semibold">
+                개인 활동 보너스
+              </div>
+              {bd.factors.map((f, i) => (
+                <div key={i} className="flex justify-between text-purple-600 pl-2">
+                  <span>{f.label}</span>
+                  <span>+{(f.bonus * 100).toFixed(2)}%p</span>
+                </div>
+              ))}
+            </>
+          )}
+          <div className="flex justify-between font-bold text-gray-800 border-t border-gray-200 pt-1">
+            <span>최종 확률</span>
+            <span>{(bd.total * 100).toFixed(2)}%</span>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={() => onDraw(prize.id)}

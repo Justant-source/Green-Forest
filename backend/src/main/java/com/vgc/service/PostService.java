@@ -255,7 +255,7 @@ public class PostService {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        if (!post.getAuthor().getId().equals(user.getId())) {
+        if (!post.getAuthor().getId().equals(user.getId()) && !"ADMIN".equals(user.getRole())) {
             throw new RuntimeException("본인이 작성한 글만 수정할 수 있습니다.");
         }
 
@@ -343,7 +343,7 @@ public class PostService {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        if (!post.getAuthor().getId().equals(user.getId())) {
+        if (!post.getAuthor().getId().equals(user.getId()) && !"ADMIN".equals(user.getRole())) {
             throw new RuntimeException("본인이 작성한 글만 상태를 변경할 수 있습니다.");
         }
 

@@ -69,6 +69,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/*/comments").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/announcements/active").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/announcements/active-list").permitAll()
 
                         // 2. 인증 필요 - 포스트 CUD
                         .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()

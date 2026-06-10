@@ -1175,6 +1175,65 @@ export async function adminDeletePost(id: number): Promise<void> {
   if (!res.ok) throw res;
 }
 
+// ===== 관리자 - 댓글 =====
+export async function adminGetComments(postId: number): Promise<{
+  id: number; content: string; authorName: string; authorId: number | null;
+  parentId: number | null; deleted: boolean; createdAt: string; updatedAt: string | null;
+}[]> {
+  const res = await fetch(`${BASE_URL}/admin/posts/${postId}/comments`, {
+    headers: authHeaders(), cache: "no-store",
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminAddComment(postId: number, content: string, parentId?: number): Promise<{
+  id: number; content: string; authorName: string; parentId: number | null; deleted: boolean; createdAt: string;
+}> {
+  const res = await fetch(`${BASE_URL}/admin/posts/${postId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ content, ...(parentId != null ? { parentId } : {}) }),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminUpdateComment(postId: number, commentId: number, content: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/posts/${postId}/comments/${commentId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw res;
+}
+
+export async function adminDeleteComment(postId: number, commentId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/posts/${postId}/comments/${commentId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
+}
+
+// ===== 관리자 - 좋아요 =====
+export async function adminGetLikeStatus(postId: number): Promise<{ liked: boolean; likeCount: number }> {
+  const res = await fetch(`${BASE_URL}/admin/posts/${postId}/like`, {
+    headers: authHeaders(), cache: "no-store",
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminToggleLike(postId: number): Promise<{ liked: boolean; likeCount: number }> {
+  const res = await fetch(`${BASE_URL}/admin/posts/${postId}/like`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
 // ========== 설문(투표) ==========
 
 export async function createSurvey(formData: FormData): Promise<{ postId: number; surveyId: number }> {

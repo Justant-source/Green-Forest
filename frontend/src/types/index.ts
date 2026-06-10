@@ -351,6 +351,21 @@ export interface AttendancePhrase {
 }
 
 // 뽑기 시스템
+export interface GachaProbabilityFactor {
+  label: string;
+  weight: number;
+  bonus: number;
+}
+
+export interface GachaProbabilityBreakdown {
+  base: number;
+  pityBonus: number;
+  pityStacks: number;
+  activityBonus: number;
+  factors: GachaProbabilityFactor[];
+  total: number;
+}
+
 export interface GachaPrizeInfo {
   id: number;
   name: string;
@@ -364,6 +379,7 @@ export interface GachaPrizeInfo {
   displayOrder: number;
   active?: boolean;
   evMultiplier?: number; // admin only
+  probabilityBreakdown?: GachaProbabilityBreakdown;
 }
 
 export interface GachaDrawResult {
@@ -375,6 +391,7 @@ export interface GachaDrawResult {
   prizeImageUrl: string | null;
   prizeCashValue: number;
   remainingDrawsToday: number;
+  breakdown?: GachaProbabilityBreakdown;
 }
 
 export interface GachaDrawRecord {

@@ -14,9 +14,10 @@ RUN chmod +x gradlew && ./gradlew --version && ./gradlew dependencies --no-daemo
 EXPOSE 8080
 
 # hot reload 패턴:
+#   (0) 컨테이너 첫 기동 시 초기 전체 컴파일을 먼저 완료 (race condition 방지)
 #   (1) 백그라운드의 ./gradlew compileJava --continuous 가 src 변경 → .class 재생성
 #   (2) 포그라운드의 ./gradlew bootRun 이 spring-boot-devtools 와 함께 실행되어
 #       classpath 변경을 감지하면 Spring context 만 재시작 (JVM 유지)
 # bootRun --continuous 를 단독으로 쓰면 long-running task 라 재컴파일이 트리거되지 않으므로
 # compileJava 를 별도 continuous 프로세스로 돌린다.
-CMD ["sh", "-c", "./gradlew compileJava --continuous --no-daemon & exec ./gradlew bootRun --no-daemon"]
+CMD ["sh", "-c", "./gradlew compileJava --no-daemon && ./gradlew compileJava --continuous --no-daemon & exec ./gradlew bootRun --no-daemon"]

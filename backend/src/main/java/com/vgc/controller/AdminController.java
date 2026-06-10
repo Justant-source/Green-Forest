@@ -20,6 +20,12 @@ import com.vgc.service.AttendanceDrawCoordinator;
 import com.vgc.service.GachaService;
 import com.vgc.service.ImageStorageService;
 import com.vgc.service.PostService;
+import com.vgc.service.CommentService;
+import com.vgc.repository.CommentRepository;
+import com.vgc.repository.PostLikeRepository;
+import com.vgc.entity.Comment;
+import com.vgc.entity.PostLike;
+import com.vgc.dto.CommentRequest;
 import com.vgc.dto.CategoryRequestResponse;
 import com.vgc.dto.CategoryResponse;
 import com.vgc.dto.AdminCreatePrizeRequest;
@@ -71,6 +77,9 @@ public class AdminController {
     private final ImageStorageService imageStorageService;
     private final PostService postService;
     private final com.vgc.service.SurveyDeliveryService surveyDeliveryService;
+    private final CommentService commentService;
+    private final CommentRepository commentRepository;
+    private final PostLikeRepository postLikeRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -93,7 +102,10 @@ public class AdminController {
                            BirthdayAcknowledgementRepository birthdayAcknowledgementRepository,
                            ImageStorageService imageStorageService,
                            PostService postService,
-                           com.vgc.service.SurveyDeliveryService surveyDeliveryService) {
+                           com.vgc.service.SurveyDeliveryService surveyDeliveryService,
+                           CommentService commentService,
+                           CommentRepository commentRepository,
+                           PostLikeRepository postLikeRepository) {
         this.categoryService = categoryService;
         this.userRepository = userRepository;
         this.dropService = dropService;
@@ -115,6 +127,9 @@ public class AdminController {
         this.imageStorageService = imageStorageService;
         this.postService = postService;
         this.surveyDeliveryService = surveyDeliveryService;
+        this.commentService = commentService;
+        this.commentRepository = commentRepository;
+        this.postLikeRepository = postLikeRepository;
     }
 
     private User getAdminUser(Authentication authentication) {
@@ -898,6 +913,112 @@ public class AdminController {
         User admin = getAdminUser(authentication);
         postService.deletePost(id, admin);
         return Map.of("status", "deleted");
+    }
+
+    // ========== 댓글 관리 ==========
+
+    @GetMapping("/posts/{postId}/comments")
+    public List<Map<String, Object>> adminGetComments(
+            @PathVariable Long postId, Authentication authentication) {
+        getAdminUser(authentication);
+        List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtDesc(postId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Comment c : comments) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", c.getId());
+            m.put("content", c.getContent());
+            m.put("authorName", c.getAuthorName());
+            m.put("authorId", c.getAuthor() != null ? c.getAuthor().getId() : null);
+            m.put("parentId", c.getParent() != null ? c.getParent().getId() : null);
+            m.put("deleted", c.isDeleted());
+            m.put("createdAt", c.getCreatedAt());
+            m.put("updatedAt", c.getUpdatedAt());
+            result.add(m);
+        }
+        return result;
+    }
+
+    @PostMapping("/posts/{postId}/comments")
+    public Map<String, Object> adminAddComment(
+            @PathVariable Long postId,
+            @RequestBody Map<String, Object> body,
+            Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        CommentRequest request = new CommentRequest();
+        request.setContent((String) body.get("content"));
+        if (body.get("parentId") != null) {
+            request.setParentId(((Number) body.get("parentId")).longValue());
+        }
+        Comment saved = commentService.addComment(postId, request, admin);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", saved.getId());
+        m.put("content", saved.getContent());
+        m.put("authorName", saved.getAuthorName());
+        m.put("parentId", saved.getParent() != null ? saved.getParent().getId() : null);
+        m.put("deleted", saved.isDeleted());
+        m.put("createdAt", saved.getCreatedAt());
+        return m;
+    }
+
+    @PutMapping("/posts/{postId}/comments/{commentId}")
+    public Map<String, Object> adminUpdateComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        Comment updated = commentService.updateComment(commentId, body.get("content"), admin);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", updated.getId());
+        m.put("content", updated.getContent());
+        m.put("authorName", updated.getAuthorName());
+        m.put("deleted", updated.isDeleted());
+        m.put("updatedAt", updated.getUpdatedAt());
+        return m;
+    }
+
+    @DeleteMapping("/posts/{postId}/comments/{commentId}")
+    public Map<String, String> adminDeleteComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        commentService.deleteComment(commentId, admin);
+        return Map.of("status", "deleted");
+    }
+
+    // ========== 좋아요 관리 ==========
+
+    @PostMapping("/posts/{postId}/like")
+    @Transactional
+    public Map<String, Object> adminToggleLike(
+            @PathVariable Long postId, Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        com.vgc.entity.Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        boolean alreadyLiked = postLikeRepository.existsByUserIdAndPostId(admin.getId(), postId);
+        if (alreadyLiked) {
+            postLikeRepository.deleteByUserIdAndPostId(admin.getId(), postId);
+            post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+        } else {
+            PostLike like = new PostLike();
+            like.setUser(admin);
+            like.setPost(post);
+            postLikeRepository.save(like);
+            post.setLikeCount(post.getLikeCount() + 1);
+        }
+        postRepository.save(post);
+        return Map.of("liked", !alreadyLiked, "likeCount", post.getLikeCount());
+    }
+
+    @GetMapping("/posts/{postId}/like")
+    public Map<String, Object> adminGetLikeStatus(
+            @PathVariable Long postId, Authentication authentication) {
+        User admin = getAdminUser(authentication);
+        com.vgc.entity.Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+        boolean liked = postLikeRepository.existsByUserIdAndPostId(admin.getId(), postId);
+        return Map.of("liked", liked, "likeCount", post.getLikeCount());
     }
 
     // ========== 생일 관리 ==========

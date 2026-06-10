@@ -24,6 +24,8 @@ import {
   adminListDeliveries, adminMarkDelivered,
   adminListAttendanceDeliveries, adminMarkAttendanceDelivered,
   adminListPosts, adminUpdatePost, adminDeletePost,
+  adminGetComments, adminAddComment, adminUpdateComment, adminDeleteComment,
+  adminGetLikeStatus, adminToggleLike,
   adminGetDrawHistory,
   getUpcomingBirthdays, acknowledgeBirthday,
   adminListSurveyDeliveries, adminUpdateSurveyDelivery,
@@ -1527,6 +1529,135 @@ function UsersPanel({
   );
 }
 
+type AdminComment = {
+  id: number; content: string; authorName: string; authorId: number | null;
+  parentId: number | null; deleted: boolean; createdAt: string; updatedAt: string | null;
+};
+
+function CommentsPanel({ postId }: { postId: number }) {
+  const [comments, setComments] = useState<AdminComment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [newComment, setNewComment] = useState("");
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [replyContent, setReplyContent] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    try { setComments(await adminGetComments(postId)); }
+    catch { /* noop */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [postId]);
+
+  const handleAdd = async () => {
+    if (!newComment.trim()) return;
+    try {
+      await adminAddComment(postId, newComment.trim());
+      setNewComment("");
+      await load();
+    } catch { alert("댓글 등록 실패"); }
+  };
+
+  const handleReply = async () => {
+    if (!replyContent.trim() || replyTo == null) return;
+    try {
+      await adminAddComment(postId, replyContent.trim(), replyTo);
+      setReplyContent(""); setReplyTo(null);
+      await load();
+    } catch { alert("대댓글 등록 실패"); }
+  };
+
+  const handleEdit = async (id: number) => {
+    if (!editContent.trim()) return;
+    try {
+      await adminUpdateComment(postId, id, editContent.trim());
+      setEditingId(null);
+      await load();
+    } catch { alert("수정 실패"); }
+  };
+
+  const handleDelete = async (c: AdminComment) => {
+    if (!confirm(`"${c.content.slice(0, 20)}" 댓글을 삭제하시겠습니까?`)) return;
+    try { await adminDeleteComment(postId, c.id); await load(); }
+    catch { alert("삭제 실패"); }
+  };
+
+  if (loading) return <div className="text-xs text-gray-400 py-2 px-4">불러오는 중...</div>;
+
+  return (
+    <div className="px-4 pb-4 space-y-3">
+      <div className="flex gap-2">
+        <input
+          type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)}
+          placeholder="관리자 댓글 입력..." onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+          className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-forest-400"
+        />
+        <button onClick={handleAdd} className="px-3 py-1.5 bg-forest-500 text-white text-xs rounded-lg hover:bg-forest-600">등록</button>
+      </div>
+      {comments.length === 0 ? (
+        <div className="text-xs text-gray-400">댓글 없음</div>
+      ) : (
+        <div className="space-y-2">
+          {comments.map((c) => (
+            <div key={c.id} className={`rounded-lg p-2.5 text-xs ${c.parentId ? "ml-4 bg-gray-100" : "bg-gray-50"} ${c.deleted ? "opacity-50" : ""}`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  {c.parentId && <span className="text-gray-400">↳</span>}
+                  <span className="font-medium text-gray-700 shrink-0">{c.authorName}</span>
+                  {c.deleted && <span className="text-gray-400">[삭제됨]</span>}
+                  {editingId === c.id ? (
+                    <input
+                      type="text" value={editContent} onChange={(e) => setEditContent(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
+                      autoFocus
+                      className="flex-1 px-2 py-0.5 border border-forest-300 rounded text-xs focus:outline-none"
+                    />
+                  ) : (
+                    <span className="text-gray-600 truncate">{c.content}</span>
+                  )}
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  {!c.deleted && editingId === c.id ? (
+                    <>
+                      <button onClick={() => handleEdit(c.id)} className="px-1.5 py-0.5 text-forest-600 border border-forest-300 rounded hover:bg-forest-50">저장</button>
+                      <button onClick={() => setEditingId(null)} className="px-1.5 py-0.5 text-gray-500 border border-gray-300 rounded hover:bg-gray-50">취소</button>
+                    </>
+                  ) : (
+                    <>
+                      {!c.deleted && (
+                        <>
+                          <button onClick={() => { setReplyTo(c.id); setReplyContent(""); }} className="px-1.5 py-0.5 text-blue-500 border border-blue-200 rounded hover:bg-blue-50">답글</button>
+                          <button onClick={() => { setEditingId(c.id); setEditContent(c.content); }} className="px-1.5 py-0.5 text-forest-600 border border-forest-300 rounded hover:bg-forest-50">수정</button>
+                        </>
+                      )}
+                      <button onClick={() => handleDelete(c)} className="px-1.5 py-0.5 text-red-500 border border-red-200 rounded hover:bg-red-50">삭제</button>
+                    </>
+                  )}
+                </div>
+              </div>
+              {replyTo === c.id && (
+                <div className="flex gap-2 mt-2 ml-4">
+                  <input
+                    type="text" value={replyContent} onChange={(e) => setReplyContent(e.target.value)}
+                    placeholder="대댓글 입력..." autoFocus
+                    onKeyDown={(e) => { if (e.key === "Enter") handleReply(); if (e.key === "Escape") setReplyTo(null); }}
+                    className="flex-1 px-2 py-1 border border-blue-300 rounded text-xs focus:outline-none"
+                  />
+                  <button onClick={handleReply} className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">등록</button>
+                  <button onClick={() => setReplyTo(null)} className="px-2 py-1 text-gray-500 border border-gray-300 text-xs rounded hover:bg-gray-50">취소</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PostsPanel({ categories }: { categories: CategoryInfo[] }) {
   const [posts, setPosts] = useState<AdminPost[]>([]);
   const [page, setPage] = useState(0);
@@ -1536,6 +1667,8 @@ function PostsPanel({ categories }: { categories: CategoryInfo[] }) {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<{ title: string; content: string; category: string; anonymous: boolean } | null>(null);
+  const [expandedComments, setExpandedComments] = useState<number | null>(null);
+  const [likeStatus, setLikeStatus] = useState<Record<number, { liked: boolean; likeCount: number }>>({});
 
   const load = async (p = page) => {
     setLoading(true);
@@ -1567,6 +1700,25 @@ function PostsPanel({ categories }: { categories: CategoryInfo[] }) {
       setEditingId(null);
       setEditForm(null);
     } catch { alert("수정 실패"); }
+  };
+
+  const toggleComments = async (postId: number) => {
+    if (expandedComments === postId) { setExpandedComments(null); return; }
+    setExpandedComments(postId);
+    if (!likeStatus[postId]) {
+      try {
+        const status = await adminGetLikeStatus(postId);
+        setLikeStatus((prev) => ({ ...prev, [postId]: status }));
+      } catch { /* noop */ }
+    }
+  };
+
+  const handleLikeToggle = async (postId: number) => {
+    try {
+      const result = await adminToggleLike(postId);
+      setLikeStatus((prev) => ({ ...prev, [postId]: result }));
+      setPosts((prev) => prev.map((x) => x.id === postId ? { ...x } : x));
+    } catch { alert("좋아요 실패"); }
   };
 
   return (
@@ -1618,6 +1770,18 @@ function PostsPanel({ categories }: { categories: CategoryInfo[] }) {
                     {editingId === p.id ? "닫기" : "수정"}
                   </button>
                   <button
+                    onClick={() => toggleComments(p.id)}
+                    className="px-2 py-1 text-xs text-blue-600 border border-blue-300 rounded hover:bg-blue-50"
+                  >
+                    {expandedComments === p.id ? "댓글닫기" : "댓글"}
+                  </button>
+                  <button
+                    onClick={() => handleLikeToggle(p.id)}
+                    className={`px-2 py-1 text-xs border rounded ${likeStatus[p.id]?.liked ? "text-pink-600 border-pink-300 bg-pink-50" : "text-gray-500 border-gray-300 hover:bg-gray-50"}`}
+                  >
+                    ♥ {likeStatus[p.id]?.likeCount ?? ""}
+                  </button>
+                  <button
                     onClick={async () => {
                       if (!confirm(`"${p.title}" 게시글을 삭제하시겠습니까?`)) return;
                       try {
@@ -1658,6 +1822,11 @@ function PostsPanel({ categories }: { categories: CategoryInfo[] }) {
                     <button onClick={() => save(p)} className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600">저장</button>
                     <button onClick={() => { setEditingId(null); setEditForm(null); }} className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50">취소</button>
                   </div>
+                </div>
+              )}
+              {expandedComments === p.id && (
+                <div className="border-t border-gray-100">
+                  <CommentsPanel postId={p.id} />
                 </div>
               )}
             </div>

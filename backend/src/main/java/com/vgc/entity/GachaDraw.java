@@ -54,6 +54,18 @@ public class GachaDraw {
     @Column(name = "delivery_memo", length = 500)
     private String deliveryMemo;
 
+    @Column(name = "base_probability", precision = 7, scale = 5)
+    private BigDecimal baseProbability;
+
+    @Column(name = "pity_bonus", precision = 7, scale = 5)
+    private BigDecimal pityBonus;
+
+    @Column(name = "pity_stacks_at_draw")
+    private Integer pityStacksAtDraw;
+
+    @Column(name = "activity_bonus", precision = 7, scale = 5)
+    private BigDecimal activityBonus;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -89,4 +101,12 @@ public class GachaDraw {
     public String getDeliveryMemo() { return deliveryMemo; }
     public void setDeliveryMemo(String deliveryMemo) { this.deliveryMemo = deliveryMemo; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public BigDecimal getBaseProbability() { return baseProbability; }
+    public void setBaseProbability(BigDecimal baseProbability) { this.baseProbability = baseProbability; }
+    public BigDecimal getPityBonus() { return pityBonus; }
+    public void setPityBonus(BigDecimal pityBonus) { this.pityBonus = pityBonus; }
+    public Integer getPityStacksAtDraw() { return pityStacksAtDraw; }
+    public void setPityStacksAtDraw(Integer pityStacksAtDraw) { this.pityStacksAtDraw = pityStacksAtDraw; }
+    public BigDecimal getActivityBonus() { return activityBonus; }
+    public void setActivityBonus(BigDecimal activityBonus) { this.activityBonus = activityBonus; }
 }

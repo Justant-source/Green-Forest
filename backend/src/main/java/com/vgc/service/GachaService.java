@@ -5,6 +5,7 @@ import com.vgc.dto.AdminUpdatePrizeRequest;
 import com.vgc.dto.GachaStatsDto;
 import com.vgc.entity.*;
 import com.vgc.repository.*;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -33,6 +34,9 @@ public class GachaService {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final SecureRandom secureRandom = new SecureRandom();
 
+    private static final int MAX_PITY_STACKS = 100;
+    private static final BigDecimal BONUS_RATE_PER_UNIT = new BigDecimal("0.10"); // 스택·weight 1당 기본확률의 10%
+
     private final GachaPrizeRepository prizeRepository;
     private final GachaDrawRepository drawRepository;
     private final UserRepository userRepository;
@@ -42,6 +46,9 @@ public class GachaService {
     private final ImageStorageService imageStorageService;
     private final OutboundEventService outboundEventService;
     private final PlantGrowthService plantGrowthService;
+    private final GachaPityStackRepository pityStackRepository;
+    private final AttendanceCheckinRepository attendanceCheckinRepository;
+    private final PostRepository postRepository;
 
     public GachaService(GachaPrizeRepository prizeRepository,
                         GachaDrawRepository drawRepository,
@@ -51,7 +58,10 @@ public class GachaService {
                         ActivityLogService activityLogService,
                         ImageStorageService imageStorageService,
                         OutboundEventService outboundEventService,
-                        PlantGrowthService plantGrowthService) {
+                        PlantGrowthService plantGrowthService,
+                        GachaPityStackRepository pityStackRepository,
+                        AttendanceCheckinRepository attendanceCheckinRepository,
+                        PostRepository postRepository) {
         this.prizeRepository = prizeRepository;
         this.drawRepository = drawRepository;
         this.userRepository = userRepository;
@@ -61,6 +71,9 @@ public class GachaService {
         this.imageStorageService = imageStorageService;
         this.outboundEventService = outboundEventService;
         this.plantGrowthService = plantGrowthService;
+        this.pityStackRepository = pityStackRepository;
+        this.attendanceCheckinRepository = attendanceCheckinRepository;
+        this.postRepository = postRepository;
     }
 
     @Async
@@ -109,21 +122,34 @@ public class GachaService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "오늘 뽑기 횟수(" + effectiveDailyLimit + "회)를 초과했습니다");
         }
 
-        // 확률 계산
-        BigDecimal baseProbability = new BigDecimal(DRAW_COST).multiply(DROP_CASH_VALUE)
-                .divide(new BigDecimal(prize.getCashValue()), 5, RoundingMode.HALF_UP);
-        BigDecimal ev = prize.getEvMultiplier().min(MAX_EV_MULTIPLIER);
-        BigDecimal finalProbability = baseProbability.multiply(ev).min(BigDecimal.ONE).setScale(5, RoundingMode.HALF_UP);
+        // 비관적 락으로 pity 스택 조회 (없으면 신규 생성)
+        GachaPityStack pityStack = pityStackRepository.findForUpdateByUserIdAndPrizeId(userId, prizeId)
+                .orElseGet(() -> {
+                    GachaPityStack s = new GachaPityStack();
+                    s.setUser(user);
+                    s.setPrize(prize);
+                    s.setStackCount(0);
+                    return s;
+                });
+
+        // 확률 분해 계산 (표시 확률 = 판정 확률)
+        ProbabilityBreakdown breakdown = computeProbabilityBreakdown(userId, prize, pityStack.getStackCount());
 
         // 난수
         BigDecimal rng = new BigDecimal(secureRandom.nextDouble()).setScale(5, RoundingMode.HALF_UP);
-        boolean isWinner = rng.compareTo(finalProbability) < 0;
+        boolean isWinner = rng.compareTo(breakdown.total) < 0;
 
-        // 재고 처리
+        // 재고 처리 및 pity 스택 갱신
         if (isWinner) {
             prize.setRemainingStock(prize.getRemainingStock() - 1);
             prizeRepository.save(prize);
+            // 당첨 시 스택 50% 차감 (floor)
+            pityStack.setStackCount((int) Math.floor(pityStack.getStackCount() * 0.5));
+        } else {
+            // 꽝 시 스택 +1 (최대 100)
+            pityStack.setStackCount(Math.min(pityStack.getStackCount() + 1, MAX_PITY_STACKS));
         }
+        pityStackRepository.save(pityStack);
 
         // 기록 저장
         GachaDraw draw = new GachaDraw();
@@ -132,10 +158,14 @@ public class GachaService {
         draw.setPrizeName(prize.getName());
         draw.setPrizeCashValue(prize.getCashValue());
         draw.setDropsSpent(DRAW_COST);
-        draw.setWinProbability(finalProbability);
+        draw.setWinProbability(breakdown.total);
         draw.setRngValue(rng);
         draw.setWinner(isWinner);
         draw.setDeliveryStatus(isWinner ? GachaDeliveryStatus.PENDING : GachaDeliveryStatus.NONE);
+        draw.setBaseProbability(breakdown.base);
+        draw.setPityBonus(breakdown.pityBonus);
+        draw.setPityStacksAtDraw(breakdown.pityStacks);
+        draw.setActivityBonus(breakdown.activityBonus);
         GachaDraw saved = drawRepository.save(draw);
 
         // 물방울 차감 (draw 저장 후 drawId 포함)
@@ -162,7 +192,7 @@ public class GachaService {
             gachaPayload.put("prizeCashValue", prize.getCashValue());
             gachaPayload.put("prizeTier", prize.getTier().name());
             gachaPayload.put("evMultiplier", prize.getEvMultiplier());
-            gachaPayload.put("winProbability", finalProbability);
+            gachaPayload.put("winProbability", breakdown.total);
             gachaPayload.put("rngValue", rng);
             gachaPayload.put("dropsSpent", DRAW_COST);
             gachaPayload.put("remainingStock", prize.getRemainingStock());
@@ -179,12 +209,13 @@ public class GachaService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("drawId", saved.getId());
         result.put("isWinner", isWinner);
-        result.put("probability", finalProbability);
+        result.put("probability", breakdown.total);
         result.put("rngValue", rng);
         result.put("prizeName", prize.getName());
         result.put("prizeImageUrl", prize.getImageUrl());
         result.put("prizeCashValue", prize.getCashValue());
         result.put("remainingDrawsToday", remainingToday);
+        result.put("breakdown", breakdownToMap(breakdown));
         return result;
     }
 
@@ -192,6 +223,12 @@ public class GachaService {
     public List<Map<String, Object>> listAvailablePrizes() {
         return prizeRepository.findByActiveTrueAndRemainingStockGreaterThanOrderByDisplayOrderAscIdAsc(0)
                 .stream().map(this::toPrizeResponse).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> listAvailablePrizesForUser(Long userId) {
+        return prizeRepository.findByActiveTrueAndRemainingStockGreaterThanOrderByDisplayOrderAscIdAsc(0)
+                .stream().map(p -> toPrizeResponseForUser(p, userId)).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -452,4 +489,108 @@ public class GachaService {
         m.put("displayOrder", p.getDisplayOrder());
         return m;
     }
+
+    private Map<String, Object> toPrizeResponseForUser(GachaPrize p, Long userId) {
+        int stackCount = pityStackRepository.findByUserIdAndPrizeId(userId, p.getId())
+                .map(GachaPityStack::getStackCount).orElse(0);
+        ProbabilityBreakdown breakdown = computeProbabilityBreakdown(userId, p, stackCount);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", p.getId());
+        m.put("name", p.getName());
+        m.put("description", p.getDescription());
+        m.put("imageUrl", p.getImageUrl());
+        m.put("cashValue", p.getCashValue());
+        m.put("remainingStock", p.getRemainingStock());
+        m.put("tier", p.getTier().name());
+        m.put("tierLabel", p.getTier().getLabel());
+        m.put("currentProbability", breakdown.total);
+        m.put("displayOrder", p.getDisplayOrder());
+        m.put("probabilityBreakdown", breakdownToMap(breakdown));
+        return m;
+    }
+
+    // 확률 분해 계산 (draw()와 목록 표시 양쪽에서 동일 로직 사용)
+    private ProbabilityBreakdown computeProbabilityBreakdown(Long userId, GachaPrize prize, int stackCount) {
+        // 기본 확률 (기존 공식 그대로)
+        BigDecimal base = new BigDecimal(DRAW_COST).multiply(DROP_CASH_VALUE)
+                .divide(new BigDecimal(prize.getCashValue()), 5, RoundingMode.HALF_UP)
+                .multiply(prize.getEvMultiplier().min(MAX_EV_MULTIPLIER))
+                .min(BigDecimal.ONE)
+                .setScale(5, RoundingMode.HALF_UP);
+
+        // 스택 보너스: base × 10% × 스택수
+        BigDecimal pityBonus = base.multiply(BONUS_RATE_PER_UNIT)
+                .multiply(new BigDecimal(stackCount))
+                .setScale(5, RoundingMode.HALF_UP);
+
+        // 활동 보너스
+        ZonedDateTime kstNow = ZonedDateTime.now(KST);
+        LocalDate todayKST = kstNow.toLocalDate();
+        int totalWeights = 0;
+        List<Map<String, Object>> factors = new ArrayList<>();
+
+        // 출석 (weight 1)
+        if (attendanceCheckinRepository.findByUserIdAndCheckinDate(userId, todayKST).isPresent()) {
+            totalWeights += 1;
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("label", "출석");
+            f.put("weight", 1);
+            f.put("bonus", base.multiply(BONUS_RATE_PER_UNIT).setScale(5, RoundingMode.HALF_UP));
+            factors.add(f);
+        }
+
+        // 주간 칭찬글 (weight 4)
+        if (dropService.hasPraisedThisWeek(userId)) {
+            totalWeights += 4;
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("label", "주간 칭찬글");
+            f.put("weight", 4);
+            f.put("bonus", base.multiply(BONUS_RATE_PER_UNIT).multiply(new BigDecimal(4)).setScale(5, RoundingMode.HALF_UP));
+            factors.add(f);
+        }
+
+        // 오늘 게시글 작성 (weight 1, survey 제외)
+        LocalDateTime todayStart = todayKST.atStartOfDay();
+        LocalDateTime todayEnd = todayStart.plusDays(1);
+        if (postRepository.existsByAuthorIdAndCategoryNotAndCreatedAtBetween(userId, "survey", todayStart, todayEnd)) {
+            totalWeights += 1;
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("label", "오늘 게시글");
+            f.put("weight", 1);
+            f.put("bonus", base.multiply(BONUS_RATE_PER_UNIT).setScale(5, RoundingMode.HALF_UP));
+            factors.add(f);
+        }
+
+        int cappedWeights = Math.min(totalWeights, 6);
+        BigDecimal activityBonus = base.multiply(BONUS_RATE_PER_UNIT)
+                .multiply(new BigDecimal(cappedWeights))
+                .setScale(5, RoundingMode.HALF_UP);
+
+        BigDecimal total = base.add(pityBonus).add(activityBonus)
+                .min(BigDecimal.ONE)
+                .setScale(5, RoundingMode.HALF_UP);
+
+        return new ProbabilityBreakdown(base, pityBonus, stackCount, activityBonus, factors, total);
+    }
+
+    private Map<String, Object> breakdownToMap(ProbabilityBreakdown bd) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("base", bd.base);
+        m.put("pityBonus", bd.pityBonus);
+        m.put("pityStacks", bd.pityStacks);
+        m.put("activityBonus", bd.activityBonus);
+        m.put("factors", bd.factors);
+        m.put("total", bd.total);
+        return m;
+    }
+
+    // 확률 분해 내부 DTO
+    private record ProbabilityBreakdown(
+            BigDecimal base,
+            BigDecimal pityBonus,
+            int pityStacks,
+            BigDecimal activityBonus,
+            List<Map<String, Object>> factors,
+            BigDecimal total
+    ) {}
 }

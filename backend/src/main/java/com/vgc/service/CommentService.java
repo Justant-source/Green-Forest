@@ -65,7 +65,7 @@ public class CommentService {
     public Comment updateComment(Long commentId, String content, User currentUser) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comment not found"));
-        if (!comment.getAuthor().getId().equals(currentUser.getId())) {
+        if (!comment.getAuthor().getId().equals(currentUser.getId()) && !"ADMIN".equals(currentUser.getRole())) {
             throw new RuntimeException("Not authorized to update this comment");
         }
         if (comment.isDeleted()) {
@@ -79,7 +79,7 @@ public class CommentService {
     public Comment deleteComment(Long commentId, User currentUser) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comment not found"));
-        if (!comment.getAuthor().getId().equals(currentUser.getId())) {
+        if (!comment.getAuthor().getId().equals(currentUser.getId()) && !"ADMIN".equals(currentUser.getRole())) {
             throw new RuntimeException("Not authorized to delete this comment");
         }
         comment.setDeleted(true);

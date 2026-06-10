@@ -32,11 +32,15 @@ export default function GachaPage() {
     loadData();
   }, [loadData]);
 
+  // loadData를 onClose에서만 호출 — 애니메이션 중 카드 확률이 갱신되는 현상 방지
   const handleDraw = async (): Promise<GachaDrawResult> => {
     if (!selectedPrize) throw new Error("No prize selected");
-    const result = await drawGacha(selectedPrize.id);
-    await loadData();
-    return result;
+    return await drawGacha(selectedPrize.id);
+  };
+
+  const handleClose = () => {
+    setSelectedPrize(null);
+    loadData();
   };
 
   return (
@@ -72,7 +76,7 @@ export default function GachaPage() {
         <GachaDrawModal
           prize={selectedPrize}
           onConfirm={handleDraw}
-          onClose={() => setSelectedPrize(null)}
+          onClose={handleClose}
         />
       )}
     </div>
