@@ -4,19 +4,13 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "gacha_pity_stacks", indexes = {
-    @Index(name = "idx_pity_user", columnList = "user_id")
-}, uniqueConstraints = {
-    @UniqueConstraint(name = "uk_pity_user_prize", columnNames = {"user_id", "prize_id"})
+@Table(name = "gacha_pity_stacks", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_pity_prize", columnNames = {"prize_id"})
 })
 public class GachaPityStack {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "prize_id", nullable = false)
@@ -44,8 +38,6 @@ public class GachaPityStack {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
     public GachaPrize getPrize() { return prize; }
     public void setPrize(GachaPrize prize) { this.prize = prize; }
     public int getStackCount() { return stackCount; }

@@ -122,11 +122,10 @@ public class GachaService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "오늘 뽑기 횟수(" + effectiveDailyLimit + "회)를 초과했습니다");
         }
 
-        // 비관적 락으로 pity 스택 조회 (없으면 신규 생성)
-        GachaPityStack pityStack = pityStackRepository.findForUpdateByUserIdAndPrizeId(userId, prizeId)
+        // 비관적 락으로 pity 스택 조회 (없으면 신규 생성) - 상품 단위 전역 스택
+        GachaPityStack pityStack = pityStackRepository.findForUpdateByPrizeId(prizeId)
                 .orElseGet(() -> {
                     GachaPityStack s = new GachaPityStack();
-                    s.setUser(user);
                     s.setPrize(prize);
                     s.setStackCount(0);
                     return s;
@@ -491,7 +490,7 @@ public class GachaService {
     }
 
     private Map<String, Object> toPrizeResponseForUser(GachaPrize p, Long userId) {
-        int stackCount = pityStackRepository.findByUserIdAndPrizeId(userId, p.getId())
+        int stackCount = pityStackRepository.findByPrizeId(p.getId())
                 .map(GachaPityStack::getStackCount).orElse(0);
         ProbabilityBreakdown breakdown = computeProbabilityBreakdown(userId, p, stackCount);
         Map<String, Object> m = new LinkedHashMap<>();

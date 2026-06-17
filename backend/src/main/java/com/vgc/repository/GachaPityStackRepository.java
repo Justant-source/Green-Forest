@@ -7,14 +7,12 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface GachaPityStackRepository extends JpaRepository<GachaPityStack, Long> {
-    Optional<GachaPityStack> findByUserIdAndPrizeId(Long userId, Long prizeId);
-    List<GachaPityStack> findByUserId(Long userId);
+    Optional<GachaPityStack> findByPrizeId(Long prizeId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM GachaPityStack p WHERE p.user.id = :userId AND p.prize.id = :prizeId")
-    Optional<GachaPityStack> findForUpdateByUserIdAndPrizeId(@Param("userId") Long userId, @Param("prizeId") Long prizeId);
+    @Query("SELECT p FROM GachaPityStack p WHERE p.prize.id = :prizeId")
+    Optional<GachaPityStack> findForUpdateByPrizeId(@Param("prizeId") Long prizeId);
 }
