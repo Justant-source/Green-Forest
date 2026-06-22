@@ -7,6 +7,8 @@ interface Props {
   onDraw: (prizeId: number) => void;
   disabled?: boolean;
   remainingDraws?: number;
+  isAdmin?: boolean;
+  onSecretDraw?: (prizeId: number) => void;
 }
 
 const TIER_COLOR: Record<string, string> = {
@@ -28,6 +30,8 @@ export default function GachaPrizeCard({
   onDraw,
   disabled = false,
   remainingDraws = 0,
+  isAdmin = false,
+  onSecretDraw,
 }: Props) {
   const [showBreakdown, setShowBreakdown] = useState(false);
 
@@ -118,23 +122,34 @@ export default function GachaPrizeCard({
         </div>
       )}
 
-      <button
-        onClick={() => onDraw(prize.id)}
-        disabled={!canDraw}
-        className={`w-full py-2 rounded-lg font-semibold text-sm transition-colors
-          ${
-            canDraw
-              ? "bg-green-500 hover:bg-green-600 text-white"
-              : "bg-gray-200 text-gray-400 cursor-not-allowed"
-          }
-        `}
-      >
-        {prize.remainingStock === 0
-          ? "품절"
-          : remainingDraws === 0
-            ? "오늘 제한 초과"
-            : "💧 30 뽑기"}
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onDraw(prize.id)}
+          disabled={!canDraw}
+          className={`flex-1 py-2 rounded-lg font-semibold text-sm transition-colors
+            ${
+              canDraw
+                ? "bg-green-500 hover:bg-green-600 text-white"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }
+          `}
+        >
+          {prize.remainingStock === 0
+            ? "품절"
+            : remainingDraws === 0
+              ? "오늘 제한 초과"
+              : "💧 30 뽑기"}
+        </button>
+        {isAdmin && prize.remainingStock > 0 && (
+          <button
+            onClick={() => onSecretDraw?.(prize.id)}
+            className="shrink-0 px-3 py-2 rounded-lg text-xs font-semibold bg-fuchsia-600 hover:bg-fuchsia-700 text-white transition-colors"
+            title="관리자 전용 몰래 뽑기"
+          >
+            몰래
+          </button>
+        )}
+      </div>
     </div>
   );
 }

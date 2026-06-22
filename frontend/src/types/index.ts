@@ -394,6 +394,18 @@ export interface GachaDrawResult {
   breakdown?: GachaProbabilityBreakdown;
 }
 
+export interface SecretDrawResult {
+  drawId: number;
+  userId: number;
+  winnerName: string;
+  winnerNickname: string;
+  prizeId: number;
+  prizeName: string;
+  prizeImageUrl: string | null;
+  prizeCashValue: number;
+  remainingStock: number;
+}
+
 export interface GachaDrawRecord {
   id: number;
   prizeName: string;
@@ -469,6 +481,7 @@ export interface AdminDeliveryItem {
   deliveryMemo: string | null;
   createdAt: string;
   deliveredAt: string | null;
+  secretEvent: boolean;
 }
 
 export interface AdminAttendanceDeliveryItem {

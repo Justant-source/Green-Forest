@@ -218,6 +218,66 @@ public class GachaService {
         return result;
     }
 
+    @Transactional
+    public List<Map<String, Object>> secretDraw(Long adminId, Long prizeId, List<Long> candidateUserIds, int count) {
+        if (candidateUserIds == null || candidateUserIds.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "당첨 후보 목록이 비어있습니다");
+        }
+        if (count < 1) count = 1;
+
+        GachaPrize prize = prizeRepository.findForUpdateById(prizeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다"));
+        if (!prize.isActive()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "비활성 상품입니다");
+        }
+        if (prize.getRemainingStock() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "재고가 없습니다");
+        }
+
+        // 실제 뽑기 수 = min(요청, 재고, 후보수)
+        int actualCount = Math.min(count, Math.min(prize.getRemainingStock(), candidateUserIds.size()));
+
+        // 후보 셔플 → 앞에서 actualCount명 선택 (중복 없음)
+        List<Long> shuffled = new ArrayList<>(candidateUserIds);
+        Collections.shuffle(shuffled, secureRandom);
+
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (int i = 0; i < actualCount; i++) {
+            Long winnerId = shuffled.get(i);
+            User winner = userRepository.findById(winnerId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
+
+            prize.setRemainingStock(prize.getRemainingStock() - 1);
+            prizeRepository.save(prize);
+
+            GachaDraw draw = new GachaDraw();
+            draw.setUser(winner);
+            draw.setPrize(prize);
+            draw.setPrizeName(prize.getName());
+            draw.setPrizeCashValue(prize.getCashValue());
+            draw.setDropsSpent(0);
+            draw.setWinProbability(BigDecimal.ONE.setScale(5, RoundingMode.HALF_UP));
+            draw.setRngValue(BigDecimal.ZERO.setScale(5, RoundingMode.HALF_UP));
+            draw.setWinner(true);
+            draw.setDeliveryStatus(GachaDeliveryStatus.PENDING);
+            draw.setSecretEvent(true);
+            GachaDraw saved = drawRepository.save(draw);
+
+            Map<String, Object> r = new LinkedHashMap<>();
+            r.put("drawId", saved.getId());
+            r.put("userId", winner.getId());
+            r.put("winnerName", winner.getName() != null ? winner.getName() : winner.getNickname());
+            r.put("winnerNickname", winner.getNickname());
+            r.put("prizeId", prize.getId());
+            r.put("prizeName", prize.getName());
+            r.put("prizeImageUrl", prize.getImageUrl());
+            r.put("prizeCashValue", prize.getCashValue());
+            r.put("remainingStock", prize.getRemainingStock());
+            results.add(r);
+        }
+        return results;
+    }
+
     @Transactional(readOnly = true)
     public List<Map<String, Object>> listAvailablePrizes() {
         return prizeRepository.findByActiveTrueAndRemainingStockGreaterThanOrderByDisplayOrderAscIdAsc(0)
@@ -238,7 +298,7 @@ public class GachaService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getRecentWins(int limit) {
         if (limit > 20) limit = 20;
-        return drawRepository.findTop20ByWinnerTrueOrderByCreatedAtDesc().stream()
+        return drawRepository.findTop20ByWinnerTrueAndSecretEventFalseOrderByCreatedAtDesc().stream()
                 .limit(limit)
                 .map(d -> {
                     Map<String, Object> m = new LinkedHashMap<>();

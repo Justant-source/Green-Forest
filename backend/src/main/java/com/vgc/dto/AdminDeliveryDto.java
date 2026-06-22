@@ -13,6 +13,7 @@ public class AdminDeliveryDto {
     private String deliveryMemo;
     private LocalDateTime createdAt;
     private LocalDateTime deliveredAt;
+    private boolean secretEvent;
 
     public static AdminDeliveryDto from(GachaDraw d) {
         AdminDeliveryDto dto = new AdminDeliveryDto();
@@ -24,6 +25,7 @@ public class AdminDeliveryDto {
         dto.deliveryMemo = d.getDeliveryMemo();
         dto.createdAt = d.getCreatedAt();
         dto.deliveredAt = d.getDeliveredAt();
+        dto.secretEvent = d.isSecretEvent();
         return dto;
     }
 
@@ -35,4 +37,5 @@ public class AdminDeliveryDto {
     public String getDeliveryMemo() { return deliveryMemo; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getDeliveredAt() { return deliveredAt; }
+    public boolean isSecretEvent() { return secretEvent; }
 }

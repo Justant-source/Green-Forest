@@ -66,6 +66,9 @@ public class GachaDraw {
     @Column(name = "activity_bonus", precision = 7, scale = 5)
     private BigDecimal activityBonus;
 
+    @Column(name = "secret_event", nullable = false)
+    private boolean secretEvent = false;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -109,4 +112,6 @@ public class GachaDraw {
     public void setPityStacksAtDraw(Integer pityStacksAtDraw) { this.pityStacksAtDraw = pityStacksAtDraw; }
     public BigDecimal getActivityBonus() { return activityBonus; }
     public void setActivityBonus(BigDecimal activityBonus) { this.activityBonus = activityBonus; }
+    public boolean isSecretEvent() { return secretEvent; }
+    public void setSecretEvent(boolean secretEvent) { this.secretEvent = secretEvent; }
 }

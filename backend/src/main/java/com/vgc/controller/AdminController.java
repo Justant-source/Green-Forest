@@ -842,6 +842,18 @@ public class AdminController {
         return ResponseEntity.ok(gachaService.simulateEv(prizeId, ev));
     }
 
+    @PostMapping("/gacha/secret-draw")
+    public ResponseEntity<List<Map<String, Object>>> secretDraw(
+            @RequestBody Map<String, Object> body, Authentication authentication) {
+        getAdminUser(authentication);
+        Long prizeId = ((Number) body.get("prizeId")).longValue();
+        List<Long> candidateUserIds = ((List<?>) body.get("candidateUserIds")).stream()
+                .map(o -> ((Number) o).longValue())
+                .collect(java.util.stream.Collectors.toList());
+        int count = body.containsKey("count") ? ((Number) body.get("count")).intValue() : 1;
+        return ResponseEntity.ok(gachaService.secretDraw(null, prizeId, candidateUserIds, count));
+    }
+
     // ========== 게시글 관리 ==========
 
     @GetMapping("/posts")

@@ -848,6 +848,11 @@ export default function AdminPage() {
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${d.deliveryStatus === "PENDING" ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"}`}>
                               {d.deliveryStatus === "PENDING" ? "미수령" : "수령완료"}
                             </span>
+                            {d.secretEvent && (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-fuchsia-100 text-fuchsia-700">
+                                몰래뽑기 이벤트
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-gray-400 mt-0.5">
                             {new Date(d.createdAt).toLocaleString("ko-KR")} · {d.prizeCashValue.toLocaleString()}원

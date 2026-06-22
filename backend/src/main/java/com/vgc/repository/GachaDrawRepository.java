@@ -14,7 +14,7 @@ import java.util.List;
 public interface GachaDrawRepository extends JpaRepository<GachaDraw, Long> {
     long countByUserIdAndCreatedAtBetween(Long userId, LocalDateTime from, LocalDateTime to);
     Page<GachaDraw> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
-    List<GachaDraw> findTop20ByWinnerTrueOrderByCreatedAtDesc();
+    List<GachaDraw> findTop20ByWinnerTrueAndSecretEventFalseOrderByCreatedAtDesc();
     Page<GachaDraw> findByWinnerTrueAndDeliveryStatusOrderByCreatedAtAsc(GachaDeliveryStatus status, Pageable pageable);
 
     @Query("SELECT d FROM GachaDraw d JOIN FETCH d.user WHERE d.winner = true AND d.deliveryStatus = :status ORDER BY d.createdAt ASC")

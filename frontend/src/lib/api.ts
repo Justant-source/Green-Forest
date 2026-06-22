@@ -7,7 +7,7 @@ import {
   GachaPrizeInfo, GachaDrawResult, GachaDrawRecord, GachaRecentWin, GachaQuota, PlazaWinner,
   PlantGrowth, AdminCreatePrizeRequest, AdminUpdatePrizeRequest,
   Survey, SurveyOption, SurveyNotice, SurveyVoteDetail,
-  AdminDrawHistoryPage,
+  AdminDrawHistoryPage, SecretDrawResult,
 } from "@/types";
 import { getToken, logout } from "@/lib/auth";
 
@@ -1049,6 +1049,16 @@ export async function adminGetDrawHistory(params: {
   if (params.page !== undefined) q.set("page", String(params.page));
   if (params.size !== undefined) q.set("size", String(params.size));
   const res = await fetch(`${BASE_URL}/gacha/admin/draws?${q}`, { headers: authHeaders() });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
+export async function adminSecretDraw(prizeId: number, candidateUserIds: number[], count: number = 1): Promise<SecretDrawResult[]> {
+  const res = await fetch(`${BASE_URL}/admin/gacha/secret-draw`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ prizeId, candidateUserIds, count }),
+  });
   if (!res.ok) throw res;
   return res.json();
 }

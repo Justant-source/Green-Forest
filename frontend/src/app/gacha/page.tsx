@@ -1,32 +1,42 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
-import { GachaPrizeInfo, GachaDrawResult } from "@/types";
+import { GachaPrizeInfo, GachaDrawResult, AdminUser } from "@/types";
 import {
   getGachaPrizes,
   drawGacha,
   getGachaQuota,
+  getAdminUsers,
+  adminSecretDraw,
 } from "@/lib/api";
 import GachaPrizeCard from "@/components/GachaPrizeCard";
 import GachaDrawModal from "@/components/GachaDrawModal";
+import SecretGachaModal from "@/components/SecretGachaModal";
+import { useAuth } from "@/context/AuthContext";
+
+const LS_KEY = "gf_secret_candidates";
 
 export default function GachaPage() {
   const [prizes, setPrizes] = useState<GachaPrizeInfo[]>([]);
   const [quota, setQuota] = useState({ remainingToday: 3, limit: 3 });
   const [selectedPrize, setSelectedPrize] = useState<GachaPrizeInfo | null>(null);
+  const [secretPrize, setSecretPrize] = useState<GachaPrizeInfo | null>(null);
+  const [defaultSecretIds, setDefaultSecretIds] = useState<number[]>([]);
+  const [members, setMembers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isAdmin } = useAuth();
 
   const loadData = useCallback(async () => {
     try {
-      const [prizesRes, quotaRes] = await Promise.allSettled([
-        getGachaPrizes(),
-        getGachaQuota(),
-      ]);
-      if (prizesRes.status === "fulfilled") setPrizes(prizesRes.value);
-      if (quotaRes.status === "fulfilled") setQuota(quotaRes.value);
+      const reqs: Promise<any>[] = [getGachaPrizes(), getGachaQuota()];
+      if (isAdmin) reqs.push(getAdminUsers());
+      const results = await Promise.allSettled(reqs);
+      if (results[0].status === "fulfilled") setPrizes(results[0].value);
+      if (results[1].status === "fulfilled") setQuota(results[1].value);
+      if (results[2] && results[2].status === "fulfilled") setMembers(results[2].value);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     loadData();
@@ -40,6 +50,21 @@ export default function GachaPage() {
 
   const handleClose = () => {
     setSelectedPrize(null);
+    loadData();
+  };
+
+  const handleOpenSecretDraw = (p: GachaPrizeInfo) => {
+    try {
+      const stored = localStorage.getItem(LS_KEY);
+      setDefaultSecretIds(stored ? JSON.parse(stored) : []);
+    } catch {
+      setDefaultSecretIds([]);
+    }
+    setSecretPrize(p);
+  };
+
+  const handleSecretClose = () => {
+    setSecretPrize(null);
     loadData();
   };
 
@@ -66,6 +91,8 @@ export default function GachaPage() {
                 prize={p}
                 onDraw={() => setSelectedPrize(p)}
                 remainingDraws={quota.remainingToday}
+                isAdmin={isAdmin}
+                onSecretDraw={() => handleOpenSecretDraw(p)}
               />
             ))}
           </div>
@@ -77,6 +104,16 @@ export default function GachaPage() {
           prize={selectedPrize}
           onConfirm={handleDraw}
           onClose={handleClose}
+        />
+      )}
+
+      {secretPrize && (
+        <SecretGachaModal
+          prize={secretPrize}
+          members={members}
+          defaultSelectedIds={defaultSecretIds}
+          onConfirm={(ids, count) => adminSecretDraw(secretPrize.id, ids, count)}
+          onClose={handleSecretClose}
         />
       )}
     </div>
