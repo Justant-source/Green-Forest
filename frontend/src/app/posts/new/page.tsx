@@ -122,6 +122,10 @@ function NewPostPageInner() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
+    if (category === "동료칭찬" && taggedList.length === 0) {
+      alert("칭찬할 동료를 태그해주세요.");
+      return;
+    }
 
     setSubmitting(true);
     try {

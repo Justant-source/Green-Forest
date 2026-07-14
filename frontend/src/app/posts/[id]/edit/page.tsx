@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getPost, getCategories, updatePost, toMediaUrl } from "@/lib/api";
+import { getPost, getCategories, updatePost, toMediaUrl, searchUsers } from "@/lib/api";
 import { CategoryInfo } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import CategoryRequestModal from "@/components/CategoryRequestModal";
@@ -25,6 +25,10 @@ export default function EditPostPage() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
+  const [taggedList, setTaggedList] = useState<{ name: string; nickname: string }[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tagSuggestions, setTagSuggestions] = useState<{ id: number; name: string; nickname: string }[]>([]);
+  const [tagError, setTagError] = useState("");
 
   useEffect(() => {
     if (!authLoaded) return;
@@ -56,6 +60,16 @@ export default function EditPostPage() {
         setTitle(post.title);
         setContent(post.content);
         setCategory(post.category);
+        if (post.taggedNicknames && post.taggedNicknames.length > 0) {
+          setTaggedList(
+            post.taggedNicknames
+              .map((entry) => {
+                const match = entry.match(/^(.+)\((.+)\)$/);
+                return match ? { name: match[1], nickname: match[2] } : null;
+              })
+              .filter((t): t is { name: string; nickname: string } => t !== null)
+          );
+        }
         if (post.imageUrls && post.imageUrls.length > 0) {
           setExistingImageUrls(post.imageUrls);
           setImagePreviews(post.imageUrls.map((url) => toMediaUrl(url)));
@@ -67,6 +81,36 @@ export default function EditPostPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [authLoaded, postId, isLoggedIn, nickname, router]);
+
+  useEffect(() => {
+    if (tagInput.trim().length === 0) {
+      setTagSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      searchUsers(tagInput.trim()).then((results) => {
+        setTagSuggestions(results.filter((u) => !taggedList.some(t => t.nickname === u.nickname) && u.nickname !== nickname));
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [tagInput, taggedList, nickname]);
+
+  const addTag = (user: { name: string; nickname: string }) => {
+    if (user.nickname === nickname) {
+      setTagError("자기 자신은 태그할 수 없습니다.");
+      return;
+    }
+    if (!taggedList.some(t => t.nickname === user.nickname)) {
+      setTaggedList([...taggedList, user]);
+    }
+    setTagInput("");
+    setTagSuggestions([]);
+    setTagError("");
+  };
+
+  const removeTag = (tagNickname: string) => {
+    setTaggedList(taggedList.filter((t) => t.nickname !== tagNickname));
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -114,6 +158,10 @@ export default function EditPostPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
+    if (category === "동료칭찬" && taggedList.length === 0) {
+      alert("칭찬할 동료를 태그해주세요.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -121,6 +169,9 @@ export default function EditPostPage() {
       formData.append("title", title.trim());
       formData.append("content", content.trim());
       formData.append("category", category);
+      if (taggedList.length > 0) {
+        formData.append("taggedNicknames", taggedList.map(t => t.nickname).join(","));
+      }
       existingImageUrls.forEach((url) => {
         formData.append("existingImageUrls", url);
       });
@@ -192,6 +243,76 @@ export default function EditPostPage() {
             </button>
           </div>
         </div>
+
+        {category === "동료칭찬" && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              태그할 동료
+            </label>
+            {taggedList.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {taggedList.map((tag) => (
+                  <span
+                    key={tag.nickname}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-600"
+                  >
+                    @{tag.name}({tag.nickname})
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag.nickname)}
+                      className="ml-1 text-blue-400 hover:text-blue-700 text-xs"
+                    >
+                      X
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="relative">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => {
+                  setTagInput(e.target.value);
+                  setTagError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (tagInput.trim() && tagSuggestions.length > 0) {
+                      addTag({ name: tagSuggestions[0].name, nickname: tagSuggestions[0].nickname });
+                    } else if (tagInput.trim()) {
+                      setTagError("올바른 이름을 입력해주세요.");
+                    }
+                  }
+                }}
+                placeholder="이름을 검색하세요"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500 ${
+                  tagError ? "border-red-400" : "border-gray-300"
+                }`}
+              />
+              {tagSuggestions.length > 0 && (
+                <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {tagSuggestions.map((user) => (
+                    <li key={user.id}>
+                      <button
+                        type="button"
+                        onClick={() => addTag({ name: user.name, nickname: user.nickname })}
+                        className="w-full text-left px-4 py-2 hover:bg-forest-50 text-sm"
+                      >
+                        {user.name}({user.nickname})
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {tagError && (
+              <p className="text-xs text-red-500 mt-1">{tagError}</p>
+            )}
+            <p className="text-xs text-gray-400 mt-1">태그된 동료에게 물방울 보너스가 지급됩니다.</p>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -268,13 +268,19 @@ public class DropService {
         postTag.setTaggedUser(taggedUser);
         postTagRepository.save(postTag);
 
-        recordTransaction(taggedUser, 5, DropReasonType.TAG_BONUS,
+        int tagDrops = dropTransactionRepository
+                .findFirstByReasonTypeAndRelatedPostIdAndAmountGreaterThanOrderByCreatedAtAsc(
+                        DropReasonType.TAG_BONUS, post.getId(), 0)
+                .map(DropTransaction::getAmount)
+                .orElse(30);
+
+        recordTransaction(taggedUser, tagDrops, DropReasonType.TAG_BONUS,
                 author.getNickname() + "님이 태깅|postId=" + post.getId(), post.getId(), null);
 
         notificationService.createNotification(taggedUser, NotificationType.TAG,
                 "태깅되었어요!",
                 (post.isAnonymous() ? "익명의 그린메이커" : author.getNickname())
-                        + "님이 회원님을 태깅했어요! 💧5 물방울 획득!",
+                        + "님이 회원님을 태깅했어요! 💧" + tagDrops + " 물방울 획득!",
                 post.getId(), null);
 
         plantGrowthService.onPraiseReceived(taggedUser.getId(), post.getId());

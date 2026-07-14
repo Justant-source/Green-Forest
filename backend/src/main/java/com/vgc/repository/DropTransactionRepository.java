@@ -52,6 +52,9 @@ public interface DropTransactionRepository extends JpaRepository<DropTransaction
 
     List<DropTransaction> findByUserIdAndReasonTypeAndRelatedPostId(Long userId, DropReasonType reasonType, Long relatedPostId);
 
+    java.util.Optional<DropTransaction> findFirstByReasonTypeAndRelatedPostIdAndAmountGreaterThanOrderByCreatedAtAsc(
+            DropReasonType reasonType, Long relatedPostId, int amount);
+
     // ── 관리자 이력 조회 (필터/페이징) ──
     @Query(value = "SELECT d FROM DropTransaction d JOIN FETCH d.user ORDER BY d.createdAt DESC",
            countQuery = "SELECT COUNT(d) FROM DropTransaction d")
