@@ -92,3 +92,20 @@ export async function getRegistrationOpen(): Promise<boolean> {
   const data = await res.json();
   return data.open !== false;
 }
+
+export async function findLoginIdsByName(name: string): Promise<{ name: string; loginId: string }[]> {
+  const res = await fetch(
+    `${BASE_URL}/auth/find-id?name=${encodeURIComponent(name.trim())}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) {
+    let msg = "아이디 찾기에 실패했습니다.";
+    try {
+      const body = await res.json();
+      if (body.message) msg = body.message;
+    } catch {}
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  return data.results ?? [];
+}

@@ -8,6 +8,10 @@ import com.vgc.util.BirthMonthDay;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 @Service
 public class AuthService {
 
@@ -62,6 +66,21 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(loginId);
         return new AuthResponse(token, user.getNickname(), user.getName(), user.getRole());
+    }
+
+    public List<Map<String, String>> findLoginIdsByName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new RuntimeException("이름을 입력해주세요.");
+        }
+        String query = name.trim();
+        return userRepository.findByNameIgnoreCase(query).stream()
+                .map(u -> {
+                    Map<String, String> m = new LinkedHashMap<>();
+                    m.put("name", u.getName());
+                    m.put("loginId", u.getEmail());
+                    return m;
+                })
+                .toList();
     }
 
     private String requireValidLoginId(String raw) {

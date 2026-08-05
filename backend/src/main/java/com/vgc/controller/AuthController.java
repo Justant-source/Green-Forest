@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -30,6 +31,17 @@ public class AuthController {
     @GetMapping("/registration-open")
     public Map<String, Boolean> registrationOpen() {
         return Map.of("open", systemSettingService.isRegistrationOpen());
+    }
+
+    @GetMapping("/find-id")
+    public ResponseEntity<?> findId(@RequestParam String name) {
+        try {
+            List<Map<String, String>> results = authService.findLoginIdsByName(name);
+            return ResponseEntity.ok(Map.of("results", results));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PostMapping("/register")
