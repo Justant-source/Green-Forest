@@ -12,7 +12,9 @@ import java.util.List;
     @Index(name = "idx_posts_created", columnList = "createdAt DESC"),
     @Index(name = "idx_posts_quest", columnList = "quest_id"),
     @Index(name = "idx_posts_category_created", columnList = "category, createdAt DESC"),
-    @Index(name = "idx_posts_photo_bingo_submission", columnList = "photo_bingo_submission_id", unique = true)
+    @Index(name = "idx_posts_photo_bingo_submission", columnList = "photo_bingo_submission_id", unique = true),
+    @Index(name = "idx_posts_photo_exhibition_submission", columnList = "photo_exhibition_submission_id", unique = true),
+    @Index(name = "idx_posts_photo_exhibition_event", columnList = "photo_exhibition_event_id")
 })
 public class Post {
     @Id
@@ -56,6 +58,11 @@ public class Post {
     @Column(name = "photo_bingo_submission_id")
     private Long photoBingoSubmissionId;
 
+    @Column(name = "photo_exhibition_submission_id")
+    private Long photoExhibitionSubmissionId;
+    @Column(name = "photo_exhibition_event_id")
+    private Long photoExhibitionEventId;
+
     // --- 기존 필드 ---
 
     private LocalDateTime createdAt;
@@ -95,4 +102,8 @@ public class Post {
     public void setAnonymous(boolean anonymous) { this.anonymous = anonymous; }
     public Long getPhotoBingoSubmissionId() { return photoBingoSubmissionId; }
     public void setPhotoBingoSubmissionId(Long photoBingoSubmissionId) { this.photoBingoSubmissionId = photoBingoSubmissionId; }
+    public Long getPhotoExhibitionSubmissionId() { return photoExhibitionSubmissionId; }
+    public void setPhotoExhibitionSubmissionId(Long value) { this.photoExhibitionSubmissionId = value; }
+    public Long getPhotoExhibitionEventId() { return photoExhibitionEventId; }
+    public void setPhotoExhibitionEventId(Long value) { this.photoExhibitionEventId = value; }
 }

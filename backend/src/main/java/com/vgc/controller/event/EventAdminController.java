@@ -36,7 +36,7 @@ public class EventAdminController {
     @PostMapping
     public EventResponse create(@RequestBody CreateEventRequest req, Authentication auth) {
         User admin = requireAdmin(auth);
-        return EventResponse.from(eventService.createEvent(req, admin));
+        return eventService.response(eventService.createEvent(req, admin));
     }
 
     @PatchMapping("/{id}/status")
@@ -44,7 +44,7 @@ public class EventAdminController {
                                            @RequestBody ChangeStatusRequest req,
                                            Authentication auth) {
         User admin = requireAdmin(auth);
-        return EventResponse.from(eventService.changeStatus(id, req.getStatus(), admin));
+        return eventService.response(eventService.changeStatus(id, req.getStatus(), admin));
     }
 
     @PatchMapping("/{id}/extend")
@@ -52,6 +52,6 @@ public class EventAdminController {
                                      @RequestBody ExtendEventRequest req,
                                      Authentication auth) {
         User admin = requireAdmin(auth);
-        return EventResponse.from(eventService.extendEvent(id, req.getAdditionalMinutes(), admin));
+        return eventService.response(eventService.extendEvent(id, req.getAdditionalMinutes(), admin));
     }
 }

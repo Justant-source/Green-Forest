@@ -4,6 +4,7 @@ import com.vgc.dto.AuthRequest;
 import com.vgc.dto.AuthResponse;
 import com.vgc.service.ActivityLogService;
 import com.vgc.service.AuthService;
+import com.vgc.service.SystemSettingService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,17 +18,26 @@ public class AuthController {
 
     private final AuthService authService;
     private final ActivityLogService activityLogService;
+    private final SystemSettingService systemSettingService;
 
-    public AuthController(AuthService authService, ActivityLogService activityLogService) {
+    public AuthController(AuthService authService, ActivityLogService activityLogService,
+                          SystemSettingService systemSettingService) {
         this.authService = authService;
         this.activityLogService = activityLogService;
+        this.systemSettingService = systemSettingService;
+    }
+
+    @GetMapping("/registration-open")
+    public Map<String, Boolean> registrationOpen() {
+        return Map.of("open", systemSettingService.isRegistrationOpen());
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthRequest request, HttpServletRequest httpRequest) {
         try {
             AuthResponse response = authService.register(
-                    request.getEmail(), request.getPassword(), request.getNickname(), request.getName());
+                    request.getEmail(), request.getPassword(), request.getNickname(), request.getName(),
+                    request.getBirthMonth(), request.getBirthDay());
             activityLogService.logRegister(request.getEmail(), request.getNickname());
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
@@ -46,7 +56,7 @@ public class AuthController {
         } catch (RuntimeException e) {
             activityLogService.logLoginFailed(request.getEmail(), ip);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "이메일 또는 비밀번호를 확인해주세요."));
+                    .body(Map.of("message", "아이디 또는 비밀번호를 확인해주세요."));
         }
     }
 

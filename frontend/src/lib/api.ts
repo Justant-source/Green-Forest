@@ -321,13 +321,22 @@ export async function updateMyProfile(data: {
   addressMain?: string;
   addressDetail?: string;
   phone?: string;
+  birthMonth?: number;
+  birthDay?: number;
 }): Promise<User> {
   const res = await fetch(`${BASE_URL}/users/me/profile`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to update profile");
+  if (!res.ok) {
+    let msg = "Failed to update profile";
+    try {
+      const body = await res.json();
+      if (body.message) msg = body.message;
+    } catch {}
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -597,7 +606,8 @@ export async function updateAdminUser(id: number, data: {
   name?: string;
   email?: string;
   role?: "USER" | "ADMIN";
-  birthDate?: string | null;
+  birthMonth?: number | null;
+  birthDay?: number | null;
 }): Promise<void> {
   const res = await fetch(`${BASE_URL}/admin/users/${id}`, {
     method: "PUT",
@@ -1069,7 +1079,10 @@ export interface AnnouncementItem {
   title: string;
   content: string;
   active: boolean;
-  type: "MANUAL" | "BIRTHDAY";
+  type: "MANUAL" | "BIRTHDAY" | "EVENT";
+  relatedUrl?: string | null;
+  relatedLabel?: string | null;
+  expiresAt?: string | null;
   createdAt: string;
 }
 
@@ -1096,11 +1109,11 @@ export async function adminListAnnouncements(): Promise<AnnouncementItem[]> {
   return res.json();
 }
 
-export async function adminCreateAnnouncement(title: string, content: string): Promise<AnnouncementItem> {
+export async function adminCreateAnnouncement(title: string, content: string, options?: { type?: AnnouncementItem["type"]; relatedUrl?: string; relatedLabel?: string; expiresAt?: string }): Promise<AnnouncementItem> {
   const res = await fetch(`${BASE_URL}/admin/announcements`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ title, content }),
+    body: JSON.stringify({ title, content, ...options }),
   });
   if (!res.ok) throw res;
   return res.json();
@@ -1147,6 +1160,28 @@ export async function acknowledgeBirthday(targetUserId: number): Promise<void> {
     headers: authHeaders(),
   });
   if (!res.ok) throw res;
+}
+
+// ===== 관리자 - 가입 설정 =====
+export async function getAdminRegistrationOpen(): Promise<boolean> {
+  const res = await fetch(`${BASE_URL}/admin/settings/registration-open`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) return true;
+  const data = await res.json();
+  return data.open !== false;
+}
+
+export async function setAdminRegistrationOpen(open: boolean): Promise<boolean> {
+  const res = await fetch(`${BASE_URL}/admin/settings/registration-open`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ open }),
+  });
+  if (!res.ok) throw new Error("Failed to update registration setting");
+  const data = await res.json();
+  return data.open !== false;
 }
 
 // ===== 관리자 - 게시글 =====

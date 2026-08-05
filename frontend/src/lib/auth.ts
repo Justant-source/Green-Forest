@@ -57,17 +57,38 @@ export async function login(email: string, password: string) {
   return data;
 }
 
-export async function register(email: string, password: string, nickname: string, name: string) {
+export async function register(
+  email: string,
+  password: string,
+  nickname: string,
+  name: string,
+  birthMonth: number,
+  birthDay: number,
+) {
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, nickname, name }),
+    body: JSON.stringify({ email, password, nickname, name, birthMonth, birthDay }),
   });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "회원가입에 실패했습니다.");
+    let msg = "회원가입에 실패했습니다.";
+    try {
+      const body = await res.json();
+      if (body.message) msg = body.message;
+    } catch {
+      const text = await res.text().catch(() => "");
+      if (text) msg = text;
+    }
+    throw new Error(msg);
   }
   const data = await res.json();
   saveAuth(data.token, data.nickname, data.name || data.nickname, data.role || "USER");
   return data;
+}
+
+export async function getRegistrationOpen(): Promise<boolean> {
+  const res = await fetch(`${BASE_URL}/auth/registration-open`, { cache: "no-store" });
+  if (!res.ok) return true;
+  const data = await res.json();
+  return data.open !== false;
 }

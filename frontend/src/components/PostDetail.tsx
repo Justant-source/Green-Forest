@@ -159,7 +159,9 @@ export default function PostDetail({ postId }: PostDetailProps) {
             <div className="flex gap-2">
               {(post.isAuthor || isAdmin) && (() => {
                 const bingo = parsePhotoBingoMarker(post.content).bingo;
-                const editHref = bingo
+                const editHref = post.photoExhibitionEventId
+                  ? `/events/${post.photoExhibitionEventId}`
+                  : bingo
                   ? `/events/${bingo.eventId}`
                   : post.category === "survey"
                   ? `/posts/${post.id}/survey-edit`
@@ -190,7 +192,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
                   종료
                 </button>
               )}
-              <button
+              {!post.photoExhibitionSubmissionId && <button
                 onClick={async () => {
                   if (!confirm("정말 삭제하시겠습니까?")) return;
                   try {
@@ -204,7 +206,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
                 className="px-4 py-1.5 border border-red-300 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
               >
                 삭제
-              </button>
+              </button>}
             </div>
           )}
         </div>
@@ -224,6 +226,10 @@ export default function PostDetail({ postId }: PostDetailProps) {
         if (parsed.bingo) {
           // 빙고 글은 캐러셀 대신 3x3 보드 뷰로 렌더
           return <BingoBoardView payload={parsed.bingo} />;
+        }
+        if (post.photoExhibitionSubmissionId) {
+          const images = post.imageUrls && post.imageUrls.length > 0 ? post.imageUrls : post.imageUrl ? [post.imageUrl] : [];
+          return <div className="space-y-3"><img src={toMediaUrl(images[0], "md")} alt={post.title} className="w-full rounded-xl object-cover"/>{images.length > 1 && <div className="mx-auto grid w-2/3 grid-cols-3 gap-2">{images.slice(1).map((url) => <img key={url} src={toMediaUrl(url, "sm")} alt="작품 추가 사진" className="aspect-square w-full rounded-lg object-cover"/>)}</div>}</div>;
         }
         const urls = post.imageUrls && post.imageUrls.length > 0
           ? post.imageUrls

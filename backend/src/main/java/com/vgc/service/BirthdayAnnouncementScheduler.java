@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
@@ -33,13 +35,20 @@ public class BirthdayAnnouncementScheduler {
         // 기존 BIRTHDAY 공지 비활성화
         announcementRepository.deactivateAllByType(AnnouncementType.BIRTHDAY);
 
-        // 오늘 생일인 사용자 조회
-        List<User> birthdayUsers = userRepository.findByBirthMonthAndDay(
-                today.getMonthValue(), today.getDayOfMonth());
+        // 오늘 생일인 사용자 조회 (비윤년 2/28에는 2/29 생일도 포함)
+        Map<Long, User> birthdayUsers = new LinkedHashMap<>();
+        for (User u : userRepository.findByBirthMonthAndDay(today.getMonthValue(), today.getDayOfMonth())) {
+            birthdayUsers.put(u.getId(), u);
+        }
+        if (today.getMonthValue() == 2 && today.getDayOfMonth() == 28 && !today.isLeapYear()) {
+            for (User u : userRepository.findByBirthMonthAndDay(2, 29)) {
+                birthdayUsers.put(u.getId(), u);
+            }
+        }
 
         if (birthdayUsers.isEmpty()) return;
 
-        String names = birthdayUsers.stream()
+        String names = birthdayUsers.values().stream()
                 .map(User::getName)
                 .collect(Collectors.joining(", "));
 

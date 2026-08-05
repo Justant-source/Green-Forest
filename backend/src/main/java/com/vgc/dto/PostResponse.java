@@ -28,6 +28,8 @@ public class PostResponse {
     private boolean isAuthor;
     private int dropsAwarded;
     private List<String> taggedNicknames;
+    private Long photoExhibitionSubmissionId;
+    private Long photoExhibitionEventId;
 
     public static PostResponse from(Post post, int commentCount) {
         PostResponse response = new PostResponse();
@@ -46,6 +48,8 @@ public class PostResponse {
                 : List.of();
         response.questId = post.getQuestId();
         response.anonymous = post.isAnonymous();
+        response.photoExhibitionSubmissionId = post.getPhotoExhibitionSubmissionId();
+        response.photoExhibitionEventId = post.getPhotoExhibitionEventId();
 
         if (post.isAnonymous()) {
             response.authorNickname = "익명의 그린메이커";
@@ -86,4 +90,6 @@ public class PostResponse {
     public void setDropsAwarded(int dropsAwarded) { this.dropsAwarded = dropsAwarded; }
     public List<String> getTaggedNicknames() { return taggedNicknames; }
     public void setTaggedNicknames(List<String> taggedNicknames) { this.taggedNicknames = taggedNicknames; }
+    public Long getPhotoExhibitionSubmissionId() { return photoExhibitionSubmissionId; }
+    public Long getPhotoExhibitionEventId() { return photoExhibitionEventId; }
 }

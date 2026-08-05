@@ -29,9 +29,12 @@ import {
   adminGetDrawHistory,
   getUpcomingBirthdays, acknowledgeBirthday,
   adminListSurveyDeliveries, adminUpdateSurveyDelivery,
+  getAdminRegistrationOpen, setAdminRegistrationOpen,
 } from "@/lib/api";
 import EventAdminTab from "@/components/events/photobingo/admin/EventAdminTab";
 import DropHistoryPanel from "@/components/admin/DropHistoryPanel";
+import BirthMonthDaySelect from "@/components/BirthMonthDaySelect";
+import { formatBirthMonthDay } from "@/lib/birthMonthDay";
 
 type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha" | "posts" | "events" | "survey-deliveries";
 
@@ -50,6 +53,8 @@ export default function AdminPage() {
 
   // Dashboard
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [registrationOpen, setRegistrationOpen] = useState(true);
+  const [registrationSaving, setRegistrationSaving] = useState(false);
 
   // Users
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -82,7 +87,9 @@ export default function AdminPage() {
   // Announce
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
-  const [announcements, setAnnouncements] = useState<{ id: number; title: string; content: string; active: boolean; createdAt: string }[]>([]);
+  const [annType, setAnnType] = useState<"MANUAL" | "EVENT">("MANUAL");
+  const [annUrl, setAnnUrl] = useState(""); const [annLabel, setAnnLabel] = useState(""); const [annExpires, setAnnExpires] = useState("");
+  const [announcements, setAnnouncements] = useState<import("@/lib/api").AnnouncementItem[]>([]);
 
   // Attendance
   const [phrases, setPhrases] = useState<AttendancePhrase[]>([]);
@@ -157,7 +164,7 @@ export default function AdminPage() {
 
   const loadAllData = async () => {
     try {
-      const [s, u, p, q, cats, reqs, phr, prz, anns, birthdays] = await Promise.all([
+      const [s, u, p, q, cats, reqs, phr, prz, anns, birthdays, regOpen] = await Promise.all([
         getAdminStats(),
         getAdminUsers(),
         getAdminParties(),
@@ -168,6 +175,7 @@ export default function AdminPage() {
         adminListAllPrizes(),
         adminListAnnouncements(),
         getUpcomingBirthdays(),
+        getAdminRegistrationOpen(),
       ]);
       setStats(s);
       setUsers(u);
@@ -179,6 +187,7 @@ export default function AdminPage() {
       setPrizes([...prz].sort((a, b) => a.displayOrder - b.displayOrder));
       setAnnouncements(anns);
       setUpcomingBirthdays(birthdays);
+      setRegistrationOpen(regOpen);
     } catch (error) {
       console.error("Failed to load admin data:", error);
     } finally {
@@ -213,7 +222,42 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">관리자</h1>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h1 className="text-2xl font-bold">관리자</h1>
+        <div className="flex items-center gap-2 shrink-0 select-none">
+          <span className="text-sm text-gray-600">신규 가입</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={registrationOpen}
+            disabled={registrationSaving}
+            onClick={async () => {
+              const next = !registrationOpen;
+              setRegistrationSaving(true);
+              try {
+                const open = await setAdminRegistrationOpen(next);
+                setRegistrationOpen(open);
+              } catch {
+                alert("가입 설정 변경 실패");
+              } finally {
+                setRegistrationSaving(false);
+              }
+            }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+              registrationOpen ? "bg-forest-500" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                registrationOpen ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+          <span className={`text-xs font-medium ${registrationOpen ? "text-forest-600" : "text-gray-400"}`}>
+            {registrationOpen ? "받음" : "안 받음"}
+          </span>
+        </div>
+      </div>
 
       <div className="flex gap-1 mb-6 overflow-x-auto scrollbar-hide border-b">
         {tabs.map((t) => (
@@ -257,7 +301,7 @@ export default function AdminPage() {
                         {b.daysUntil === 0 ? "🎉 오늘!" : `D-${b.daysUntil}`}
                       </span>
                       <span className="ml-2 text-xs text-gray-400">
-                        ({b.birthDate.slice(5).replace("-", "/")})
+                        ({formatBirthMonthDay(b.birthMonth, b.birthDay)})
                       </span>
                     </div>
                     <button
@@ -1247,7 +1291,8 @@ export default function AdminPage() {
               e.preventDefault();
               if (!annTitle.trim() || !annContent.trim()) return;
               try {
-                await adminCreateAnnouncement(annTitle.trim(), annContent.trim());
+                if (annType === "EVENT" && (!annUrl.startsWith("/events/") || !annLabel.trim())) return alert("이벤트 링크와 버튼 문구를 입력하세요.");
+                await adminCreateAnnouncement(annTitle.trim(), annContent.trim(), { type: annType, relatedUrl: annUrl || undefined, relatedLabel: annLabel || undefined, expiresAt: annExpires ? annExpires + ":00" : undefined });
                 const updated = await adminListAnnouncements();
                 setAnnouncements(updated);
                 setAnnTitle("");
@@ -1257,6 +1302,7 @@ export default function AdminPage() {
             className="bg-white p-4 rounded-xl border space-y-3"
           >
             <h3 className="font-semibold text-sm">새 공지 작성</h3>
+            <div className="flex gap-2"><select value={annType} onChange={(e)=>setAnnType(e.target.value as "MANUAL"|"EVENT")} className="border rounded px-2 text-sm"><option value="MANUAL">일반 공지</option><option value="EVENT">이벤트 공지</option></select><button type="button" onClick={()=>{setAnnType("EVENT");setAnnTitle("Summer Time 사진전");setAnnContent("사진을 출품하고, 마음에 드는 작품에 투표해 주세요. 참가 100💧 · 투표 최대 30💧 · 1등 500💧");setAnnUrl("/events/{id}");setAnnLabel("사진전 보러가기");setAnnExpires("2026-08-20T06:00");}} className="text-xs border rounded px-2">Summer Time 초안</button></div>
             <input
               type="text"
               value={annTitle}
@@ -1273,6 +1319,7 @@ export default function AdminPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500 resize-none"
               required
             />
+            {annType === "EVENT" && <><input value={annUrl} onChange={(e)=>setAnnUrl(e.target.value)} placeholder="/events/{id}" className="w-full px-3 py-2 border rounded-lg text-sm"/><input value={annLabel} onChange={(e)=>setAnnLabel(e.target.value)} placeholder="버튼 문구" className="w-full px-3 py-2 border rounded-lg text-sm"/><input type="datetime-local" value={annExpires} onChange={(e)=>setAnnExpires(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm"/></>}
             <button
               type="submit"
               className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 transition-colors"
@@ -1313,9 +1360,11 @@ export default function AdminPage() {
                           <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500 text-white font-medium">현재 공지</span>
                         )}
                         <span className="font-semibold text-sm text-gray-800">{a.title}</span>
+                        <span className="text-xs text-gray-500">{a.type}</span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1 line-clamp-2">{a.content}</p>
                       <p className="text-xs text-gray-400 mt-1">{new Date(a.createdAt).toLocaleDateString("ko-KR")}</p>
+                      {a.relatedUrl && <p className="text-xs text-forest-600">{a.relatedLabel} · {a.relatedUrl}</p>}
                     </div>
                     <div className="flex gap-2 shrink-0">
                       {!a.active && (
@@ -1386,7 +1435,14 @@ function UsersPanel({
   parties: AdminParty[];
 }) {
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<{ nickname: string; name: string; email: string; role: "USER" | "ADMIN"; birthDate: string; } | null>(null);
+  const [form, setForm] = useState<{
+    nickname: string;
+    name: string;
+    email: string;
+    role: "USER" | "ADMIN";
+    birthMonth: number | "";
+    birthDay: number | "";
+  } | null>(null);
   const [keyword, setKeyword] = useState("");
 
   const filtered = users.filter((u) => {
@@ -1401,20 +1457,37 @@ function UsersPanel({
 
   const openEdit = (u: AdminUser) => {
     setEditingId(u.id);
-    setForm({ nickname: u.nickname, name: u.name ?? "", email: u.email, role: u.role === "ADMIN" ? "ADMIN" : "USER", birthDate: u.birthDate ?? "" });
+    setForm({
+      nickname: u.nickname,
+      name: u.name ?? "",
+      email: u.email,
+      role: u.role === "ADMIN" ? "ADMIN" : "USER",
+      birthMonth: u.birthMonth ?? "",
+      birthDay: u.birthDay ?? "",
+    });
   };
 
   const save = async (u: AdminUser) => {
     if (!form) return;
     try {
+      const hasBirth = form.birthMonth !== "" && form.birthDay !== "";
       await updateAdminUser(u.id, {
         nickname: form.nickname,
         name: form.name,
         email: form.email,
         role: form.role,
-        birthDate: form.birthDate || null,
+        birthMonth: hasBirth ? (form.birthMonth as number) : null,
+        birthDay: hasBirth ? (form.birthDay as number) : null,
       });
-      setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, nickname: form.nickname, name: form.name, email: form.email, role: form.role, birthDate: form.birthDate || null } : x));
+      setUsers((prev) => prev.map((x) => x.id === u.id ? {
+        ...x,
+        nickname: form.nickname,
+        name: form.name,
+        email: form.email,
+        role: form.role,
+        birthMonth: hasBirth ? (form.birthMonth as number) : null,
+        birthDay: hasBirth ? (form.birthDay as number) : null,
+      } : x));
       setEditingId(null);
       setForm(null);
     } catch (e: any) {
@@ -1428,7 +1501,7 @@ function UsersPanel({
         type="text"
         value={keyword}
         onChange={(e) => setKeyword(e.target.value)}
-        placeholder="닉네임·실명·이메일로 검색"
+        placeholder="닉네임·실명·아이디로 검색"
         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500"
       />
       {filtered.map((u) => (
@@ -1445,7 +1518,7 @@ function UsersPanel({
                 {u.plantType ? PLANT_OPTIONS.find((p) => p.value === u.plantType)?.label : "미선택"}
                 {u.partyName && ` | ${u.partyName}`}
                 {` | 물방울: ${u.totalDrops.toLocaleString()}`}
-                {u.birthDate && ` | 🎂 ${u.birthDate.slice(5).replace("-", "/")}`}
+                {u.birthMonth && u.birthDay && ` | 🎂 ${formatBirthMonthDay(u.birthMonth, u.birthDay)}`}
               </div>
             </div>
             <select
@@ -1506,8 +1579,8 @@ function UsersPanel({
                   <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-gray-500 mb-1 block">메일주소</label>
-                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <label className="text-xs text-gray-500 mb-1 block">아이디</label>
+                  <input type="text" value={form.email} maxLength={20} onChange={(e) => setForm({ ...form, email: e.target.value.slice(0, 20) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">권한</label>
@@ -1518,7 +1591,12 @@ function UsersPanel({
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">생일</label>
-                  <input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <BirthMonthDaySelect
+                    month={form.birthMonth}
+                    day={form.birthDay}
+                    onChange={({ month, day }) => setForm({ ...form, birthMonth: month, birthDay: day })}
+                    idPrefix={`admin-birth-${u.id}`}
+                  />
                 </div>
               </div>
               <div className="text-[11px] text-gray-400">※ 물방울은 이 페이지에서 수정할 수 없습니다. 지급·차감은 "물방울" 탭을 이용하세요.</div>

@@ -39,7 +39,7 @@ export default function ProfilePage() {
           <div className="text-sm font-medium text-gray-800">{user.nickname}</div>
           <div className="text-xs text-gray-400 pt-1">이름</div>
           <div className="text-sm font-medium text-gray-800">{user.name}</div>
-          <div className="text-xs text-gray-400 pt-1">이메일</div>
+          <div className="text-xs text-gray-400 pt-1">아이디</div>
           <div className="text-sm font-medium text-gray-800">{user.email}</div>
         </div>
 
@@ -62,14 +62,31 @@ export default function ProfilePage() {
           <span className="text-gray-400 text-lg">›</span>
         </Link>
 
-        {/* 비밀번호 변경 */}
-        <Link
-          href="/profile/password"
-          className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-        >
-          <div className="text-sm font-semibold text-gray-800">비밀번호 변경</div>
-          <span className="text-gray-400 text-lg">›</span>
-        </Link>
+        {/* 생일 설정 | 비밀번호 변경 */}
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            href="/profile/birthday"
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors min-w-0"
+          >
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-gray-800">생일 설정</div>
+              <div className="text-xs text-gray-500 mt-0.5 truncate">
+                {user.birthMonth && user.birthDay
+                  ? `${String(user.birthMonth).padStart(2, "0")}/${String(user.birthDay).padStart(2, "0")}`
+                  : "미등록"}
+              </div>
+            </div>
+            <span className="text-gray-400 text-lg shrink-0">›</span>
+          </Link>
+
+          <Link
+            href="/profile/password"
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors min-w-0"
+          >
+            <div className="text-sm font-semibold text-gray-800">비밀번호 변경</div>
+            <span className="text-gray-400 text-lg shrink-0">›</span>
+          </Link>
+        </div>
       </div>
     </main>
   );

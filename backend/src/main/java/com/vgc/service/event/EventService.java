@@ -7,6 +7,10 @@ import com.vgc.entity.event.EventStatus;
 import com.vgc.entity.event.EventType;
 import com.vgc.entity.event.photobingo.PhotoBingoConfig;
 import com.vgc.repository.event.EventRepository;
+import com.vgc.repository.event.photoexhibition.PhotoExhibitionConfigRepository;
+import com.vgc.dto.event.EventResponse;
+import com.vgc.entity.event.photoexhibition.PhotoExhibitionConfig;
+import com.vgc.service.event.photoexhibition.PhotoExhibitionPhaseResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -23,15 +27,17 @@ public class EventService {
     private static final Logger log = LoggerFactory.getLogger(EventService.class);
 
     private final EventRepository eventRepository;
+    private final PhotoExhibitionConfigRepository exhibitionConfigRepository;
 
-    public EventService(EventRepository eventRepository) {
+    public EventService(EventRepository eventRepository, PhotoExhibitionConfigRepository exhibitionConfigRepository) {
         this.eventRepository = eventRepository;
+        this.exhibitionConfigRepository = exhibitionConfigRepository;
     }
 
     @Transactional
     public Event createEvent(CreateEventRequest req, User admin) {
-        if (req.getType() == null || !req.getType().equals("PHOTO_BINGO")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type은 PHOTO_BINGO만 지원합니다.");
+        if (req.getType() == null || (!req.getType().equals("PHOTO_BINGO") && !req.getType().equals("PHOTO_EXHIBITION"))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 이벤트 타입입니다.");
         }
         if (req.getTitle() == null || req.getTitle().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title은 필수입니다.");
@@ -43,11 +49,12 @@ public class EventService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "endAt은 startAt 이후여야 합니다.");
         }
         PhotoBingoConfig config = req.getConfig();
-        if (config == null || config.getThemes() == null || config.getThemes().size() != 9) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "config.themes는 정확히 9개여야 합니다.");
-        }
-        if (config.getRewards() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "config.rewards는 필수입니다.");
+        if ("PHOTO_BINGO".equals(req.getType())) {
+            if (config == null || config.getThemes() == null || config.getThemes().size() != 9 || config.getRewards() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "사진빙고 설정이 올바르지 않습니다.");
+            }
+        } else if (req.getPhotoExhibitionConfig() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "photoExhibitionConfig는 필수입니다.");
         }
 
         Event event = new Event();
@@ -59,7 +66,31 @@ public class EventService {
         event.setStatus(EventStatus.DRAFT);
         event.setConfigJson(config);
         event.setCreatedBy(admin);
-        return eventRepository.save(event);
+        event = eventRepository.save(event);
+        if (event.getType() == EventType.PHOTO_EXHIBITION) {
+            var c = req.getPhotoExhibitionConfig();
+            if (c.getSubmissionStart() == null || c.getSubmissionEnd() == null
+                    || c.getReviewEnd() == null || c.getVotingEnd() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "전시회 모든 단계 시각은 필수입니다.");
+            }
+            if (!c.getSubmissionStart().isBefore(c.getSubmissionEnd()) || !c.getSubmissionEnd().isBefore(c.getReviewEnd()) || !c.getReviewEnd().isBefore(c.getVotingEnd())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "전시회 단계 시간이 올바르지 않습니다.");
+            }
+            c.setEvent(event);
+            event.setStartAt(c.getSubmissionStart());
+            event.setEndAt(c.getVotingEnd());
+            exhibitionConfigRepository.save(c);
+        }
+        return event;
+    }
+
+    @Transactional(readOnly = true)
+    public EventResponse response(Event event) {
+        if (event.getType() != EventType.PHOTO_EXHIBITION) return EventResponse.from(event);
+        PhotoExhibitionConfig config = exhibitionConfigRepository.findByEventId(event.getId()).orElseThrow();
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
+        return EventResponse.from(event, config,
+                PhotoExhibitionPhaseResolver.resolve(config, event.getStatus(), now), now);
     }
 
     @Transactional

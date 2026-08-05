@@ -5,16 +5,52 @@ import {
   PhotoBingoActivity,
   PhotoBingoSubmissionDto,
   Event,
+  PhotoExhibitionSubmission,
+  PhotoExhibitionAdminSubmission, PhotoExhibitionPreview, PhotoExhibitionVoterAudit,
 } from "./types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+export const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
-function authHeaders(json = true): HeadersInit {
+export function authHeaders(json = true): HeadersInit {
   const token = getToken();
   const h: Record<string, string> = {};
   if (json) h["Content-Type"] = "application/json";
   if (token) h["Authorization"] = `Bearer ${token}`;
   return h;
+}
+export async function adminPhotoExhibitionSubmissions(eventId:number):Promise<PhotoExhibitionAdminSubmission[]>{const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/submissions`,{headers:authHeaders()});return handle(r);}
+export async function adminPhotoExhibitionPreview(eventId:number):Promise<PhotoExhibitionPreview>{const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/preview`,{headers:authHeaders()});return handle(r);}
+export async function adminExcludePhotoExhibition(eventId:number,submissionId:number,reason:string):Promise<PhotoExhibitionAdminSubmission>{const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/submissions/${submissionId}/exclude`,{method:"PATCH",headers:authHeaders(),body:JSON.stringify({reason})});return handle(r);}
+export async function adminFinalizePhotoExhibition(eventId:number):Promise<void>{const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/finalize`,{method:"POST",headers:authHeaders()});return handle(r);}
+export async function adminPhotoExhibitionVoterAudit(eventId:number):Promise<PhotoExhibitionVoterAudit[]>{const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/audit-voters`,{headers:authHeaders()});return handle(r);}
+
+export async function getMyPhotoExhibitionSubmission(eventId: number): Promise<PhotoExhibitionSubmission> {
+  const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/my-submission`, { cache: "no-store", headers: authHeaders() });
+  return handle(res);
+}
+export async function savePhotoExhibitionSubmission(eventId: number, title: string, introduction: string): Promise<PhotoExhibitionSubmission> {
+  const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/my-submission`, { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ title, introduction }) });
+  return handle(res);
+}
+export async function uploadPhotoExhibitionImage(eventId: number, file: File): Promise<PhotoExhibitionSubmission> {
+  const data = new FormData(); data.append("image", file); const token = getToken();
+  const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/images`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: data });
+  return handle(res);
+}
+export async function deletePhotoExhibitionImage(eventId: number, imageId: number): Promise<PhotoExhibitionSubmission> {
+  const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/images/${imageId}`, { method: "DELETE", headers: authHeaders() }); return handle(res);
+}
+export async function orderPhotoExhibitionImages(eventId: number, imageIds: number[]): Promise<PhotoExhibitionSubmission> {
+  const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/images/order`, { method: "PUT", headers: authHeaders(), body: JSON.stringify({ imageIds }) }); return handle(res);
+}
+export async function getPhotoExhibitionGallery(eventId: number): Promise<PhotoExhibitionSubmission[]> {
+  const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/gallery`, { cache: "no-store", headers: authHeaders() }); return handle(res);
+}
+export async function savePhotoExhibitionVotes(eventId: number, submissionIds: number[]): Promise<number[]> {
+  const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/votes`, { method: "PUT", headers: authHeaders(), body: JSON.stringify({ submissionIds }) }); return handle(res);
+}
+export async function getMyPhotoExhibitionVotes(eventId: number): Promise<number[]> {
+  const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/my-votes`, { cache: "no-store", headers: authHeaders() }); return handle(res);
 }
 
 async function handle<T>(res: Response): Promise<T> {

@@ -4,6 +4,7 @@ import com.vgc.entity.*;
 import com.vgc.repository.DropTransactionRepository;
 import com.vgc.repository.UserRepository;
 import com.vgc.service.DropService;
+import com.vgc.util.BirthMonthDay;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
@@ -84,6 +85,18 @@ public class UserController {
         if (body.containsKey("addressMain")) user.setAddressMain((String) body.get("addressMain"));
         if (body.containsKey("addressDetail")) user.setAddressDetail((String) body.get("addressDetail"));
         if (body.containsKey("phone")) user.setPhone((String) body.get("phone"));
+
+        if (body.containsKey("birthMonth") || body.containsKey("birthDay")) {
+            Integer month = body.containsKey("birthMonth")
+                    ? toInteger(body.get("birthMonth"))
+                    : user.getBirthMonth();
+            Integer day = body.containsKey("birthDay")
+                    ? toInteger(body.get("birthDay"))
+                    : user.getBirthDay();
+            BirthMonthDay.requireValid(month, day);
+            user.setBirthMonth(month);
+            user.setBirthDay(day);
+        }
 
         if (body.containsKey("plantType") && body.get("plantType") != null) {
             if (user.getPlantType() != null && user.isPlantLocked()) {
@@ -224,9 +237,17 @@ public class UserController {
         map.put("partyId", user.getParty() != null ? user.getParty().getId() : null);
         map.put("partyName", user.getParty() != null ? user.getParty().getName() : null);
         map.put("totalDrops", user.getTotalDrops());
-        map.put("birthDate", user.getBirthDate() != null ? user.getBirthDate().toString() : null);
+        map.put("birthMonth", user.getBirthMonth());
+        map.put("birthDay", user.getBirthDay());
         map.put("createdAt", user.getCreatedAt().toString());
         return map;
+    }
+
+    private Integer toInteger(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number n) return n.intValue();
+        if (value instanceof String s && !s.isBlank()) return Integer.parseInt(s);
+        return null;
     }
 
     /** 본인용 — 배송 정보(주소·전화) 포함. */

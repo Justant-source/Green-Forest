@@ -20,9 +20,11 @@ import com.vgc.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.DayOfWeek;
@@ -137,16 +139,16 @@ public class PostService {
         // 카테고리 검증 (긍정문구, 동료칭찬, 퀘스트만 허용; survey는 SurveyController 전용)
         String category = request.getCategory();
         if ("survey".equals(category)) {
-            throw new RuntimeException("설문 카테고리는 관리자 전용 API로만 작성할 수 있습니다.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "설문 카테고리는 관리자 전용 API로만 작성할 수 있습니다.");
         }
         if (!List.of("긍정문구", "동료칭찬", "퀘스트").contains(category)) {
-            throw new RuntimeException("유효하지 않은 카테고리입니다. (긍정문구/동료칭찬/퀘스트)");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 카테고리입니다. (긍정문구/동료칭찬/퀘스트)");
         }
 
         // 동료칭찬 주 1회 제한
         if ("동료칭찬".equals(category) && dropService.hasPraisedThisWeek(author.getId())) {
             LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-            throw new RuntimeException(String.format(
+            throw new ResponseStatusException(HttpStatus.CONFLICT, String.format(
                 "동료 칭찬은 주 1회만 작성할 수 있습니다. 다음 작성은 %d월 %d일(월요일)부터 가능합니다.",
                 nextMonday.getMonthValue(), nextMonday.getDayOfMonth()));
         }
@@ -258,6 +260,10 @@ public class PostService {
         if (!post.getAuthor().getId().equals(user.getId()) && !"ADMIN".equals(user.getRole())) {
             throw new RuntimeException("본인이 작성한 글만 수정할 수 있습니다.");
         }
+        if (post.getPhotoExhibitionSubmissionId() != null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "사진 전시회 작품은 이벤트 페이지에서 수정해야 합니다.");
+        }
 
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
@@ -366,6 +372,10 @@ public class PostService {
 
         if (!post.getAuthor().getId().equals(user.getId()) && !"ADMIN".equals(user.getRole())) {
             throw new RuntimeException("본인이 작성한 글만 삭제할 수 있습니다.");
+        }
+        if (post.getPhotoExhibitionSubmissionId() != null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "사진 전시회 작품은 이벤트 페이지에서 관리해야 합니다.");
         }
 
         activityLogService.logPostDelete(user.getId(), user.getNickname(), id);

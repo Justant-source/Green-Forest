@@ -137,6 +137,20 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
             </div>
           );
         }
+        if (post.photoExhibitionSubmissionId && post.imageUrls && post.imageUrls.length > 0) {
+          const images = post.imageUrls;
+          return (
+            <div className="relative aspect-[4/5] bg-forest-50">
+              {images.length === 4 ? (
+                <div className="grid h-full grid-cols-2 grid-rows-2 gap-0.5">
+                  {images.map((url) => <img key={url} src={toMediaUrl(url, "sm")} alt="사진 전시회 작품" className="h-full w-full object-cover" />)}
+                </div>
+              ) : <img src={toMediaUrl(images[0], "sm")} alt="사진 전시회 작품" className="h-full w-full object-cover" />}
+              <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">사진 전시회</span>
+              <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">♥ {post.likeCount}</span>
+            </div>
+          );
+        }
         if (post.imageUrl) {
           const srcSet = mediaSrcSet(post.imageUrl);
           return (

@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { PlazaWinner } from "@/types";
 import { getPlazaWinners, getActiveAnnouncements, AnnouncementItem } from "@/lib/api";
 
@@ -52,14 +53,14 @@ export default function GachaRecentWinsTicker() {
 
   const renderContent = () => {
     if (item.kind === "announcement") {
-      const isBirthday = item.data.type === "BIRTHDAY";
+      const isBirthday = item.data.type === "BIRTHDAY"; const isEvent = item.data.type === "EVENT";
       return (
         <button
           onClick={() => setPopup(item.data)}
           className="flex items-baseline gap-2 min-w-0 text-left hover:opacity-80 transition-opacity"
         >
           <span className="truncate text-gray-700">
-            <span className="mr-1">{isBirthday ? "🎉" : "📢"}</span>
+            <span className="mr-1">{isBirthday ? "🎉" : isEvent ? "📸" : "📢"}</span>
             <strong>{item.data.title}</strong>
           </span>
           <span className={`shrink-0 text-xs underline ${isBirthday ? "text-pink-400" : "text-blue-400"}`}>자세히</span>
@@ -127,6 +128,7 @@ export default function GachaRecentWinsTicker() {
               <button onClick={() => setPopup(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none ml-2">✕</button>
             </div>
             <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{popup.content}</p>
+            {popup.relatedUrl && <Link href={popup.relatedUrl.startsWith("/") ? popup.relatedUrl : "/"} className="mt-4 inline-block rounded bg-forest-600 px-3 py-2 text-sm text-white" onClick={() => setPopup(null)}>{popup.relatedLabel || "이벤트 보기"}</Link>}
             <p className="text-xs text-gray-400 mt-4">
               {new Date(popup.createdAt).toLocaleDateString("ko-KR")}
             </p>

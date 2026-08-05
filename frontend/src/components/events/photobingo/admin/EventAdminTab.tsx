@@ -6,8 +6,9 @@ import type { Event } from "@/lib/events/types";
 import EventCreateForm from "./EventCreateForm";
 import EventList from "./EventList";
 import BingoScoringPanel from "./BingoScoringPanel";
+import PhotoExhibitionAdminPanel from "@/components/events/photoexhibition/admin/PhotoExhibitionAdminPanel";
 
-type Mode = { kind: "list"; creating: boolean } | { kind: "scoring"; eventId: number };
+type Mode = { kind: "list"; creating: boolean } | { kind: "scoring"; eventId: number } | { kind: "exhibition"; event: Event };
 
 export default function EventAdminTab() {
   const [events, setEvents] = useState<Event[] | null>(null);
@@ -38,6 +39,7 @@ export default function EventAdminTab() {
       />
     );
   }
+  if (mode.kind === "exhibition") return <PhotoExhibitionAdminPanel event={mode.event} onBack={() => { setMode({ kind: "list", creating: false }); refresh(); }} />;
 
   return (
     <div className="space-y-3">
@@ -72,7 +74,7 @@ export default function EventAdminTab() {
         <EventList
           events={events}
           onRefresh={refresh}
-          onSelect={(eventId) => setMode({ kind: "scoring", eventId })}
+          onSelect={(event) => setMode(event.type === "PHOTO_EXHIBITION" ? { kind: "exhibition", event } : { kind: "scoring", eventId: event.id })}
         />
       )}
     </div>

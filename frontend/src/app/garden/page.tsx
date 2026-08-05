@@ -9,6 +9,8 @@ import { User, Post, DropTransaction, PageResponse, PlantGrowth, MyAttendanceWin
 import GridItem from "@/components/GridItem";
 import PlantGrowthBadge from "@/components/PlantGrowthBadge";
 import PlantLevelGuide from "@/components/PlantLevelGuide";
+import BirthMonthDaySelect from "@/components/BirthMonthDaySelect";
+import { formatBirthMonthDay, isValidBirthMonthDay } from "@/lib/birthMonthDay";
 
 type RewardItem = {
   key: string;
@@ -60,6 +62,12 @@ export default function GardenPage() {
   const [newPwConfirm, setNewPwConfirm] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
 
+  // 생일 변경
+  const [showBirthEdit, setShowBirthEdit] = useState(false);
+  const [editBirthMonth, setEditBirthMonth] = useState<number | "">("");
+  const [editBirthDay, setEditBirthDay] = useState<number | "">("");
+  const [birthSaving, setBirthSaving] = useState(false);
+
   useEffect(() => {
     if (!authLoaded) return;
     if (!isLoggedIn) {
@@ -75,6 +83,8 @@ export default function GardenPage() {
         setGrowth(g);
         setEditPlantName(u.plantName || "");
         setEditPlantType(u.plantType || "");
+        setEditBirthMonth(u.birthMonth ?? "");
+        setEditBirthDay(u.birthDay ?? "");
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -189,7 +199,21 @@ export default function GardenPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setShowPwChange((v) => !v)}
+              onClick={() => {
+                setShowBirthEdit((v) => !v);
+                setShowPwChange(false);
+                setEditBirthMonth(user.birthMonth ?? "");
+                setEditBirthDay(user.birthDay ?? "");
+              }}
+              className="text-sm text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              생일 설정
+            </button>
+            <button
+              onClick={() => {
+                setShowPwChange((v) => !v);
+                setShowBirthEdit(false);
+              }}
               className="text-sm text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             >
               비밀번호 변경
@@ -205,6 +229,62 @@ export default function GardenPage() {
             </button>
           </div>
         </div>
+
+        {/* 생일 설정 */}
+        {showBirthEdit && (
+          <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">생일 설정</h3>
+            {user.birthMonth && user.birthDay && (
+              <p className="text-xs text-gray-500">
+                현재: {formatBirthMonthDay(user.birthMonth, user.birthDay)}
+              </p>
+            )}
+            <BirthMonthDaySelect
+              month={editBirthMonth}
+              day={editBirthDay}
+              onChange={({ month, day }) => {
+                setEditBirthMonth(month);
+                setEditBirthDay(day);
+              }}
+              required
+              idPrefix="garden-birth"
+            />
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={async () => {
+                  if (!isValidBirthMonthDay(editBirthMonth, editBirthDay)) {
+                    alert("생일을 선택해주세요.");
+                    return;
+                  }
+                  setBirthSaving(true);
+                  try {
+                    const updated = await updateMyProfile({
+                      birthMonth: editBirthMonth as number,
+                      birthDay: editBirthDay as number,
+                    });
+                    setUser(updated);
+                    setShowBirthEdit(false);
+                    alert("생일이 저장되었습니다.");
+                  } catch {
+                    alert("생일 저장에 실패했습니다.");
+                  } finally {
+                    setBirthSaving(false);
+                  }
+                }}
+                disabled={birthSaving}
+                className="px-4 py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600 disabled:opacity-50 transition-colors"
+              >
+                {birthSaving ? "저장 중..." : "저장"}
+              </button>
+              <button
+                onClick={() => setShowBirthEdit(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 비밀번호 변경 */}
         {showPwChange && (

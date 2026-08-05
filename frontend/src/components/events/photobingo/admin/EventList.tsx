@@ -8,7 +8,7 @@ import BingoRewardsSummary from "./BingoRewardsSummary";
 interface Props {
   events: Event[];
   onRefresh: () => void;
-  onSelect: (eventId: number) => void;
+  onSelect: (event: Event) => void;
 }
 
 const NEXT_STATUS: Record<EventStatus, EventStatus | null> = {
@@ -72,6 +72,7 @@ export default function EventList({ events, onRefresh, onSelect }: Props) {
     <div className="space-y-2">
       {events.map((e) => {
         const next = NEXT_STATUS[e.status];
+        const exhibition = e.type === "PHOTO_EXHIBITION";
         return (
           <div key={e.id} className="bg-white border border-gray-200 rounded-xl p-3">
             <div className="flex items-start justify-between gap-2">
@@ -104,15 +105,15 @@ export default function EventList({ events, onRefresh, onSelect }: Props) {
                   연장
                 </button>
               )}
-              {e.status === "ENDED" && (
+              {e.status === "ENDED" && !exhibition && (
                 <button
-                  onClick={() => onSelect(e.id)}
+                  onClick={() => onSelect(e)}
                   className="px-2.5 py-1 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-xs"
                 >
                   채점
                 </button>
               )}
-              {e.status === "ENDED" && (
+              {e.status === "ENDED" && !exhibition && (
                 <button
                   onClick={() => handleFinalize(e.id)}
                   className="px-2.5 py-1 rounded-full bg-purple-500 hover:bg-purple-600 text-white text-xs"
@@ -120,7 +121,7 @@ export default function EventList({ events, onRefresh, onSelect }: Props) {
                   최종 집계 & 지급
                 </button>
               )}
-              {e.status === "SCORED" && (
+              {e.status === "SCORED" && !exhibition && (
                 <button
                   onClick={() => setSummaryEvent(e)}
                   className="px-2.5 py-1 rounded-full bg-purple-500 hover:bg-purple-600 text-white text-xs"
@@ -128,12 +129,12 @@ export default function EventList({ events, onRefresh, onSelect }: Props) {
                   지급 결과
                 </button>
               )}
-              {e.status === "ACTIVE" && (
+              {(e.status === "ACTIVE" || (exhibition && (e.status === "ENDED" || e.status === "SCORED"))) && (
                 <button
-                  onClick={() => onSelect(e.id)}
+                  onClick={() => onSelect(e)}
                   className="px-2.5 py-1 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs"
                 >
-                  현황 보기
+                  {exhibition ? "전시회 운영" : "현황 보기"}
                 </button>
               )}
             </div>

@@ -9,10 +9,11 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface AnnouncementRepository extends JpaRepository<Announcement, Long> {
-    Optional<Announcement> findTopByActiveTrueOrderByCreatedAtDesc();
-    List<Announcement> findAllByActiveTrueOrderByCreatedAtDesc();
+    @Query("select a from Announcement a where a.active = true and (a.expiresAt is null or a.expiresAt > :now) order by a.createdAt desc")
+    List<Announcement> findActiveVisible(@Param("now") LocalDateTime now);
     List<Announcement> findAllByOrderByCreatedAtDesc();
 
     @Modifying

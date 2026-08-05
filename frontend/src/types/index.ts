@@ -77,6 +77,8 @@ export interface Post {
   isAuthor?: boolean;
   dropsAwarded?: number;
   taggedNicknames?: string[];
+  photoExhibitionSubmissionId?: number | null;
+  photoExhibitionEventId?: number | null;
 }
 
 export interface Comment {
@@ -120,6 +122,8 @@ export interface User {
   partyName: string | null;
   totalDrops: number;
   createdAt: string;
+  birthMonth?: number | null;
+  birthDay?: number | null;
   zipcode?: string | null;
   addressMain?: string | null;
   addressDetail?: string | null;
@@ -247,14 +251,16 @@ export interface AdminUser {
   partyId: number | null;
   partyName: string | null;
   totalDrops: number;
-  birthDate?: string | null;
+  birthMonth?: number | null;
+  birthDay?: number | null;
 }
 
 export interface UpcomingBirthday {
   userId: number;
   name: string;
   nickname: string;
-  birthDate: string;
+  birthMonth: number;
+  birthDay: number;
   daysUntil: number;
 }
 

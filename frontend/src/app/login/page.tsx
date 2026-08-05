@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showPasswordHelp, setShowPasswordHelp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,9 +49,10 @@ export default function LoginPage() {
           <input
             type="text"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value.slice(0, 20))}
             placeholder="아이디를 입력하세요"
             autoComplete="username"
+            maxLength={20}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500"
             required
           />
@@ -68,6 +70,15 @@ export default function LoginPage() {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500"
             required
           />
+          <div className="mt-1.5 text-right">
+            <button
+              type="button"
+              onClick={() => setShowPasswordHelp(true)}
+              className="text-xs text-forest-500 hover:underline"
+            >
+              비밀번호 찾기
+            </button>
+          </div>
         </div>
 
         <button
@@ -85,6 +96,30 @@ export default function LoginPage() {
           회원가입
         </Link>
       </p>
+
+      {showPasswordHelp && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setShowPasswordHelp(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-xl shadow-lg p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-gray-800">비밀번호 찾기</h2>
+            <p className="text-sm text-gray-600">
+              비밀번호 재설정은 관리자에게 문의해 주세요.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowPasswordHelp(false)}
+              className="w-full py-2 bg-forest-500 text-white rounded-lg text-sm font-medium hover:bg-forest-600"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

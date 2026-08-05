@@ -17,9 +17,11 @@ public class EventModeService {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final EventRepository eventRepository;
+    private final EventService eventService;
 
-    public EventModeService(EventRepository eventRepository) {
+    public EventModeService(EventRepository eventRepository, EventService eventService) {
         this.eventRepository = eventRepository;
+        this.eventService = eventService;
     }
 
     public EventModeResponse getCurrentMode() {
@@ -27,7 +29,7 @@ public class EventModeService {
         Optional<Event> active = eventRepository
                 .findFirstByStatusOrderByEndAtAsc(EventStatus.ACTIVE);
         return active
-                .map(e -> EventModeResponse.active(EventResponse.from(e), now))
+                .map(e -> EventModeResponse.active(eventService.response(e), now))
                 .orElse(EventModeResponse.none(now));
     }
 }

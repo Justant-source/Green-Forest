@@ -191,6 +191,12 @@ public class SurveyService {
 
     /** 투표. allowMultiSelect 에 따라 동작 다름. 같은 옵션 다시 누르면 토글 해제. */
     @Transactional
+    public void vote(Long surveyId, Long optionId, User user) {
+        vote(surveyId, optionId, user, null);
+    }
+
+    /** 투표. allowMultiSelect 에 따라 동작 다름. 같은 옵션 다시 누르면 토글 해제. */
+    @Transactional
     public void vote(Long surveyId, Long optionId, User user, String recipientName) {
         Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));

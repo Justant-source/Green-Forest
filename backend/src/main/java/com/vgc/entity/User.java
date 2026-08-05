@@ -2,7 +2,6 @@ package com.vgc.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -64,8 +63,11 @@ public class User {
     @Column(name = "earned_drops", nullable = false)
     private int earnedDrops = 0;
 
-    @Column(name = "birth_date")
-    private LocalDate birthDate;
+    @Column(name = "birth_month")
+    private Integer birthMonth;
+
+    @Column(name = "birth_day")
+    private Integer birthDay;
 
     @Column(name = "zipcode", length = 10)
     private String zipcode;
@@ -129,8 +131,10 @@ public class User {
     public void setEarnedDrops(int earnedDrops) { this.earnedDrops = earnedDrops; }
     public boolean isPlantLocked() { return plantLocked; }
     public void setPlantLocked(boolean plantLocked) { this.plantLocked = plantLocked; }
-    public LocalDate getBirthDate() { return birthDate; }
-    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+    public Integer getBirthMonth() { return birthMonth; }
+    public void setBirthMonth(Integer birthMonth) { this.birthMonth = birthMonth; }
+    public Integer getBirthDay() { return birthDay; }
+    public void setBirthDay(Integer birthDay) { this.birthDay = birthDay; }
     public String getZipcode() { return zipcode; }
     public void setZipcode(String zipcode) { this.zipcode = zipcode; }
     public String getAddressMain() { return addressMain; }

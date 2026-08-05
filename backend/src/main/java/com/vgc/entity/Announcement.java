@@ -24,6 +24,15 @@ public class Announcement {
     @Column(nullable = false)
     private boolean active = false;
 
+    @Column(name = "related_event_url", length = 300)
+    private String relatedEventUrl;
+
+    @Column(name = "related_label", length = 80)
+    private String relatedLabel;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -40,4 +49,10 @@ public class Announcement {
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public String getRelatedEventUrl() { return relatedEventUrl; }
+    public void setRelatedEventUrl(String relatedEventUrl) { this.relatedEventUrl = relatedEventUrl; }
+    public String getRelatedLabel() { return relatedLabel; }
+    public void setRelatedLabel(String relatedLabel) { this.relatedLabel = relatedLabel; }
+    public LocalDateTime getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
 }

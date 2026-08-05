@@ -1,5 +1,5 @@
 package com.vgc.entity;
 
 public enum AnnouncementType {
-    MANUAL, BIRTHDAY
+    MANUAL, BIRTHDAY, EVENT
 }

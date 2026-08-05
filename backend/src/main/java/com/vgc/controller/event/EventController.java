@@ -43,12 +43,12 @@ public class EventController {
                     .toList();
         }
         return eventService.listByStatuses(statuses).stream()
-                .map(EventResponse::from)
+                .map(eventService::response)
                 .toList();
     }
 
     @GetMapping("/{id}")
     public EventResponse get(@PathVariable Long id) {
-        return EventResponse.from(eventService.get(id));
+        return eventService.response(eventService.get(id));
     }
 }

@@ -36,9 +36,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByNameContainingIgnoreCase(String keyword);
 
-    @Query("SELECT u FROM User u WHERE u.birthDate IS NOT NULL AND FUNCTION('MONTH', u.birthDate) = :month AND FUNCTION('DAY', u.birthDate) = :day")
+    @Query("SELECT u FROM User u WHERE u.birthMonth = :month AND u.birthDay = :day")
     List<User> findByBirthMonthAndDay(@Param("month") int month, @Param("day") int day);
 
-    @Query("SELECT u FROM User u WHERE u.birthDate IS NOT NULL")
-    List<User> findAllWithBirthDate();
+    @Query("SELECT u FROM User u WHERE u.birthMonth IS NOT NULL AND u.birthDay IS NOT NULL")
+    List<User> findAllWithBirthday();
 }

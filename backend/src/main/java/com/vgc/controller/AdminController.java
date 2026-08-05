@@ -21,6 +21,8 @@ import com.vgc.service.GachaService;
 import com.vgc.service.ImageStorageService;
 import com.vgc.service.PostService;
 import com.vgc.service.CommentService;
+import com.vgc.service.SystemSettingService;
+import com.vgc.util.BirthMonthDay;
 import com.vgc.repository.CommentRepository;
 import com.vgc.repository.PostLikeRepository;
 import com.vgc.entity.Comment;
@@ -80,6 +82,7 @@ public class AdminController {
     private final CommentService commentService;
     private final CommentRepository commentRepository;
     private final PostLikeRepository postLikeRepository;
+    private final SystemSettingService systemSettingService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -105,7 +108,8 @@ public class AdminController {
                            com.vgc.service.SurveyDeliveryService surveyDeliveryService,
                            CommentService commentService,
                            CommentRepository commentRepository,
-                           PostLikeRepository postLikeRepository) {
+                           PostLikeRepository postLikeRepository,
+                           SystemSettingService systemSettingService) {
         this.categoryService = categoryService;
         this.userRepository = userRepository;
         this.dropService = dropService;
@@ -130,6 +134,7 @@ public class AdminController {
         this.commentService = commentService;
         this.commentRepository = commentRepository;
         this.postLikeRepository = postLikeRepository;
+        this.systemSettingService = systemSettingService;
     }
 
     private User getAdminUser(Authentication authentication) {
@@ -311,7 +316,8 @@ public class AdminController {
             map.put("partyId", u.getParty() != null ? u.getParty().getId() : null);
             map.put("partyName", u.getParty() != null ? u.getParty().getName() : null);
             map.put("totalDrops", u.getTotalDrops());
-            map.put("birthDate", u.getBirthDate() != null ? u.getBirthDate().toString() : null);
+            map.put("birthMonth", u.getBirthMonth());
+            map.put("birthDay", u.getBirthDay());
             result.add(map);
         }
         return result;
@@ -373,12 +379,16 @@ public class AdminController {
         if (body.containsKey("email")) {
             String email = (String) body.get("email");
             if (email != null && !email.isBlank() && !email.equals(user.getEmail())) {
-                userRepository.findByEmail(email).ifPresent(exist -> {
+                String loginId = email.trim();
+                if (loginId.length() > 20) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "아이디는 20자 이하여야 합니다.");
+                }
+                userRepository.findByEmail(loginId).ifPresent(exist -> {
                     if (!exist.getId().equals(user.getId())) {
-                        throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 메일 주소입니다.");
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다.");
                     }
                 });
-                user.setEmail(email);
+                user.setEmail(loginId);
             }
         }
 
@@ -389,9 +399,22 @@ public class AdminController {
             }
         }
 
-        if (body.containsKey("birthDate")) {
-            String bd = (String) body.get("birthDate");
-            user.setBirthDate((bd != null && !bd.isBlank()) ? LocalDate.parse(bd) : null);
+        if (body.containsKey("birthMonth") || body.containsKey("birthDay")) {
+            Object monthObj = body.get("birthMonth");
+            Object dayObj = body.get("birthDay");
+            if ((monthObj == null || (monthObj instanceof String s && s.isBlank()))
+                    && (dayObj == null || (dayObj instanceof String s2 && s2.isBlank()))) {
+                user.setBirthMonth(null);
+                user.setBirthDay(null);
+            } else {
+                Integer month = monthObj instanceof Number n ? n.intValue()
+                        : monthObj != null ? Integer.parseInt(monthObj.toString()) : user.getBirthMonth();
+                Integer day = dayObj instanceof Number n ? n.intValue()
+                        : dayObj != null ? Integer.parseInt(dayObj.toString()) : user.getBirthDay();
+                BirthMonthDay.requireValid(month, day);
+                user.setBirthMonth(month);
+                user.setBirthDay(day);
+            }
         }
 
         userRepository.save(user);
@@ -588,30 +611,34 @@ public class AdminController {
     // ========== 공지사항 ==========
 
     @GetMapping("/announcements")
-    public ResponseEntity<List<com.vgc.entity.Announcement>> listAnnouncements(Authentication authentication) {
+    public ResponseEntity<List<com.vgc.dto.AnnouncementResponse>> listAnnouncements(Authentication authentication) {
         getAdminUser(authentication);
-        return ResponseEntity.ok(announcementRepository.findAllByOrderByCreatedAtDesc());
+        return ResponseEntity.ok(announcementRepository.findAllByOrderByCreatedAtDesc().stream().map(com.vgc.dto.AnnouncementResponse::from).toList());
     }
 
     @PostMapping("/announcements")
-    public ResponseEntity<com.vgc.entity.Announcement> createAnnouncement(
-            @RequestBody Map<String, String> body,
+    public ResponseEntity<com.vgc.dto.AnnouncementResponse> createAnnouncement(
+            @RequestBody com.vgc.dto.AdminAnnouncementRequest body,
             Authentication authentication) {
         getAdminUser(authentication);
         com.vgc.entity.Announcement ann = new com.vgc.entity.Announcement();
-        ann.setTitle(body.get("title"));
-        ann.setContent(body.get("content"));
+        if (body.getTitle() == null || body.getTitle().isBlank() || body.getContent() == null || body.getContent().isBlank()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "제목과 내용은 필수입니다.");
+        ann.setTitle(body.getTitle().trim());
+        ann.setContent(body.getContent().trim());
         ann.setActive(false);
-        String typeStr = body.get("type");
-        ann.setType(typeStr != null && typeStr.equals("BIRTHDAY")
-            ? com.vgc.entity.AnnouncementType.BIRTHDAY
-            : com.vgc.entity.AnnouncementType.MANUAL);
-        return ResponseEntity.ok(announcementRepository.save(ann));
+        String typeStr = body.getType();
+        try { ann.setType(typeStr == null ? com.vgc.entity.AnnouncementType.MANUAL : com.vgc.entity.AnnouncementType.valueOf(typeStr)); } catch (IllegalArgumentException ex) { throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "유효하지 않은 공지 유형입니다."); }
+        if (ann.getType() == com.vgc.entity.AnnouncementType.EVENT) {
+            if (body.getRelatedUrl() == null || !body.getRelatedUrl().matches("^/events/[1-9][0-9]*$")) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "이벤트 링크는 /events/{id} 형식이어야 합니다.");
+            ann.setRelatedEventUrl(body.getRelatedUrl()); ann.setRelatedLabel(body.getRelatedLabel() == null || body.getRelatedLabel().isBlank() ? "이벤트 보기" : body.getRelatedLabel().trim());
+        }
+        if (body.getExpiresAt() != null && !body.getExpiresAt().isBlank()) try { java.time.LocalDateTime expires = java.time.LocalDateTime.parse(body.getExpiresAt()); if (!expires.isAfter(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul")))) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "만료 시각은 미래여야 합니다."); ann.setExpiresAt(expires); } catch (java.time.format.DateTimeParseException ex) { throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "만료 시각 형식이 올바르지 않습니다."); }
+        return ResponseEntity.ok(com.vgc.dto.AnnouncementResponse.from(announcementRepository.save(ann)));
     }
 
     @PatchMapping("/announcements/{id}/activate")
     @org.springframework.transaction.annotation.Transactional
-    public ResponseEntity<com.vgc.entity.Announcement> activateAnnouncement(
+    public ResponseEntity<com.vgc.dto.AnnouncementResponse> activateAnnouncement(
             @PathVariable Long id, Authentication authentication) {
         getAdminUser(authentication);
         com.vgc.entity.Announcement ann = announcementRepository.findById(id)
@@ -619,7 +646,7 @@ public class AdminController {
         // 같은 type의 기존 활성 공지만 비활성화 (다른 type 공지는 유지)
         announcementRepository.deactivateAllByType(ann.getType());
         ann.setActive(true);
-        return ResponseEntity.ok(announcementRepository.save(ann));
+        return ResponseEntity.ok(com.vgc.dto.AnnouncementResponse.from(announcementRepository.save(ann)));
     }
 
     @DeleteMapping("/announcements/deactivate-all")
@@ -1033,39 +1060,42 @@ public class AdminController {
         return Map.of("liked", liked, "likeCount", post.getLikeCount());
     }
 
+    // ========== 가입 설정 ==========
+
+    @GetMapping("/settings/registration-open")
+    public Map<String, Boolean> getRegistrationOpen(Authentication authentication) {
+        getAdminUser(authentication);
+        return Map.of("open", systemSettingService.isRegistrationOpen());
+    }
+
+    @PutMapping("/settings/registration-open")
+    public Map<String, Boolean> setRegistrationOpen(@RequestBody Map<String, Object> body,
+                                                     Authentication authentication) {
+        getAdminUser(authentication);
+        Object openVal = body.get("open");
+        boolean open = openVal instanceof Boolean b ? b : Boolean.parseBoolean(String.valueOf(openVal));
+        return Map.of("open", systemSettingService.setRegistrationOpen(open));
+    }
+
     // ========== 생일 관리 ==========
 
     @GetMapping("/birthdays/upcoming")
     public ResponseEntity<List<Map<String, Object>>> getUpcomingBirthdays(Authentication authentication) {
         User admin = getAdminUser(authentication);
         LocalDate today = LocalDate.now();
-        List<User> usersWithBirthday = userRepository.findAllWithBirthDate();
+        List<User> usersWithBirthday = userRepository.findAllWithBirthday();
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (User u : usersWithBirthday) {
-            LocalDate bd = u.getBirthDate();
-            // 이번 해 생일 계산 (2월 29일 → 비윤년이면 2월 28일)
-            LocalDate thisYearBirthday;
-            try {
-                thisYearBirthday = LocalDate.of(today.getYear(), bd.getMonthValue(), bd.getDayOfMonth());
-            } catch (java.time.DateTimeException e) {
-                thisYearBirthday = LocalDate.of(today.getYear(), bd.getMonthValue(), bd.getMonthValue() == 2 ? 28 : bd.getDayOfMonth());
-            }
+            Integer month = u.getBirthMonth();
+            Integer day = u.getBirthDay();
+            if (month == null || day == null) continue;
 
-            // 이미 지났으면 내년 생일로
-            if (thisYearBirthday.isBefore(today)) {
-                try {
-                    thisYearBirthday = LocalDate.of(today.getYear() + 1, bd.getMonthValue(), bd.getDayOfMonth());
-                } catch (java.time.DateTimeException e) {
-                    thisYearBirthday = LocalDate.of(today.getYear() + 1, bd.getMonthValue(), bd.getMonthValue() == 2 ? 28 : bd.getDayOfMonth());
-                }
-            }
-
+            LocalDate thisYearBirthday = BirthMonthDay.nextOccurrence(month, day, today);
             long daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, thisYearBirthday);
             if (daysUntil < 0 || daysUntil > 7) continue;
 
             int birthYear = thisYearBirthday.getYear();
-            // 이미 확인(acknowledge)한 경우 제외
             if (birthdayAcknowledgementRepository.existsByAdminUserIdAndTargetUserIdAndBirthYear(
                     admin.getId(), u.getId(), birthYear)) continue;
 
@@ -1073,7 +1103,8 @@ public class AdminController {
             entry.put("userId", u.getId());
             entry.put("name", u.getName());
             entry.put("nickname", u.getNickname());
-            entry.put("birthDate", bd.toString());
+            entry.put("birthMonth", month);
+            entry.put("birthDay", day);
             entry.put("daysUntil", daysUntil);
             result.add(entry);
         }
@@ -1089,23 +1120,12 @@ public class AdminController {
         User target = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다."));
 
-        LocalDate bd = target.getBirthDate();
-        if (bd == null) return ResponseEntity.badRequest().build();
+        Integer month = target.getBirthMonth();
+        Integer day = target.getBirthDay();
+        if (month == null || day == null) return ResponseEntity.badRequest().build();
 
         LocalDate today = LocalDate.now();
-        LocalDate thisYearBirthday;
-        try {
-            thisYearBirthday = LocalDate.of(today.getYear(), bd.getMonthValue(), bd.getDayOfMonth());
-        } catch (java.time.DateTimeException e) {
-            thisYearBirthday = LocalDate.of(today.getYear(), bd.getMonthValue(), 28);
-        }
-        if (thisYearBirthday.isBefore(today)) {
-            try {
-                thisYearBirthday = LocalDate.of(today.getYear() + 1, bd.getMonthValue(), bd.getDayOfMonth());
-            } catch (java.time.DateTimeException e) {
-                thisYearBirthday = LocalDate.of(today.getYear() + 1, bd.getMonthValue(), 28);
-            }
-        }
+        LocalDate thisYearBirthday = BirthMonthDay.nextOccurrence(month, day, today);
         int birthYear = thisYearBirthday.getYear();
 
         if (!birthdayAcknowledgementRepository.existsByAdminUserIdAndTargetUserIdAndBirthYear(

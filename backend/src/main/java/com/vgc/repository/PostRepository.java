@@ -24,6 +24,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findByAuthorIdOrderByCreatedAtDesc(Long authorId, Pageable pageable);
 
     Optional<Post> findByPhotoBingoSubmissionId(Long photoBingoSubmissionId);
+    Optional<Post> findByPhotoExhibitionSubmissionId(Long photoExhibitionSubmissionId);
 
     boolean existsByAuthorIdAndCategoryNotAndCreatedAtBetween(
             Long authorId, String category, LocalDateTime start, LocalDateTime end);

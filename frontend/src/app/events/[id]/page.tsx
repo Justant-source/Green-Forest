@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import BingoGrid from "@/components/events/photobingo/BingoGrid";
+import PhotoExhibitionPanel from "@/components/events/photoexhibition/PhotoExhibitionPanel";
 import { getEvent } from "@/lib/events/api";
 import type { Event } from "@/lib/events/types";
 import { useAuth } from "@/context/AuthContext";
@@ -64,6 +65,7 @@ export default function EventDetailPage() {
           rewards={event.config.rewards}
         />
       )}
+      {event.type === "PHOTO_EXHIBITION" && <PhotoExhibitionPanel eventId={event.id} status={event.status} phase={event.phase} config={event.photoExhibitionConfig} serverNow={event.serverNow} />}
     </div>
   );
 }

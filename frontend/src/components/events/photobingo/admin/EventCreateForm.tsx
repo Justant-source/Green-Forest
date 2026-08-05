@@ -28,6 +28,7 @@ interface Props {
 }
 
 export default function EventCreateForm({ onCreated, onCancel }: Props) {
+  const [type, setType] = useState<"PHOTO_BINGO" | "PHOTO_EXHIBITION">("PHOTO_BINGO");
   const [title, setTitle] = useState("매헌 포토 빙고");
   const [description, setDescription] = useState("매헌시민의숲에서 9가지 테마 사진을 찍어 빙고를 완성하세요!");
   const [startAt, setStartAt] = useState("");
@@ -39,6 +40,8 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const changeType = (next: "PHOTO_BINGO" | "PHOTO_EXHIBITION") => { setType(next); if (next === "PHOTO_EXHIBITION") { setTitle("Summer Time 사진전"); setDescription("여름의 순간을 사진으로 나누고 마음에 드는 작품에 투표해 주세요."); } };
+
   const setTheme = (i: number, v: string) => {
     setThemes((prev) => prev.map((t, idx) => (idx === i ? v : t)));
   };
@@ -46,6 +49,10 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
   const submit = async () => {
     setError(null);
     if (!title.trim()) return setError("제목을 입력하세요.");
+    if (type === "PHOTO_EXHIBITION") {
+      const payload: CreateEventRequest = { type, title: title.trim(), description: description.trim() || undefined, startAt: "2026-08-10T06:00:00", endAt: "2026-08-20T06:00:00", config: null, photoExhibitionConfig: { submissionStart: "2026-08-10T06:00:00", submissionEnd: "2026-08-15T06:00:00", reviewEnd: "2026-08-17T06:00:00", votingEnd: "2026-08-20T06:00:00" } };
+      setSaving(true); try { await adminCreateEvent(payload); onCreated(); } catch (e: any) { setError(e?.message ?? "생성 실패"); } finally { setSaving(false); } return;
+    }
     if (!startAt || !endAt) return setError("시작/종료 시각을 입력하세요.");
     if (themes.some((t) => !t.trim())) return setError("테마 9개를 모두 입력하세요.");
 
@@ -86,6 +93,8 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
         </div>
       )}
       <div className="grid gap-3">
+        <label className="text-xs text-gray-600">유형<select value={type} onChange={(e) => changeType(e.target.value as typeof type)} className="ml-2 border rounded px-2 py-1"><option value="PHOTO_BINGO">사진 빙고</option><option value="PHOTO_EXHIBITION">Summer Time 사진 전시회</option></select></label>
+        {type === "PHOTO_EXHIBITION" && <div className="rounded bg-forest-50 p-3 text-sm text-gray-700">제출 8/10 06:00–8/15 06:00 · 검토 8/15–8/17 · 투표 8/17–8/20 (KST)<br/>참가 100 · 투표 10/20/30 · 1등 500 · 2등 300</div>}
         <div>
           <label className="text-xs text-gray-600">제목</label>
           <input
@@ -103,7 +112,7 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
           />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        {type === "PHOTO_BINGO" && <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="text-xs text-gray-600">시작 시각 (KST)</label>
             <input
@@ -122,9 +131,9 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
             />
           </div>
-        </div>
+        </div>}
 
-        <div>
+        {type === "PHOTO_BINGO" && <div>
           <div className="text-xs text-gray-600 mb-1">테마 9개</div>
           <div className="grid grid-cols-3 gap-2">
             {themes.map((t, i) => (
@@ -137,9 +146,9 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
               />
             ))}
           </div>
-        </div>
+        </div>}
 
-        <div>
+        {type === "PHOTO_BINGO" && <div>
           <div className="text-xs text-gray-600 mb-1">보상 (💧 물방울)</div>
           <div className="grid grid-cols-3 gap-2">
             <label className="text-xs">
@@ -170,7 +179,7 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
               />
             </label>
           </div>
-        </div>
+        </div>}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
