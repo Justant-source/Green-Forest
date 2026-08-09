@@ -17,6 +17,7 @@ import com.vgc.repository.PostRepository;
 import com.vgc.repository.PostTagRepository;
 import com.vgc.repository.QuestCompletionRepository;
 import com.vgc.repository.UserRepository;
+import com.vgc.util.AppTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -145,9 +146,9 @@ public class PostService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 카테고리입니다. (긍정문구/동료칭찬/퀘스트)");
         }
 
-        // 동료칭찬 주 1회 제한
+        // 동료칭찬 주 1회 제한 (KST ISO 주차)
         if ("동료칭찬".equals(category) && dropService.hasPraisedThisWeek(author.getId())) {
-            LocalDate nextMonday = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+            LocalDate nextMonday = AppTime.todayKst().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
             throw new ResponseStatusException(HttpStatus.CONFLICT, String.format(
                 "동료 칭찬은 주 1회만 작성할 수 있습니다. 다음 작성은 %d월 %d일(월요일)부터 가능합니다.",
                 nextMonday.getMonthValue(), nextMonday.getDayOfMonth()));

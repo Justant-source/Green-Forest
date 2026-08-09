@@ -5,6 +5,7 @@ import com.vgc.entity.AnnouncementType;
 import com.vgc.entity.User;
 import com.vgc.repository.AnnouncementRepository;
 import com.vgc.repository.UserRepository;
+import com.vgc.util.AppTime;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,7 @@ public class BirthdayAnnouncementScheduler {
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")
     @Transactional
     public void postBirthdayAnnouncements() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.todayKst();
 
         // 기존 BIRTHDAY 공지 비활성화
         announcementRepository.deactivateAllByType(AnnouncementType.BIRTHDAY);

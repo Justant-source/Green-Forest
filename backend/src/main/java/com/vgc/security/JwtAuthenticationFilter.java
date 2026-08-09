@@ -10,10 +10,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.vgc.repository.UserRepository;
+import com.vgc.util.AppTime;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Date;
 
@@ -40,11 +41,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String email = jwtUtil.extractEmail(token);
                 userRepository.findByEmail(email).ifPresent(user -> {
                     Date issuedAt = jwtUtil.extractIssuedAt(token);
-                    LocalDateTime tokenIssuedAt = issuedAt.toInstant()
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDateTime();
+                    Instant tokenIssuedAt = issuedAt.toInstant();
                     LocalDateTime passwordChangedAt = user.getPasswordChangedAt();
-                    if (passwordChangedAt == null || tokenIssuedAt.isAfter(passwordChangedAt)) {
+                    // password_changed_at 은 JDBC serverTimezone=Asia/Seoul 경로로 KST 벽시계 DATETIME에 저장됨
+                    Instant passwordChangedInstant = passwordChangedAt == null
+                            ? null
+                            : passwordChangedAt.atZone(AppTime.KST).toInstant();
+                    if (passwordChangedInstant == null || tokenIssuedAt.isAfter(passwordChangedInstant)) {
                         UsernamePasswordAuthenticationToken auth =
                                 new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
                         SecurityContextHolder.getContext().setAuthentication(auth);

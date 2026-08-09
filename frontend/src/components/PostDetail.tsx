@@ -12,6 +12,7 @@ import PostContent from "./PostContent";
 import BingoBoardView from "./events/photobingo/BingoBoardView";
 import SurveyView from "./SurveyView";
 import { parsePhotoBingoMarker } from "@/lib/events/postMarker";
+import { deleteMyPhotoExhibitionSubmission } from "@/lib/events/api";
 
 interface PostDetailProps {
   postId: number;
@@ -192,21 +193,30 @@ export default function PostDetail({ postId }: PostDetailProps) {
                   종료
                 </button>
               )}
-              {!post.photoExhibitionSubmissionId && <button
+              <button
                 onClick={async () => {
-                  if (!confirm("정말 삭제하시겠습니까?")) return;
+                  if (!confirm(post.photoExhibitionSubmissionId
+                    ? "출품작을 삭제할까요? 광장 게시글과 사진이 함께 삭제됩니다."
+                    : "정말 삭제하시겠습니까?")) return;
                   try {
-                    await deletePost(post.id);
+                    if (post.photoExhibitionSubmissionId && post.photoExhibitionEventId) {
+                      await deleteMyPhotoExhibitionSubmission(
+                        post.photoExhibitionEventId,
+                        post.photoExhibitionSubmissionId,
+                      );
+                    } else {
+                      await deletePost(post.id);
+                    }
                     sessionStorage.removeItem("gridFeedCache");
                     router.push("/");
-                  } catch {
-                    alert("삭제에 실패했습니다.");
+                  } catch (e: unknown) {
+                    alert(e instanceof Error ? e.message : "삭제에 실패했습니다.");
                   }
                 }}
                 className="px-4 py-1.5 border border-red-300 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
               >
                 삭제
-              </button>}
+              </button>
             </div>
           )}
         </div>

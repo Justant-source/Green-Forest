@@ -32,6 +32,11 @@ export async function savePhotoExhibitionSubmission(eventId: number, title: stri
   const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/my-submission`, { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ title, introduction }) });
   return handle(res);
 }
+export async function deleteMyPhotoExhibitionSubmission(eventId: number, submissionId?: number): Promise<void> {
+  const qs = submissionId ? `?submissionId=${submissionId}` : "";
+  const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/my-submission${qs}`, { method: "DELETE", headers: authHeaders() });
+  if (!res.ok) return handle(res);
+}
 export async function uploadPhotoExhibitionImage(eventId: number, file: File): Promise<PhotoExhibitionSubmission> {
   const data = new FormData(); data.append("image", file); const token = getToken();
   const res = await fetch(`${BASE_URL}/events/${eventId}/photo-exhibition/images`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: data });

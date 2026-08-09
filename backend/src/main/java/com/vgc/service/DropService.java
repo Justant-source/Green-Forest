@@ -5,10 +5,11 @@ import com.vgc.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vgc.util.AppTime;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.temporal.IsoFields;
 import java.util.List;
 
@@ -81,7 +82,7 @@ public class DropService {
      * 긍정 문구 — 1일 1회, 10 물방울
      */
     private int awardDailyQuest(User author, Post post, BigDecimal multiplier) {
-        String periodKey = LocalDate.now().toString(); // YYYY-MM-DD
+        String periodKey = AppTime.todayKst().toString(); // YYYY-MM-DD (KST)
 
         if (questCompletionLogRepository.existsByUserIdAndQuestTypeAndCategoryAndPeriodKey(
                 author.getId(), "일일", "긍정문구", periodKey)) {
@@ -114,7 +115,7 @@ public class DropService {
      * 동료 칭찬 — 주 1회, 30 물방울
      */
     private int awardWeeklyQuest(User author, Post post, BigDecimal multiplier) {
-        LocalDate now = LocalDate.now();
+        LocalDate now = AppTime.todayKst();
         int weekNumber = now.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         int weekYear = now.get(IsoFields.WEEK_BASED_YEAR);
         String periodKey = String.format("%d-W%02d", weekYear, weekNumber);
@@ -156,7 +157,7 @@ public class DropService {
             return 0;
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.todayKst();
         if (today.isBefore(quest.getStartDate()) || today.isAfter(quest.getEndDate())) {
             return 0;
         }
@@ -188,7 +189,7 @@ public class DropService {
      * 동료 칭찬 주 1회 여부 확인 (PostService에서 사전 검증용)
      */
     public boolean hasPraisedThisWeek(Long userId) {
-        LocalDate now = LocalDate.now();
+        LocalDate now = AppTime.todayKst();
         String periodKey = String.format("%d-W%02d",
                 now.get(IsoFields.WEEK_BASED_YEAR),
                 now.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));

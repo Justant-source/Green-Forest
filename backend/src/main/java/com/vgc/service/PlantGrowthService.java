@@ -2,12 +2,12 @@ package com.vgc.service;
 
 import com.vgc.entity.*;
 import com.vgc.repository.*;
+import com.vgc.util.AppTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -157,8 +157,9 @@ public class PlantGrowthService {
         map.put("lastGrownAt", growth != null && growth.getLastGrownAt() != null
                 ? growth.getLastGrownAt().toString() : null);
 
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime startOfNextDay = startOfDay.plusDays(1);
+        LocalDateTime[] todayRange = AppTime.todayKstDayRange();
+        LocalDateTime startOfDay = todayRange[0];
+        LocalDateTime startOfNextDay = todayRange[1];
         Map<String, Object> todayCaps = new LinkedHashMap<>();
         for (Map.Entry<GrowthScoreReason, Integer> e : DAILY_CAP.entrySet()) {
             int used = scoreLogRepository.sumDailyByReason(userId, e.getKey(), startOfDay, startOfNextDay);
@@ -195,11 +196,11 @@ public class PlantGrowthService {
 
         if (dailyCapReason != null && DAILY_CAP.containsKey(dailyCapReason)) {
             int cap = DAILY_CAP.get(dailyCapReason);
-            LocalDate today = LocalDate.now();
+            LocalDateTime[] todayRange = AppTime.todayKstDayRange();
             int alreadyToday = scoreLogRepository.sumDailyByReason(
                 userId, dailyCapReason,
-                today.atStartOfDay(),
-                today.plusDays(1).atStartOfDay()
+                todayRange[0],
+                todayRange[1]
             );
             if (alreadyToday >= cap) return;
             if (alreadyToday + delta > cap) delta = cap - alreadyToday;

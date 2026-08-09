@@ -8,6 +8,7 @@ import com.vgc.repository.AttendanceCheckinRepository;
 import com.vgc.repository.GachaDrawRepository;
 import com.vgc.repository.UserRepository;
 import com.vgc.service.AttendanceService;
+import com.vgc.util.AppTime;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -55,7 +56,7 @@ public class AttendanceController {
             Authentication authentication,
             @RequestParam(defaultValue = "") String month) {
         User user = getUser(authentication);
-        YearMonth ym = month.isBlank() ? YearMonth.now() : YearMonth.parse(month);
+        YearMonth ym = month.isBlank() ? AppTime.currentMonthKst() : YearMonth.parse(month);
         return ResponseEntity.ok(attendanceService.getMyMonth(user, ym));
     }
 

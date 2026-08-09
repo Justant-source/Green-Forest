@@ -23,6 +23,7 @@ import com.vgc.service.PostService;
 import com.vgc.service.CommentService;
 import com.vgc.service.SystemSettingService;
 import com.vgc.util.BirthMonthDay;
+import com.vgc.util.AppTime;
 import com.vgc.repository.CommentRepository;
 import com.vgc.repository.PostLikeRepository;
 import com.vgc.entity.Comment;
@@ -439,6 +440,14 @@ public class AdminController {
         }
 
         // 2) 다른 유저 게시글에서 이 유저의 상호작용/개인 데이터 정리
+        // comments: parent_id 자기참조 FK → 자식 댓글 연결 해제 후 본인 댓글 삭제
+        entityManager.createNativeQuery("""
+                UPDATE comments c
+                INNER JOIN comments p ON c.parent_id = p.id
+                SET c.parent_id = NULL
+                WHERE p.author_id = :uid
+                """).setParameter("uid", id).executeUpdate();
+
         String[] deletes = {
             "DELETE FROM comments WHERE author_id = :uid",
             "DELETE FROM post_likes WHERE user_id = :uid",
@@ -457,14 +466,31 @@ public class AdminController {
             "DELETE FROM messages WHERE sender_id = :uid",
             "DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = :uid OR user2_id = :uid)",
             "DELETE FROM conversations WHERE user1_id = :uid OR user2_id = :uid",
-            "DELETE FROM birthday_acknowledgement WHERE admin_user_id = :uid OR target_user_id = :uid"
+            "DELETE FROM birthday_acknowledgement WHERE admin_user_id = :uid OR target_user_id = :uid",
+            "DELETE FROM growth_score_log WHERE user_id = :uid",
+            "DELETE FROM survey_deliveries WHERE user_id = :uid",
+            "DELETE FROM survey_votes WHERE user_id = :uid",
+            "UPDATE survey_options SET added_by_user_id = NULL WHERE added_by_user_id = :uid",
+            "DELETE FROM event_participations WHERE user_id = :uid",
+            "UPDATE photo_bingo_cells SET scored_by = NULL WHERE scored_by = :uid",
+            "DELETE FROM photo_bingo_cells WHERE submission_id IN (SELECT id FROM photo_bingo_submissions WHERE user_id = :uid)",
+            "DELETE FROM photo_bingo_submissions WHERE user_id = :uid",
+            "DELETE FROM photo_exhibition_votes WHERE voter_id = :uid",
+            "DELETE FROM photo_exhibition_votes WHERE submission_id IN (SELECT id FROM photo_exhibition_submissions WHERE user_id = :uid)",
+            "DELETE FROM photo_exhibition_images WHERE submission_id IN (SELECT id FROM photo_exhibition_submissions WHERE user_id = :uid)",
+            "DELETE FROM photo_exhibition_reward_grants WHERE user_id = :uid",
+            "DELETE FROM photo_exhibition_submissions WHERE user_id = :uid"
         };
         for (String sql : deletes) {
             entityManager.createNativeQuery(sql).setParameter("uid", id).executeUpdate();
         }
 
-        // 3) 이 유저가 만든 퀘스트는 관리자로 재할당
+        // 3) 이 유저가 만든 퀘스트/이벤트는 관리자로 재할당
         entityManager.createNativeQuery("UPDATE quests SET created_by = :aid WHERE created_by = :uid")
+                .setParameter("aid", admin.getId())
+                .setParameter("uid", id)
+                .executeUpdate();
+        entityManager.createNativeQuery("UPDATE events SET created_by = :aid WHERE created_by = :uid")
                 .setParameter("aid", admin.getId())
                 .setParameter("uid", id)
                 .executeUpdate();
@@ -578,10 +604,11 @@ public class AdminController {
         // 전체 유저 수
         stats.put("totalUsers", userRepository.count());
 
-        // 이번 달 통계
-        YearMonth currentMonth = YearMonth.now();
-        LocalDateTime monthStart = currentMonth.atDay(1).atStartOfDay();
-        LocalDateTime monthEnd = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
+        // 이번 달 통계 (KST)
+        YearMonth currentMonth = AppTime.currentMonthKst();
+        LocalDateTime[] monthRange = AppTime.kstMonthRange(currentMonth);
+        LocalDateTime monthStart = monthRange[0];
+        LocalDateTime monthEnd = monthRange[1];
 
         // 이번 달 글 작성 수
         stats.put("monthlyPosts", postRepository.count()); // 전체 글 수 (간단 버전)
@@ -1082,7 +1109,7 @@ public class AdminController {
     @GetMapping("/birthdays/upcoming")
     public ResponseEntity<List<Map<String, Object>>> getUpcomingBirthdays(Authentication authentication) {
         User admin = getAdminUser(authentication);
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.todayKst();
         List<User> usersWithBirthday = userRepository.findAllWithBirthday();
         List<Map<String, Object>> result = new ArrayList<>();
 
@@ -1124,7 +1151,7 @@ public class AdminController {
         Integer day = target.getBirthDay();
         if (month == null || day == null) return ResponseEntity.badRequest().build();
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.todayKst();
         LocalDate thisYearBirthday = BirthMonthDay.nextOccurrence(month, day, today);
         int birthYear = thisYearBirthday.getYear();
 

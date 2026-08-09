@@ -4,12 +4,11 @@ import com.vgc.dto.WeeklyReportDto;
 import com.vgc.entity.User;
 import com.vgc.repository.UserRepository;
 import com.vgc.service.WeeklyReportService;
+import com.vgc.util.AppTime;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/weekly-reports")
@@ -54,7 +53,7 @@ public class WeeklyReportController {
                     .body("관리자 권한이 필요합니다.");
         }
 
-        weeklyReportService.generateWeeklyReports(LocalDate.now());
+        weeklyReportService.generateWeeklyReports(AppTime.todayKst());
         return ResponseEntity.ok("주간 리포트 생성 완료");
     }
 }

@@ -161,6 +161,48 @@ public class PhotoExhibitionService {
     }
 
     @Transactional
+    public void deleteMySubmission(Long eventId, User user) {
+        deleteSubmission(eventId, user, null);
+    }
+
+    @Transactional
+    public void deleteSubmission(Long eventId, User actor, Long submissionId) {
+        Event e = event(eventId);
+        requireActive(e);
+        if (!submissionOpen(config(eventId))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "제출 기간에만 삭제할 수 있습니다.");
+        }
+        boolean admin = "ADMIN".equals(actor.getRole());
+        PhotoExhibitionSubmission s;
+        if (submissionId != null) {
+            s = submissions.findById(submissionId).orElseThrow(() ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND, "출품작이 없습니다."));
+            if (!s.getEvent().getId().equals(eventId)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이벤트 불일치");
+            }
+            if (!admin && !s.getUser().getId().equals(actor.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 출품작만 삭제할 수 있습니다.");
+            }
+        } else {
+            s = submissions.findByEventIdAndUserId(eventId, actor.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "출품작이 없습니다."));
+        }
+        if (s.getPlazaPostId() != null) {
+            posts.findById(s.getPlazaPostId()).ifPresent(this::deleteGeneratedPost);
+            s.setPlazaPostId(null);
+        }
+        votes.deleteBySubmissionId(s.getId());
+        for (PhotoExhibitionImage image : List.copyOf(s.getImages())) {
+            try {
+                storage.delete(image.getImageUrl());
+            } catch (Exception ignored) {
+            }
+        }
+        s.getImages().clear();
+        submissions.delete(s);
+    }
+
+    @Transactional
     public PhotoExhibitionSubmission upload(Long id, User u, MultipartFile f) {
         if (!submissionOpen(config(id))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "제출 기간이 아닙니다.");

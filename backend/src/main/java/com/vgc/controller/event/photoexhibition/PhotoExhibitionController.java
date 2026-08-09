@@ -32,6 +32,13 @@ public class PhotoExhibitionController {
     private User user(Authentication auth) { if (auth == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."); return users.findByEmail(auth.getName()).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다.")); }
     @GetMapping("/my-submission") public PhotoExhibitionSubmissionResponse mine(@PathVariable Long eventId, Authentication auth) { return PhotoExhibitionSubmissionResponse.from(service.mine(eventId, user(auth)), true, false); }
     @PatchMapping("/my-submission") public PhotoExhibitionSubmissionResponse update(@PathVariable Long eventId, @RequestBody Map<String, String> body, Authentication auth) { return PhotoExhibitionSubmissionResponse.from(service.update(eventId, user(auth), body.get("title"), body.get("introduction")), true, false); }
+    @DeleteMapping("/my-submission")
+    public void deleteMine(
+            @PathVariable Long eventId,
+            @RequestParam(required = false) Long submissionId,
+            Authentication auth) {
+        service.deleteSubmission(eventId, user(auth), submissionId);
+    }
     @PostMapping(value = "/images", consumes = "multipart/form-data") public PhotoExhibitionSubmissionResponse upload(@PathVariable Long eventId, @RequestParam MultipartFile image, Authentication auth) { return PhotoExhibitionSubmissionResponse.from(service.upload(eventId, user(auth), image), true, false); }
     @DeleteMapping("/images/{imageId}") public PhotoExhibitionSubmissionResponse deleteImage(@PathVariable Long eventId, @PathVariable Long imageId, Authentication auth) { return PhotoExhibitionSubmissionResponse.from(service.deleteImage(eventId, user(auth), imageId), true, false); }
     @PutMapping("/images/order") public PhotoExhibitionSubmissionResponse orderImages(@PathVariable Long eventId, @RequestBody Map<String, List<Long>> body, Authentication auth) { return PhotoExhibitionSubmissionResponse.from(service.reorderImages(eventId, user(auth), body.get("imageIds")), true, false); }

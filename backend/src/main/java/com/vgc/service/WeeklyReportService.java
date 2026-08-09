@@ -32,8 +32,8 @@ public class WeeklyReportService {
 
     @Transactional
     public void generateWeeklyReports(LocalDate anchorDate) {
-        // anchorDate 기준 이전 주(월~일) 계산
-        LocalDate weekStart = getWeekStart(anchorDate);
+        // anchorDate(KST) 기준 직전 주(월~일)
+        LocalDate weekStart = getWeekStart(anchorDate).minus(7, ChronoUnit.DAYS);
         LocalDate weekEnd = weekStart.plus(6, ChronoUnit.DAYS);
 
         // 해당 주차가 이미 생성됐는지 확인

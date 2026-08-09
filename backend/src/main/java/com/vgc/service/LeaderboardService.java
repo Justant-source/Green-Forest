@@ -3,9 +3,9 @@ package com.vgc.service;
 import com.vgc.entity.User;
 import com.vgc.repository.DropTransactionRepository;
 import com.vgc.repository.UserRepository;
+import com.vgc.util.AppTime;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.*;
@@ -58,9 +58,10 @@ public class LeaderboardService {
      * 이번 달 파티별 랭킹 — drop_transactions 이번 달 합산 (양수만)
      */
     private List<Map<String, Object>> getMonthlyPartyRankings() {
-        YearMonth currentMonth = YearMonth.now();
-        LocalDateTime startDate = currentMonth.atDay(1).atStartOfDay();
-        LocalDateTime endDate = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
+        YearMonth currentMonth = AppTime.currentMonthKst();
+        LocalDateTime[] monthRange = AppTime.kstMonthRange(currentMonth);
+        LocalDateTime startDate = monthRange[0];
+        LocalDateTime endDate = monthRange[1];
 
         // 이번 달 유저별 합산 (양수 거래만)
         List<Object[]> userSums = dropTransactionRepository.sumPositiveAmountGroupByUserForPeriod(startDate, endDate);
@@ -110,9 +111,10 @@ public class LeaderboardService {
 
         Map<Long, Long> monthlyDrops = null;
         if ("monthly".equals(period)) {
-            YearMonth currentMonth = YearMonth.now();
-            LocalDateTime startDate = currentMonth.atDay(1).atStartOfDay();
-            LocalDateTime endDate = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
+            YearMonth currentMonth = AppTime.currentMonthKst();
+            LocalDateTime[] monthRange = AppTime.kstMonthRange(currentMonth);
+            LocalDateTime startDate = monthRange[0];
+            LocalDateTime endDate = monthRange[1];
 
             List<Object[]> sums = dropTransactionRepository.sumAmountGroupByUserForPeriod(startDate, endDate);
             monthlyDrops = new HashMap<>();

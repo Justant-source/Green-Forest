@@ -11,4 +11,5 @@ public interface PhotoExhibitionVoteRepository extends JpaRepository<PhotoExhibi
     List<PhotoExhibitionVote> findByEventId(Long eventId);
     long countByEventIdAndSubmissionId(Long eventId, Long submissionId);
     @Modifying void deleteByEventIdAndVoterId(Long eventId, Long voterId);
+    @Modifying void deleteBySubmissionId(Long submissionId);
 }

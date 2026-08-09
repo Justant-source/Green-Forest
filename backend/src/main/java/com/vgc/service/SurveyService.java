@@ -7,6 +7,7 @@ import com.vgc.dto.SurveyOptionInput;
 import com.vgc.entity.*;
 import com.vgc.exception.ProfileIncompleteException;
 import com.vgc.repository.*;
+import com.vgc.util.AppTime;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,7 +80,7 @@ public class SurveyService {
             throw new IllegalArgumentException("옵션은 최소 2개 필요합니다.");
         if (inputs.size() > MAX_ADMIN_OPTIONS)
             throw new IllegalArgumentException("옵션은 최대 " + MAX_ADMIN_OPTIONS + "개까지 가능합니다.");
-        if (req.getClosesAt() == null || req.getClosesAt().isBefore(LocalDateTime.now()))
+        if (req.getClosesAt() == null || req.getClosesAt().isBefore(AppTime.nowKst()))
             throw new IllegalArgumentException("종료일은 현재 시각 이후여야 합니다.");
 
         Survey survey = new Survey();
@@ -165,7 +166,7 @@ public class SurveyService {
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
         if (!survey.isAllowOptionAddByUser())
             throw new IllegalArgumentException("이 설문은 참여자 옵션 추가가 허용되지 않습니다.");
-        if (LocalDateTime.now().isAfter(survey.getClosesAt()))
+        if (AppTime.nowKst().isAfter(survey.getClosesAt()))
             throw new IllegalArgumentException("종료된 설문입니다.");
         if (text == null || text.isBlank())
             throw new IllegalArgumentException("옵션 텍스트는 비울 수 없습니다.");
@@ -200,7 +201,7 @@ public class SurveyService {
     public void vote(Long surveyId, Long optionId, User user, String recipientName) {
         Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
-        if (LocalDateTime.now().isAfter(survey.getClosesAt()))
+        if (AppTime.nowKst().isAfter(survey.getClosesAt()))
             throw new IllegalArgumentException("종료된 설문입니다.");
 
         if (survey.isRequiresShipping()) {
@@ -285,7 +286,7 @@ public class SurveyService {
         result.put("allowOptionAddByUser", survey.isAllowOptionAddByUser());
         result.put("allowMultiSelect", survey.isAllowMultiSelect());
         result.put("notice", survey.isNotice());
-        result.put("closed", LocalDateTime.now().isAfter(survey.getClosesAt()));
+        result.put("closed", AppTime.nowKst().isAfter(survey.getClosesAt()));
         result.put("requiresShipping", survey.isRequiresShipping());
         result.put("totalVotes", totalVotes);
         result.put("options", options);
@@ -375,9 +376,9 @@ public class SurveyService {
             throw new IllegalArgumentException("관리자만 종료할 수 있습니다.");
         Survey survey = surveyRepository.findByPostId(postId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
-        if (LocalDateTime.now().isAfter(survey.getClosesAt()))
+        if (AppTime.nowKst().isAfter(survey.getClosesAt()))
             throw new IllegalArgumentException("이미 종료된 설문입니다.");
-        survey.setClosesAt(LocalDateTime.now().minusSeconds(1));
+        survey.setClosesAt(AppTime.nowKst().minusSeconds(1));
         surveyRepository.save(survey);
     }
 
@@ -436,7 +437,7 @@ public class SurveyService {
             survey.getPost().setTitle(title.trim());
             postRepository.save(survey.getPost());
         }
-        if (closesAt != null && closesAt.isAfter(LocalDateTime.now())) {
+        if (closesAt != null && closesAt.isAfter(AppTime.nowKst())) {
             survey.setClosesAt(closesAt);
         }
         if (requiresShipping != null) {
@@ -453,9 +454,9 @@ public class SurveyService {
             throw new IllegalArgumentException("관리자만 설문을 종료할 수 있습니다.");
         Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
-        if (LocalDateTime.now().isAfter(survey.getClosesAt()))
+        if (AppTime.nowKst().isAfter(survey.getClosesAt()))
             throw new IllegalArgumentException("이미 종료된 설문입니다.");
-        survey.setClosesAt(LocalDateTime.now().minusSeconds(1));
+        survey.setClosesAt(AppTime.nowKst().minusSeconds(1));
         surveyRepository.save(survey);
     }
 
@@ -495,7 +496,7 @@ public class SurveyService {
     /** 현재 활성 공지 배너 목록. */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getActiveNoticeBanners() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = AppTime.nowKst();
         return surveyRepository.findActiveNotices(now).stream().map(s -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("surveyId", s.getId());

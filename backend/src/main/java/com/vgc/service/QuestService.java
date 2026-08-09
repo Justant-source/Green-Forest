@@ -5,6 +5,7 @@ import com.vgc.repository.QuestCompletionRepository;
 import com.vgc.repository.QuestRepository;
 import com.vgc.repository.UserRepository;
 import com.vgc.repository.VoteRepository;
+import com.vgc.util.AppTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,15 +34,15 @@ public class QuestService {
     }
 
     public List<Quest> getActiveQuests() {
-        return questRepository.findActiveQuestsForDate(LocalDate.now());
+        return questRepository.findActiveQuestsForDate(AppTime.todayKst());
     }
 
     public List<Quest> getActiveQuestsForUser(User user) {
         Long partyId = user.getParty() != null ? user.getParty().getId() : null;
         if (partyId != null) {
-            return questRepository.findActiveQuestsForUserParty(LocalDate.now(), partyId);
+            return questRepository.findActiveQuestsForUserParty(AppTime.todayKst(), partyId);
         }
-        return questRepository.findActiveQuestsForDate(LocalDate.now());
+        return questRepository.findActiveQuestsForDate(AppTime.todayKst());
     }
 
     public Quest getQuest(Long id) {

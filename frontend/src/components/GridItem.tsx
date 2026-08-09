@@ -70,7 +70,7 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
       <span className={`absolute top-2 left-2 z-10 w-6 h-6 rounded-full ${badgeStyle.bg} text-white text-[10px] font-semibold flex items-center justify-center`}>
         {badgeStyle.label}
       </span>
-      {post.status && (
+      {post.status && post.category !== "이벤트" && !post.photoExhibitionSubmissionId && (
         <span className={`absolute top-2 left-10 z-10 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
           post.status === "COMPLETE" ? "bg-green-500 text-white" :
           post.status === "ING" ? "bg-yellow-400 text-gray-900" :
