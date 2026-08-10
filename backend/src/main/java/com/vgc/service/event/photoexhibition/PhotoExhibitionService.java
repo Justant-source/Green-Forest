@@ -126,7 +126,30 @@ public class PhotoExhibitionService {
 
     private boolean votingOpen(PhotoExhibitionConfig c) {
         var n = now();
-        return !n.isBefore(c.getReviewEnd()) && n.isBefore(c.getVotingEnd());
+        return c.getVotingStartedAt() != null
+                && !n.isBefore(c.getVotingStartedAt())
+                && n.isBefore(c.getVotingEnd());
+    }
+
+    @Transactional
+    public void startVoting(Long eventId) {
+        Event e = event(eventId);
+        requireActive(e);
+        PhotoExhibitionConfig c = config(eventId);
+        LocalDateTime n = now();
+        if (n.isBefore(c.getSubmissionEnd())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "출품 마감 후에만 투표를 시작할 수 있습니다.");
+        }
+        if (n.isBefore(c.getReviewEnd())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "투표는 " + c.getReviewEnd() + " 이후부터 시작할 수 있습니다.");
+        }
+        if (c.getVotingStartedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 투표가 시작되었습니다.");
+        }
+        if (!n.isBefore(c.getVotingEnd())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "투표 종료 시각이 지났습니다.");
+        }
+        c.setVotingStartedAt(n);
     }
 
     @Transactional
@@ -326,8 +349,9 @@ public class PhotoExhibitionService {
         if (reason == null || reason.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "제외 사유는 필수입니다.");
         }
-        if (!now().isBefore(config(id).getReviewEnd())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "투표 시작 후 제외할 수 없습니다.");
+        Event e = event(id);
+        if (e.getStatus() == EventStatus.SCORED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "확정된 이벤트는 제외할 수 없습니다.");
         }
         PhotoExhibitionSubmission s = submissions.findById(subId).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "작품을 찾을 수 없습니다."));
@@ -336,6 +360,8 @@ public class PhotoExhibitionService {
         }
         s.setExcluded(true);
         s.setExclusionReason(reason);
+        votes.deleteBySubmissionId(s.getId());
+        votes.flush();
         sync(s, false);
         notifications.createNotification(
                 s.getUser(), NotificationType.EVENT_REWARD, "전시회 출품 제외", reason, null, null);
@@ -353,10 +379,18 @@ public class PhotoExhibitionService {
         if (e.getStatus() == EventStatus.DRAFT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "공개 전 이벤트입니다.");
         }
+        PhotoExhibitionConfig c = config(id);
+        PhotoExhibitionPhase phase = PhotoExhibitionPhaseResolver.resolve(c, e.getStatus(), now());
+        if (phase == PhotoExhibitionPhase.SCHEDULED
+                || phase == PhotoExhibitionPhase.REVIEW
+                || phase == PhotoExhibitionPhase.TALLY_PENDING
+                || phase == PhotoExhibitionPhase.RESULT) {
+            return List.of();
+        }
         var list = submissions.findByEventIdOrderByCreatedAtAsc(id).stream()
                 .filter(s -> !s.isExcluded() && s.isValid())
                 .collect(Collectors.toList());
-        if (votingOpen(config(id)) && !result) {
+        if (phase == PhotoExhibitionPhase.VOTING && !result) {
             Collections.shuffle(list, new Random(31L * id + (viewerId == null ? 0 : viewerId)));
         }
         return list;
@@ -492,6 +526,7 @@ public class PhotoExhibitionService {
         if (!s.isValid()) {
             if (s.getPlazaPostId() != null) {
                 posts.findById(s.getPlazaPostId()).ifPresent(this::deleteGeneratedPost);
+                s.setPlazaPostId(null);
             }
             return;
         }

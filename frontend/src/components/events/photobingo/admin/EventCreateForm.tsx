@@ -40,7 +40,13 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const changeType = (next: "PHOTO_BINGO" | "PHOTO_EXHIBITION") => { setType(next); if (next === "PHOTO_EXHIBITION") { setTitle("Summer Time 사진전"); setDescription("여름의 순간을 사진으로 나누고 마음에 드는 작품에 투표해 주세요."); } };
+  const changeType = (next: "PHOTO_BINGO" | "PHOTO_EXHIBITION") => {
+    setType(next);
+    if (next === "PHOTO_EXHIBITION") {
+      setTitle("Summer Photo 이벤트");
+      setDescription("여름의 순간을 사진으로 나누고, 마음에 드는 작품에 투표해 주세요.");
+    }
+  };
 
   const setTheme = (i: number, v: string) => {
     setThemes((prev) => prev.map((t, idx) => (idx === i ? v : t)));
@@ -50,8 +56,31 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
     setError(null);
     if (!title.trim()) return setError("제목을 입력하세요.");
     if (type === "PHOTO_EXHIBITION") {
-      const payload: CreateEventRequest = { type, title: title.trim(), description: description.trim() || undefined, startAt: "2026-08-10T06:00:00", endAt: "2026-08-20T06:00:00", config: null, photoExhibitionConfig: { submissionStart: "2026-08-10T06:00:00", submissionEnd: "2026-08-15T06:00:00", reviewEnd: "2026-08-17T06:00:00", votingEnd: "2026-08-20T06:00:00" } };
-      setSaving(true); try { await adminCreateEvent(payload); onCreated(); } catch (e: any) { setError(e?.message ?? "생성 실패"); } finally { setSaving(false); } return;
+      // 출품 ~8/14(금) 종일 / 투표 가능 시점 8/17 00:00 / 투표 종료 8/20 종일
+      const payload: CreateEventRequest = {
+        type,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        startAt: "2026-08-10T06:00:00",
+        endAt: "2026-08-21T00:00:00",
+        config: null,
+        photoExhibitionConfig: {
+          submissionStart: "2026-08-10T06:00:00",
+          submissionEnd: "2026-08-15T00:00:00",
+          reviewEnd: "2026-08-17T00:00:00",
+          votingEnd: "2026-08-21T00:00:00",
+        },
+      };
+      setSaving(true);
+      try {
+        await adminCreateEvent(payload);
+        onCreated();
+      } catch (e: any) {
+        setError(e?.message ?? "생성 실패");
+      } finally {
+        setSaving(false);
+      }
+      return;
     }
     if (!startAt || !endAt) return setError("시작/종료 시각을 입력하세요.");
     if (themes.some((t) => !t.trim())) return setError("테마 9개를 모두 입력하세요.");
@@ -94,7 +123,13 @@ export default function EventCreateForm({ onCreated, onCancel }: Props) {
       )}
       <div className="grid gap-3">
         <label className="text-xs text-gray-600">유형<select value={type} onChange={(e) => changeType(e.target.value as typeof type)} className="ml-2 border rounded px-2 py-1"><option value="PHOTO_BINGO">사진 빙고</option><option value="PHOTO_EXHIBITION">Summer Time 사진 전시회</option></select></label>
-        {type === "PHOTO_EXHIBITION" && <div className="rounded bg-forest-50 p-3 text-sm text-gray-700">제출 8/10 06:00–8/15 06:00 · 검토 8/15–8/17 · 투표 8/17–8/20 (KST)<br/>참가 100 · 투표 10/20/30 · 1등 500 · 2등 300</div>}
+        {type === "PHOTO_EXHIBITION" && (
+          <div className="rounded bg-forest-50 p-3 text-sm text-gray-700">
+            출품 8/10 ~ 8/14(금) · 투표는 8/17 이후 관리자가 시작 · ~8/20
+            <br />
+            참가 100 · 투표 10/20/30 · 1등 500 · 2등 300 · 3등 CA 물개박수
+          </div>
+        )}
         <div>
           <label className="text-xs text-gray-600">제목</label>
           <input

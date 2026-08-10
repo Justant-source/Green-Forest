@@ -1302,7 +1302,7 @@ export default function AdminPage() {
             className="bg-white p-4 rounded-xl border space-y-3"
           >
             <h3 className="font-semibold text-sm">새 공지 작성</h3>
-            <div className="flex gap-2"><select value={annType} onChange={(e)=>setAnnType(e.target.value as "MANUAL"|"EVENT")} className="border rounded px-2 text-sm"><option value="MANUAL">일반 공지</option><option value="EVENT">이벤트 공지</option></select><button type="button" onClick={()=>{setAnnType("EVENT");setAnnTitle("Summer Time 사진전");setAnnContent("사진을 출품하고, 마음에 드는 작품에 투표해 주세요. 참가 100💧 · 투표 최대 30💧 · 1등 500💧");setAnnUrl("/events/{id}");setAnnLabel("사진전 보러가기");setAnnExpires("2026-08-20T06:00");}} className="text-xs border rounded px-2">Summer Time 초안</button></div>
+            <div className="flex gap-2"><select value={annType} onChange={(e)=>setAnnType(e.target.value as "MANUAL"|"EVENT")} className="border rounded px-2 text-sm"><option value="MANUAL">일반 공지</option><option value="EVENT">이벤트 공지</option></select><button type="button" onClick={()=>{setAnnType("EVENT");setAnnTitle("Summer Photo 이벤트");setAnnContent("사진을 출품하고, 마음에 드는 작품에 투표해 주세요. 참가 100💧 · 투표 최대 30💧 · 1등 500💧 · 2등 300💧 · 3등 CA 물개박수");setAnnUrl("/events/{id}");setAnnLabel("이벤트 보러가기");setAnnExpires("2026-08-21T00:00");}} className="text-xs border rounded px-2">Summer Photo 초안</button></div>
             <input
               type="text"
               value={annTitle}

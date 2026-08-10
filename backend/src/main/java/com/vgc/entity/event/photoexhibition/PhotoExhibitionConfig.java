@@ -37,6 +37,10 @@ public class PhotoExhibitionConfig {
     @Column(name = "voting_end", nullable = false)
     private LocalDateTime votingEnd;
 
+    /** Null until an admin explicitly opens voting (not before reviewEnd). */
+    @Column(name = "voting_started_at")
+    private LocalDateTime votingStartedAt;
+
     public Long getId() { return id; }
     public Event getEvent() { return event; }
     public void setEvent(Event event) { this.event = event; }
@@ -48,4 +52,6 @@ public class PhotoExhibitionConfig {
     public void setReviewEnd(LocalDateTime reviewEnd) { this.reviewEnd = reviewEnd; }
     public LocalDateTime getVotingEnd() { return votingEnd; }
     public void setVotingEnd(LocalDateTime votingEnd) { this.votingEnd = votingEnd; }
+    public LocalDateTime getVotingStartedAt() { return votingStartedAt; }
+    public void setVotingStartedAt(LocalDateTime votingStartedAt) { this.votingStartedAt = votingStartedAt; }
 }

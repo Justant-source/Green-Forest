@@ -8,6 +8,8 @@ import {
   adminPhotoExhibitionPreview,
   adminPhotoExhibitionSubmissions,
   adminPhotoExhibitionVoterAudit,
+  adminStartPhotoExhibitionVoting,
+  getEvent,
 } from "@/lib/events/api";
 import type {
   Event,
@@ -17,12 +19,13 @@ import type {
 } from "@/lib/events/types";
 
 export default function PhotoExhibitionAdminPanel({
-  event,
+  event: initial,
   onBack,
 }: {
   event: Event;
   onBack: () => void;
 }) {
+  const [event, setEvent] = useState(initial);
   const [submissions, setSubmissions] = useState<PhotoExhibitionAdminSubmission[]>([]);
   const [preview, setPreview] = useState<PhotoExhibitionPreview | null>(null);
   const [audit, setAudit] = useState<PhotoExhibitionVoterAudit[]>([]);
@@ -33,11 +36,13 @@ export default function PhotoExhibitionAdminPanel({
   const load = async () => {
     setLoading(true);
     try {
-      const [s, p, a] = await Promise.all([
-        adminPhotoExhibitionSubmissions(event.id),
-        adminPhotoExhibitionPreview(event.id),
-        adminPhotoExhibitionVoterAudit(event.id),
+      const [fresh, s, p, a] = await Promise.all([
+        getEvent(initial.id),
+        adminPhotoExhibitionSubmissions(initial.id),
+        adminPhotoExhibitionPreview(initial.id),
+        adminPhotoExhibitionVoterAudit(initial.id),
       ]);
+      setEvent(fresh);
       setSubmissions(s);
       setPreview(p);
       setAudit(a);
@@ -50,9 +55,10 @@ export default function PhotoExhibitionAdminPanel({
 
   useEffect(() => {
     load();
-  }, [event.id]);
+  }, [initial.id]);
 
-  const canExclude = ["SCHEDULED", "SUBMISSION", "REVIEW"].includes(event.phase || "");
+  const canExclude = ["SCHEDULED", "SUBMISSION", "REVIEW", "VOTING"].includes(event.phase || "");
+  const canStartVoting = event.phase === "REVIEW" && !event.photoExhibitionConfig?.votingStartedAt;
   const canFinalize = event.phase === "TALLY_PENDING" || event.status === "ENDED";
   const auditByVoter = audit.reduce<Record<string, string[]>>((all, row) => {
     (all[row.voterNickname] ||= []).push(row.workTitle);
@@ -60,7 +66,7 @@ export default function PhotoExhibitionAdminPanel({
   }, {});
 
   const exclude = async (id: number) => {
-    const reason = prompt("제외 사유를 입력하세요.");
+    const reason = prompt("제외 사유를 입력하세요. (해당 작품 표는 삭제됩니다)");
     if (!reason?.trim()) return;
     setBusy(true);
     try {
@@ -73,8 +79,27 @@ export default function PhotoExhibitionAdminPanel({
     }
   };
 
+  const startVoting = async () => {
+    if (!confirm("투표를 지금 공개할까요? 배너에 투표 안내가 노출됩니다.")) return;
+    setBusy(true);
+    try {
+      await adminStartPhotoExhibitionVoting(event.id);
+      await load();
+    } catch (e: any) {
+      setError(e.message || "투표 시작 실패");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const finalize = async () => {
-    if (!preview || !confirm(`예상 ${preview.grandTotal}💧 지급을 확정할까요?`)) return;
+    if (
+      !preview ||
+      !confirm(
+        `예상 ${preview.grandTotal}💧 지급을 확정할까요?\n(참가 100 · 투표 10/표 · 1등 500 · 2등 300 · 3등 CA 물개박수)\n수상 공지는 직접 올려 주세요.`,
+      )
+    )
+      return;
     setBusy(true);
     try {
       await adminFinalizePhotoExhibition(event.id);
@@ -88,37 +113,54 @@ export default function PhotoExhibitionAdminPanel({
 
   return (
     <section className="space-y-4">
-      <button onClick={onBack}>← 이벤트 목록</button>
+      <button type="button" onClick={onBack}>
+        ← 이벤트 목록
+      </button>
       <h2 className="font-bold">
         {event.title} · {event.phase || event.status}
       </h2>
+      <p className="text-xs text-gray-500">
+        보상: 참가 100💧 · 투표 10/20/30💧 · 1등 500💧 · 2등 300💧 · 3등 CA 물개박수 · 수상 공지는 수동
+      </p>
       {error && <p className="text-red-600">{error}</p>}
       {loading ? (
         <p>불러오는 중…</p>
       ) : (
         <>
+          {canStartVoting && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={startVoting}
+              className="rounded-lg bg-forest-600 px-4 py-2 text-white"
+            >
+              투표 시작 (공개)
+            </button>
+          )}
           <section className="rounded border p-3">
-            <h3>예상 수상</h3>
+            <h3 className="font-medium">예상 수상</h3>
             {preview?.candidates.map((c) => (
               <p key={c.submissionId}>
-                {c.authorNickname} · {c.title} · {c.voteCount}표 · {c.proposedTier || "미수상"} · {c.reward}💧
+                {c.authorNickname} · {c.title} · {c.voteCount}표 · {c.proposedTier || "미수상"} · {c.reward}
+                💧
               </p>
             ))}
-            <p>총 예상 {preview?.grandTotal}💧</p>
+            <p className="mt-1 text-sm">총 예상 {preview?.grandTotal}💧</p>
           </section>
           <section className="rounded border p-3">
-            <h3>투표 감사</h3>
+            <h3 className="font-medium">투표 감사</h3>
             {Object.entries(auditByVoter).map(([v, works]) => (
               <p key={v}>
                 {v}: {works.join(", ")}
               </p>
             ))}
           </section>
-          <section>
+          <section className="space-y-2">
             {submissions.map((s) => (
               <article key={s.id} className="rounded border p-3">
-                <b>{s.title}</b> · {s.authorNickname} · {s.voteCount}표
-                <div className="flex gap-2">
+                <b>{s.title || "(제목 없음)"}</b> · {s.authorNickname} · {s.voteCount}표
+                {s.excluded && <span className="ml-2 text-red-600">제외됨</span>}
+                <div className="mt-2 flex flex-wrap gap-2">
                   {s.images.map((i) => (
                     <img
                       key={i.id}
@@ -128,7 +170,7 @@ export default function PhotoExhibitionAdminPanel({
                     />
                   ))}
                   {canExclude && !s.excluded && (
-                    <button disabled={busy} onClick={() => exclude(s.id)}>
+                    <button type="button" disabled={busy} onClick={() => exclude(s.id)} className="text-sm text-red-600">
                       제외
                     </button>
                   )}
@@ -137,8 +179,8 @@ export default function PhotoExhibitionAdminPanel({
             ))}
           </section>
           {canFinalize && event.status !== "SCORED" && (
-            <button disabled={busy} onClick={finalize}>
-              최종 결과 확정
+            <button type="button" disabled={busy} onClick={finalize} className="rounded-lg border border-forest-600 px-4 py-2 text-forest-700">
+              최종 결과 확정 (보상 지급)
             </button>
           )}
         </>

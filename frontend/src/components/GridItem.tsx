@@ -146,8 +146,9 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
                   {images.map((url) => <img key={url} src={toMediaUrl(url, "sm")} alt="사진 전시회 작품" className="h-full w-full object-cover" />)}
                 </div>
               ) : <img src={toMediaUrl(images[0], "sm")} alt="사진 전시회 작품" className="h-full w-full object-cover" />}
-              <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">사진 전시회</span>
-              <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">♥ {post.likeCount}</span>
+              <div className="absolute bottom-2 right-2 text-[10px] sm:text-xs text-white bg-black/50 rounded-full px-2 py-0.5">
+                <span>♥ {post.likeCount}</span>
+              </div>
             </div>
           );
         }

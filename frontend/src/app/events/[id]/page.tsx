@@ -53,9 +53,6 @@ export default function EventDetailPage() {
         {event.description && (
           <p className="text-sm text-gray-600 mt-1">{event.description}</p>
         )}
-        <div className="text-xs text-gray-500 mt-1">
-          상태: <span className="font-medium">{event.status}</span>
-        </div>
       </div>
 
       {event.type === "PHOTO_BINGO" && event.config && (
@@ -65,7 +62,13 @@ export default function EventDetailPage() {
           rewards={event.config.rewards}
         />
       )}
-      {event.type === "PHOTO_EXHIBITION" && <PhotoExhibitionPanel eventId={event.id} status={event.status} phase={event.phase} config={event.photoExhibitionConfig} serverNow={event.serverNow} />}
+      {event.type === "PHOTO_EXHIBITION" && (
+        <PhotoExhibitionPanel
+          eventId={event.id}
+          status={event.status}
+          phase={event.phase}
+        />
+      )}
     </div>
   );
 }

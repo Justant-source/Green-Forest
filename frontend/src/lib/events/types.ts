@@ -12,7 +12,13 @@ export interface PhotoBingoConfig {
   themes: string[];
   rewards: PhotoBingoRewards;
 }
-export interface PhotoExhibitionConfig { submissionStart: string; submissionEnd: string; reviewEnd: string; votingEnd: string; }
+export interface PhotoExhibitionConfig {
+  submissionStart: string;
+  submissionEnd: string;
+  reviewEnd: string;
+  votingEnd: string;
+  votingStartedAt?: string | null;
+}
 export interface PhotoExhibitionImage { id: number; imageUrl: string; sortOrder: number; representative: boolean; }
 export interface PhotoExhibitionSubmission { id: number; title: string; introduction: string; images: PhotoExhibitionImage[]; mine: boolean; authorNickname?: string | null; finalVotes?: number | null; resultTier?: string | null; }
 export interface PhotoExhibitionAdminSubmission extends PhotoExhibitionSubmission { excluded: boolean; exclusionReason?: string | null; voteCount: number; }

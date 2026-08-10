@@ -13,7 +13,8 @@ public final class PhotoExhibitionPhaseResolver {
         if (status == EventStatus.SCORED) return PhotoExhibitionPhase.RESULT;
         if (now.isBefore(config.getSubmissionStart())) return PhotoExhibitionPhase.SCHEDULED;
         if (now.isBefore(config.getSubmissionEnd())) return PhotoExhibitionPhase.SUBMISSION;
-        if (now.isBefore(config.getReviewEnd())) return PhotoExhibitionPhase.REVIEW;
+        // After submission: stay locked until admin opens voting (votingStartedAt).
+        if (config.getVotingStartedAt() == null) return PhotoExhibitionPhase.REVIEW;
         if (now.isBefore(config.getVotingEnd())) return PhotoExhibitionPhase.VOTING;
         return PhotoExhibitionPhase.TALLY_PENDING;
     }

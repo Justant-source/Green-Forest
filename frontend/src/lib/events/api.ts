@@ -22,6 +22,10 @@ export async function adminPhotoExhibitionSubmissions(eventId:number):Promise<Ph
 export async function adminPhotoExhibitionPreview(eventId:number):Promise<PhotoExhibitionPreview>{const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/preview`,{headers:authHeaders()});return handle(r);}
 export async function adminExcludePhotoExhibition(eventId:number,submissionId:number,reason:string):Promise<PhotoExhibitionAdminSubmission>{const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/submissions/${submissionId}/exclude`,{method:"PATCH",headers:authHeaders(),body:JSON.stringify({reason})});return handle(r);}
 export async function adminFinalizePhotoExhibition(eventId:number):Promise<void>{const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/finalize`,{method:"POST",headers:authHeaders()});return handle(r);}
+export async function adminStartPhotoExhibitionVoting(eventId:number):Promise<void>{
+  const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/start-voting`,{method:"POST",headers:authHeaders()});
+  if(!r.ok) return handle(r);
+}
 export async function adminPhotoExhibitionVoterAudit(eventId:number):Promise<PhotoExhibitionVoterAudit[]>{const r=await fetch(`${BASE_URL}/admin/events/${eventId}/photo-exhibition/audit-voters`,{headers:authHeaders()});return handle(r);}
 
 export async function getMyPhotoExhibitionSubmission(eventId: number): Promise<PhotoExhibitionSubmission> {

@@ -9,6 +9,7 @@ public class PhotoExhibitionConfigResponse {
     private LocalDateTime submissionEnd;
     private LocalDateTime reviewEnd;
     private LocalDateTime votingEnd;
+    private LocalDateTime votingStartedAt;
 
     public static PhotoExhibitionConfigResponse from(PhotoExhibitionConfig config) {
         PhotoExhibitionConfigResponse response = new PhotoExhibitionConfigResponse();
@@ -16,10 +17,12 @@ public class PhotoExhibitionConfigResponse {
         response.submissionEnd = config.getSubmissionEnd();
         response.reviewEnd = config.getReviewEnd();
         response.votingEnd = config.getVotingEnd();
+        response.votingStartedAt = config.getVotingStartedAt();
         return response;
     }
     public LocalDateTime getSubmissionStart() { return submissionStart; }
     public LocalDateTime getSubmissionEnd() { return submissionEnd; }
     public LocalDateTime getReviewEnd() { return reviewEnd; }
     public LocalDateTime getVotingEnd() { return votingEnd; }
+    public LocalDateTime getVotingStartedAt() { return votingStartedAt; }
 }
