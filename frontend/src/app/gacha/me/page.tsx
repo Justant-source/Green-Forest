@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { GachaDrawRecord } from "@/types";
 import { getGachaHistory } from "@/lib/api";
+import { formatKstDateTime } from "@/lib/datetime";
 
 const DELIVERY_LABEL: Record<string, string> = {
   NONE: "낙첨",
@@ -55,7 +56,7 @@ export default function GachaHistoryPage() {
                 <div>
                   <p className="font-semibold text-gray-800">{d.prizeName}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {new Date(d.createdAt).toLocaleString("ko-KR")}
+                    {formatKstDateTime(d.createdAt)}
                   </p>
                 </div>
                 <div className="text-right">

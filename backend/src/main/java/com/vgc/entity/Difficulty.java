@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 
 public enum Difficulty {
     EASY("쉬움", new BigDecimal("1.00")),
-    NORMAL("보통", new BigDecimal("1.10")),
-    HARD("어려움", new BigDecimal("1.20"));
+    NORMAL("보통", new BigDecimal("1.00")),
+    HARD("어려움", new BigDecimal("1.00"));
 
     private final String label;
     private final BigDecimal multiplier;

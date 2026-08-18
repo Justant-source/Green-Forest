@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { AttendanceMonth, MyAttendanceWin } from "@/types";
 import { getMyAttendanceMonth, getMyAttendanceWins } from "@/lib/api";
 import AttendanceCalendar from "@/components/AttendanceCalendar";
+import { currentKstYearMonth, formatKstDateTime } from "@/lib/datetime";
 
 const WIN_STATUS_LABEL: Record<string, string> = {
   PENDING: "전달 대기",
@@ -18,10 +19,7 @@ const WIN_STATUS_STYLE: Record<string, string> = {
 export default function MyAttendancePage() {
   const [data, setData] = useState<AttendanceMonth | null>(null);
   const [wins, setWins] = useState<MyAttendanceWin[]>([]);
-  const [month, setMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const [month, setMonth] = useState(() => currentKstYearMonth());
 
   useEffect(() => {
     getMyAttendanceMonth(month).then(setData).catch(() => {});
@@ -68,7 +66,7 @@ export default function MyAttendancePage() {
                     {w.message && <div className="text-xs text-gray-600 mt-1">한마디: {w.message}</div>}
                     {w.deliveryStatus === "DELIVERED" && w.deliveredAt && (
                       <div className="text-xs text-green-700 mt-1">
-                        전달완료: {new Date(w.deliveredAt).toLocaleString("ko-KR")}
+                        전달완료: {formatKstDateTime(w.deliveredAt)}
                         {w.deliveryMemo && <span className="ml-2 text-gray-500">메모: {w.deliveryMemo}</span>}
                       </div>
                     )}

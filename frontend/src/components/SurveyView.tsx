@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { SurveyVoteDetail } from "@/types";
 import SurveyShippingConfirmModal from "./SurveyShippingConfirmModal";
 import { useRouter } from "next/navigation";
+import { formatKstDateTime } from "@/lib/datetime";
 
 export default function SurveyView({ postId, onImageSelect }: { postId: number; onImageSelect?: (url: string) => void }) {
   const { isLoggedIn, isAdmin, authLoaded } = useAuth();
@@ -116,8 +117,6 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
     }
   };
 
-  const closesAt = new Date(survey.closesAt.endsWith("Z") ? survey.closesAt : survey.closesAt + "Z");
-
   return (
     <>
     {confirmModal && (
@@ -176,7 +175,7 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
             </button>
           )}
           <span>
-            {survey.closed ? "종료됨" : `~ ${closesAt.toLocaleString("ko-KR")}`}
+            {survey.closed ? "종료됨" : `~ ${formatKstDateTime(survey.closesAt)}`}
           </span>
         </div>
       </div>

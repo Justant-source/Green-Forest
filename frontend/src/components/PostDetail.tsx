@@ -13,6 +13,7 @@ import BingoBoardView from "./events/photobingo/BingoBoardView";
 import SurveyView from "./SurveyView";
 import { parsePhotoBingoMarker } from "@/lib/events/postMarker";
 import { deleteMyPhotoExhibitionSubmission } from "@/lib/events/api";
+import { formatKstDate } from "@/lib/datetime";
 
 interface PostDetailProps {
   postId: number;
@@ -227,7 +228,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
           )}
           <span>조회 {post.viewCount}</span>
           <span>좋아요 {post.likeCount}</span>
-          <span>{new Date(post.createdAt.endsWith("Z") ? post.createdAt : post.createdAt + "Z").toLocaleDateString("ko-KR")}</span>
+          <span>{formatKstDate(post.createdAt)}</span>
         </div>
       </div>
 

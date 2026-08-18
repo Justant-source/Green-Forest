@@ -14,4 +14,5 @@ public class PhotoExhibitionRewardGrant {
     @Column(name = "created_at", nullable = false) private LocalDateTime createdAt;
     @PrePersist void onCreate(){createdAt=LocalDateTime.now();}
     public PhotoExhibitionRewardGrant(){} public PhotoExhibitionRewardGrant(com.vgc.entity.event.Event e,com.vgc.entity.User u,String k,int a){event=e;user=u;grantKind=k;amount=a;}
+    public int getAmount(){return amount;} public void setAmount(int a){amount=a;}
 }

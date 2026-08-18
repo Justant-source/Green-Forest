@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import AttendanceBoard from "@/components/AttendanceBoard";
 import AttendanceStamp from "@/components/AttendanceStamp";
 import PhrasePicker from "@/components/PhrasePicker";
+import { todayKstDateString } from "@/lib/datetime";
 
 export default function AttendancePage() {
   const { user } = useAuth();
@@ -33,7 +34,7 @@ export default function AttendancePage() {
 
   // 날짜 변경(6시 이후) 감지: 1분마다 board.date와 오늘 비교, 탭 포커스 시에도 확인
   useEffect(() => {
-    const todayStr = () => new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD
+    const todayStr = () => todayKstDateString();
 
     const checkAndRefresh = () => {
       if (board && board.date !== todayStr()) {

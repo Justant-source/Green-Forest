@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { getToken } from "@/lib/auth";
+import { formatKstDateTime } from "@/lib/datetime";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
@@ -185,7 +186,7 @@ export default function DropHistoryPanel() {
                         {tx.reasonLabel || tx.reasonType}
                       </span>
                       <span className="text-[11px] text-gray-400">
-                        {tx.createdAt?.replace("T", " ").substring(0, 16)}
+                        {formatKstDateTime(tx.createdAt)}
                       </span>
                     </div>
                     {tx.reasonDetail && (

@@ -40,13 +40,13 @@
       "jobClass": "BUFFER",
       "element": "WIND",
       "difficulty": "NORMAL",
-      "expMultiplier": 1.10
+      "expMultiplier": 1.00
     },
     "ORANGE_JASMINE": {
       "jobClass": "DEALER",
       "element": "FIRE",
       "difficulty": "HARD",
-      "expMultiplier": 1.20
+      "expMultiplier": 1.00
     }
   }
 }

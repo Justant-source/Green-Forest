@@ -341,6 +341,7 @@ public class PhotoExhibitionService {
         for (var s : selected) {
             votes.save(new PhotoExhibitionVote(locked, voter, s));
         }
+        grantVoterReward(locked, voter, safe.size());
         return safe;
     }
 
@@ -503,6 +504,52 @@ public class PhotoExhibitionService {
             }
         }
         e.setStatus(EventStatus.SCORED);
+    }
+
+    /** 출품 100💧와 현재 투표 10/20/30💧를 지금 지급한다. 중복 지급은 grant 유니크로 막는다. */
+    @Transactional
+    public void payoutLiveRewards(Long id) {
+        Event e = event(id);
+        requireActive(e);
+        for (var s : submissions.findByEventIdOrderByCreatedAtAsc(id)) {
+            if (s.isValid()) {
+                grant(e, s.getUser(), "PARTICIPANT", 100, e.getTitle() + " 참가 보상");
+            }
+        }
+        Set<Long> voterIds = new HashSet<>();
+        for (var vote : votes.findByEventId(id)) {
+            voterIds.add(vote.getVoter().getId());
+        }
+        for (Long voterId : voterIds) {
+            var ballot = votes.findByEventIdAndVoterId(id, voterId);
+            grantVoterReward(e, ballot.get(0).getVoter(), ballot.size());
+        }
+    }
+
+    private void grantVoterReward(Event event, User user, int count) {
+        int amount = count * 10;
+        if (amount <= 0) {
+            return;
+        }
+        var existing = grants.findByEventIdAndUserIdAndGrantKind(event.getId(), user.getId(), "VOTER");
+        if (existing.isEmpty()) {
+            grant(event, user, "VOTER", amount, event.getTitle() + " 투표 보상");
+            return;
+        }
+        PhotoExhibitionRewardGrant row = existing.get();
+        int extra = amount - row.getAmount();
+        if (extra <= 0) {
+            return;
+        }
+        row.setAmount(amount);
+        drops.awardEventReward(user, extra, event.getTitle() + " 투표 보상 추가");
+        notifications.createNotification(
+                user,
+                NotificationType.EVENT_REWARD,
+                "전시회 보상",
+                event.getTitle() + " 투표 보상 추가 — 💧" + extra,
+                null,
+                null);
     }
 
     private void grant(Event event, User user, String kind, int amount, String memo) {

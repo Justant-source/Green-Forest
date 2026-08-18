@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { TodayBoard, TodayBoardEntry } from "@/types";
 import StampIcon from "./StampIcon";
+import { formatKstTime } from "@/lib/datetime";
 
 interface Props {
   board: TodayBoard | null;
@@ -71,10 +72,7 @@ export default function AttendanceBoard({ board, highlightUserId }: Props) {
           </div>
           <div className="text-gray-500 mt-1">"{tooltip.message}"</div>
           <div className="text-xs text-gray-400 mt-1">
-            {new Date(tooltip.checkinAt).toLocaleTimeString("ko-KR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {formatKstTime(tooltip.checkinAt)}
           </div>
         </div>
       )}

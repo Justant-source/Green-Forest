@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEventMode } from "@/context/EventModeContext";
+import { parseServerInstant } from "@/lib/datetime";
 
 function pad(n: number) {
   return n.toString().padStart(2, "0");
@@ -41,7 +42,7 @@ export default function EventModeBanner() {
         ? event.photoExhibitionConfig.votingEnd
         : event.endAt;
 
-  const endMs = new Date(deadline).getTime();
+  const endMs = parseServerInstant(deadline)?.getTime() ?? 0;
   const { days, hours, minutes, totalSec } = formatRemaining(endMs - now.getTime());
   const urgent = totalSec <= 3600;
   const voting = phase === "VOTING";

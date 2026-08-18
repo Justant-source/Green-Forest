@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getBingoActivity } from "@/lib/events/api";
 import type { PhotoBingoActivity, EventStatus } from "@/lib/events/types";
+import { parseServerInstant } from "@/lib/datetime";
 
 interface Props {
   eventId: number;
@@ -16,7 +17,7 @@ function ordinal(n: number): string {
 }
 
 function timeAgo(iso: string, now: Date): string {
-  const t = new Date(iso).getTime();
+  const t = parseServerInstant(iso)?.getTime() ?? 0;
   const diff = Math.max(0, now.getTime() - t);
   const sec = Math.floor(diff / 1000);
   if (sec < 5) return "방금";

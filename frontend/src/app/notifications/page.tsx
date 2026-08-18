@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "@/lib/api";
 import { Notification, PageResponse } from "@/types";
 import { useAuth } from "@/context/AuthContext";
+import { formatKstDateTime } from "@/lib/datetime";
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -97,7 +98,7 @@ export default function NotificationsPage() {
               </div>
               <div className="text-sm font-medium text-gray-700">{n.title}</div>
               {n.body && <div className="text-xs text-gray-400 mt-0.5">{n.body}</div>}
-              <div className="text-xs text-gray-300 mt-1">{new Date(n.createdAt).toLocaleDateString("ko-KR")}</div>
+              <div className="text-xs text-gray-300 mt-1">{formatKstDateTime(n.createdAt)}</div>
             </button>
           ))}
           {hasMore && (

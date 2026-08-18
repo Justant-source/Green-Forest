@@ -3,13 +3,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { PlazaWinner } from "@/types";
 import { getPlazaWinners, getActiveAnnouncements, AnnouncementItem } from "@/lib/api";
-
-function formatRelativeTime(createdAt: string): string {
-  const diff = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000);
-  if (diff < 3600) return `${Math.max(1, Math.floor(diff / 60))}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  return `${Math.floor(diff / 86400)}일 전`;
-}
+import { formatKstDate, formatKstRelative } from "@/lib/datetime";
 
 type TickerItem =
   | { kind: "winner"; data: PlazaWinner }
@@ -72,8 +66,8 @@ export default function GachaRecentWinsTicker() {
     const text = w.type === "GACHA"
       ? `${w.userNickname}님이 ${w.prizeName} 당첨!`
       : (() => {
-          const date = new Date(w.checkinDate + "T00:00:00");
-          return `${w.userNickname}님이 ${date.getMonth()+1}월 ${date.getDate()}일 출석 이벤트 당첨!`;
+          const [, month, day] = (w.checkinDate ?? "").split("-");
+          return `${w.userNickname}님이 ${Number(month)}월 ${Number(day)}일 출석 이벤트 당첨!`;
         })();
     return (
       <div className="flex items-baseline gap-2 min-w-0">
@@ -82,7 +76,7 @@ export default function GachaRecentWinsTicker() {
           <strong>{text}</strong>
         </span>
         <span className="shrink-0 text-gray-400" style={{ fontSize: "0.67em" }}>
-          {formatRelativeTime(w.createdAt)}
+          {formatKstRelative(w.createdAt)}
         </span>
       </div>
     );
@@ -130,7 +124,7 @@ export default function GachaRecentWinsTicker() {
             <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{popup.content}</p>
             {popup.relatedUrl && <Link href={popup.relatedUrl.startsWith("/") ? popup.relatedUrl : "/"} className="mt-4 inline-block rounded bg-forest-600 px-3 py-2 text-sm text-white" onClick={() => setPopup(null)}>{popup.relatedLabel || "이벤트 보기"}</Link>}
             <p className="text-xs text-gray-400 mt-4">
-              {new Date(popup.createdAt).toLocaleDateString("ko-KR")}
+              {formatKstDate(popup.createdAt)}
             </p>
           </div>
         </div>

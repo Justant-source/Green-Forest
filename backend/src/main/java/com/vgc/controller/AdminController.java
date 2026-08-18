@@ -663,6 +663,53 @@ public class AdminController {
         return ResponseEntity.ok(com.vgc.dto.AnnouncementResponse.from(announcementRepository.save(ann)));
     }
 
+    @PutMapping("/announcements/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<com.vgc.dto.AnnouncementResponse> updateAnnouncement(
+            @PathVariable Long id,
+            @RequestBody com.vgc.dto.AdminAnnouncementRequest body,
+            Authentication authentication) {
+        getAdminUser(authentication);
+        com.vgc.entity.Announcement ann = announcementRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "공지 없음"));
+        if (body.getTitle() == null || body.getTitle().isBlank() || body.getContent() == null || body.getContent().isBlank())
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "제목과 내용은 필수입니다.");
+        ann.setTitle(body.getTitle().trim());
+        ann.setContent(body.getContent().trim());
+        if (ann.getType() != com.vgc.entity.AnnouncementType.BIRTHDAY) {
+            String typeStr = body.getType();
+            try {
+                ann.setType(typeStr == null ? com.vgc.entity.AnnouncementType.MANUAL : com.vgc.entity.AnnouncementType.valueOf(typeStr));
+            } catch (IllegalArgumentException ex) {
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "유효하지 않은 공지 유형입니다.");
+            }
+            if (ann.getType() == com.vgc.entity.AnnouncementType.EVENT) {
+                if (body.getRelatedUrl() == null || !body.getRelatedUrl().matches("^/events/[1-9][0-9]*$"))
+                    throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "이벤트 링크는 /events/{id} 형식이어야 합니다.");
+                ann.setRelatedEventUrl(body.getRelatedUrl());
+                ann.setRelatedLabel(body.getRelatedLabel() == null || body.getRelatedLabel().isBlank() ? "이벤트 보기" : body.getRelatedLabel().trim());
+            } else {
+                ann.setRelatedEventUrl(null);
+                ann.setRelatedLabel(null);
+            }
+        }
+        if (body.getExpiresAt() != null) {
+            if (body.getExpiresAt().isBlank()) {
+                ann.setExpiresAt(null);
+            } else {
+                try {
+                    java.time.LocalDateTime expires = java.time.LocalDateTime.parse(body.getExpiresAt());
+                    if (!expires.isAfter(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"))))
+                        throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "만료 시각은 미래여야 합니다.");
+                    ann.setExpiresAt(expires);
+                } catch (java.time.format.DateTimeParseException ex) {
+                    throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "만료 시각 형식이 올바르지 않습니다.");
+                }
+            }
+        }
+        return ResponseEntity.ok(com.vgc.dto.AnnouncementResponse.from(announcementRepository.save(ann)));
+    }
+
     @PatchMapping("/announcements/{id}/activate")
     @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<com.vgc.dto.AnnouncementResponse> activateAnnouncement(

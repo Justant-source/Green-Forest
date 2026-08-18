@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { listEvents } from "@/lib/events/api";
 import type { Event } from "@/lib/events/types";
+import { formatKstDateTime } from "@/lib/datetime";
 
 function statusBadge(s: Event["status"]) {
   const map: Record<Event["status"], { label: string; cls: string }> = {
@@ -54,7 +55,7 @@ export default function EventsPage() {
           </div>
           {e.description && <div className="text-sm text-gray-600 mt-1">{e.description}</div>}
           <div className="text-xs text-gray-500 mt-2">
-            {e.startAt?.replace("T", " ")} ~ {e.endAt?.replace("T", " ")}
+            {formatKstDateTime(e.startAt)} ~ {formatKstDateTime(e.endAt)}
           </div>
         </Link>
       ))}

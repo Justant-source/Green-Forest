@@ -1119,6 +1119,21 @@ export async function adminCreateAnnouncement(title: string, content: string, op
   return res.json();
 }
 
+export async function adminUpdateAnnouncement(
+  id: number,
+  title: string,
+  content: string,
+  options?: { type?: AnnouncementItem["type"]; relatedUrl?: string; relatedLabel?: string; expiresAt?: string | null }
+): Promise<AnnouncementItem> {
+  const res = await fetch(`${BASE_URL}/admin/announcements/${id}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify({ title, content, ...options }),
+  });
+  if (!res.ok) throw res;
+  return res.json();
+}
+
 export async function adminActivateAnnouncement(id: number): Promise<AnnouncementItem> {
   const res = await fetch(`${BASE_URL}/admin/announcements/${id}/activate`, {
     method: "PATCH",

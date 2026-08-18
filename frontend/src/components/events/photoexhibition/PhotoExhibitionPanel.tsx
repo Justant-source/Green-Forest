@@ -51,6 +51,7 @@ export default function PhotoExhibitionPanel({ eventId, phase }: Props) {
   const [gallery, setGallery] = useState<PhotoExhibitionSubmission[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [detail, setDetail] = useState<PhotoExhibitionSubmission | null>(null);
+  const [savedCount, setSavedCount] = useState<number | null>(null);
 
   const apply = (next: PhotoExhibitionSubmission) => {
     setSubmission(next);
@@ -185,9 +186,11 @@ export default function PhotoExhibitionPanel({ eventId, phase }: Props) {
 
   const saveVotes = async () => {
     setSaving(true);
+    setError("");
     try {
-      setSelected(await savePhotoExhibitionVotes(eventId, selected));
-      setError("투표 선택을 저장했습니다.");
+      const saved = await savePhotoExhibitionVotes(eventId, selected);
+      setSelected(saved);
+      setSavedCount(saved.length);
     } catch (e: any) {
       setError(e.message || "투표를 저장하지 못했습니다.");
     } finally {
@@ -336,7 +339,11 @@ export default function PhotoExhibitionPanel({ eventId, phase }: Props) {
 
   return (
     <section className="space-y-4">
-      {error && <p className="text-sm text-forest-700">{error}</p>}
+      {error && (
+        <p className={`text-sm ${error.includes("저장") || error.includes("취소") ? "text-forest-700" : "text-red-600"}`}>
+          {error}
+        </p>
+      )}
 
       {editable && (
         <>
@@ -456,23 +463,62 @@ export default function PhotoExhibitionPanel({ eventId, phase }: Props) {
             마음에 드는 작품 최대 3개 선택 · 투표 보상 10/20/30💧 · 자기 작품 투표 불가
           </div>
           {galleryCards(gallery)}
-          <div className="sticky bottom-2 flex items-center justify-between gap-2 rounded-xl bg-forest-700 p-3 text-white shadow-lg">
-            <span>
-              {selected.length}/3 · {selected.length * 10}💧
-            </span>
-            <div className="flex gap-2">
-              <button type="button" onClick={cancelVotes} className="rounded-lg bg-white/20 px-3 py-1.5 text-sm">
-                전체 취소
-              </button>
-              <button type="button" onClick={saveVotes} className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-forest-700">
-                투표 저장
-              </button>
+          <div className="fixed bottom-16 left-0 right-0 z-[60] px-4 pb-2">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-xl bg-forest-700 p-3 text-white shadow-lg">
+              <span>
+                {selected.length}/3 · {selected.length * 10}💧
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={cancelVotes}
+                  disabled={saving}
+                  className="rounded-lg bg-white/20 px-3 py-1.5 text-sm disabled:opacity-50"
+                >
+                  전체 취소
+                </button>
+                <button
+                  type="button"
+                  onClick={saveVotes}
+                  disabled={saving}
+                  className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-forest-700 disabled:opacity-50"
+                >
+                  {saving ? "저장 중..." : "투표 저장"}
+                </button>
+              </div>
             </div>
           </div>
+          <div className="h-16" />
         </>
       )}
 
       {detailModal}
+      {savedCount !== null && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setSavedCount(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-bold text-gray-800">투표 완료</h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              {savedCount === 0
+                ? "선택한 작품이 없어 투표가 비어 있는 상태로 저장되었습니다."
+                : `${savedCount}개 작품에 투표했습니다. 보상 ${savedCount * 10}💧가 지급되었습니다.`}
+            </p>
+            <p className="mt-1 text-xs text-gray-400">마감 전까지 다시 저장하면 바꿀 수 있습니다.</p>
+            <button
+              type="button"
+              onClick={() => setSavedCount(null)}
+              className="mt-4 w-full rounded-lg bg-forest-500 py-2 text-sm font-medium text-white hover:bg-forest-600"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

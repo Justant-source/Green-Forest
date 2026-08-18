@@ -31,7 +31,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      CORS_ORIGINS: ${CORS_ORIGINS}
+      CORS_ORIGINS: https://green-office.uk,https://www.green-office.uk
       UPLOAD_PATH: /app/uploads
       NOTIFY_API_TOKEN: ${NOTIFY_API_TOKEN}
     volumes:
@@ -46,8 +46,9 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
-        NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
+        # 셸에 .env.dev 가 로드돼 있어도 prod 번들에 dev URL이 들어가지 않게 고정
+        NEXT_PUBLIC_API_BASE_URL: https://green-office.uk/api
+        NEXT_PUBLIC_IMAGE_BASE_URL: https://green-office.uk
     container_name: greenforest-frontend-prod
     depends_on:
       - backend

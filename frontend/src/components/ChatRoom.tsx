@@ -6,14 +6,10 @@ import { ChatMessage } from "@/types";
 import { getConversationMessages, sendChatMessage, leaveConversation, getConversations } from "@/lib/api";
 import { StompClient } from "@/lib/websocket";
 import { useAuth } from "@/context/AuthContext";
+import { formatKstTime } from "@/lib/datetime";
 
 interface ChatRoomProps {
   conversationId: number;
-}
-
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr.endsWith("Z") ? dateStr : dateStr + "Z");
-  return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function ChatRoom({ conversationId }: ChatRoomProps) {
@@ -186,7 +182,7 @@ export default function ChatRoom({ conversationId }: ChatRoomProps) {
                   {msg.content}
                 </div>
                 <p className={`text-xs text-gray-400 mt-1 ${isMine ? "text-right" : ""}`}>
-                  {formatTime(msg.createdAt)}
+                  {formatKstTime(msg.createdAt)}
                 </p>
               </div>
             </div>

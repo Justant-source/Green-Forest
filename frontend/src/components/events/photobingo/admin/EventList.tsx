@@ -4,6 +4,7 @@ import { useState } from "react";
 import { adminChangeStatus, adminExtendEvent, adminFinalizeEvent } from "@/lib/events/api";
 import type { Event, EventStatus } from "@/lib/events/types";
 import BingoRewardsSummary from "./BingoRewardsSummary";
+import { formatKstDateTime } from "@/lib/datetime";
 
 interface Props {
   events: Event[];
@@ -84,7 +85,7 @@ export default function EventList({ events, onRefresh, onSelect }: Props) {
                   <div className="font-semibold text-sm">{e.title}</div>
                 </div>
                 <div className="text-[11px] text-gray-500 mt-1">
-                  {e.startAt?.replace("T", " ")} ~ {e.endAt?.replace("T", " ")}
+                  {formatKstDateTime(e.startAt)} ~ {formatKstDateTime(e.endAt)}
                 </div>
               </div>
             </div>

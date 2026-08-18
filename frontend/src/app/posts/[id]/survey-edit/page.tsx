@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { toMediaUrl } from "@/lib/api";
 import { Survey, SurveyOption } from "@/types";
+import { toDatetimeLocalKst } from "@/lib/datetime";
 
 export default function SurveyEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,9 +39,7 @@ export default function SurveyEditPage() {
   const loadData = async (preserveEdits = false) => {
     const [post, sv] = await Promise.all([getPost(postId), getSurveyByPost(postId)]);
     setTitle((prev) => (preserveEdits ? prev : post.title));
-    const dt = new Date(sv.closesAt.endsWith("Z") ? sv.closesAt : sv.closesAt + "Z");
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const newClosesAt = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    const newClosesAt = toDatetimeLocalKst(sv.closesAt);
     setClosesAt((prev) => (preserveEdits ? prev : newClosesAt));
     setSurvey(sv);
 

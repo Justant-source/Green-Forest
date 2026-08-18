@@ -11,6 +11,7 @@ import PlantGrowthBadge from "@/components/PlantGrowthBadge";
 import PlantLevelGuide from "@/components/PlantLevelGuide";
 import BirthMonthDaySelect from "@/components/BirthMonthDaySelect";
 import { formatBirthMonthDay, isValidBirthMonthDay } from "@/lib/birthMonthDay";
+import { formatKstDate, formatKstDateTime } from "@/lib/datetime";
 
 type RewardItem = {
   key: string;
@@ -520,11 +521,11 @@ export default function GardenPage() {
                       </div>
                       {r.detail && <div className="text-xs text-gray-500 mt-1">{r.detail}</div>}
                       <div className="text-xs text-gray-400 mt-0.5">
-                        당첨일 {new Date(r.date).toLocaleDateString("ko-KR")}
+                        당첨일 {formatKstDate(r.date)}
                       </div>
                       {isDelivered && r.deliveredAt && (
                         <div className="text-xs text-green-700 mt-1">
-                          수령일: {new Date(r.deliveredAt).toLocaleString("ko-KR")}
+                          수령일: {formatKstDateTime(r.deliveredAt)}
                           {r.deliveryMemo && <span className="ml-2 text-gray-500">메모: {r.deliveryMemo}</span>}
                         </div>
                       )}
@@ -555,7 +556,7 @@ export default function GardenPage() {
                   {tx.reasonDetail && (
                     <div className="text-xs text-gray-400">{tx.reasonDetail}</div>
                   )}
-                  <div className="text-xs text-gray-300 mt-0.5">{new Date(tx.createdAt).toLocaleDateString("ko-KR")}</div>
+                  <div className="text-xs text-gray-300 mt-0.5">{formatKstDateTime(tx.createdAt)}</div>
                 </div>
                 <span className={`text-sm font-bold ${tx.amount > 0 ? "text-accent" : "text-red-400"}`}>
                   {tx.amount > 0 ? `+${tx.amount}` : tx.amount}

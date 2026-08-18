@@ -6,24 +6,10 @@ import { getComments, addComment, updateComment, deleteComment, startConversatio
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { formatKstRelative } from "@/lib/datetime";
 
 interface CommentSectionProps {
   postId: number;
-}
-
-function getRelativeTime(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr.endsWith("Z") ? dateStr : dateStr + "Z");
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffMin < 1) return "방금 전";
-  if (diffMin < 60) return `${diffMin}분 전`;
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  if (diffDay < 30) return `${diffDay}일 전`;
-  return date.toLocaleDateString("ko-KR");
 }
 
 const DEPTH_MARGIN: Record<number, string> = {
@@ -140,7 +126,7 @@ function CommentItem({
             <span className="font-medium text-sm text-gray-900">{comment.authorName}</span>
           )}
           <span className="text-xs text-gray-400">
-            {getRelativeTime(comment.createdAt)}
+            {formatKstRelative(comment.createdAt)}
             {!comment.deleted && comment.updatedAt && " (수정됨)"}
           </span>
         </div>

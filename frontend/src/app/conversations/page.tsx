@@ -6,21 +6,7 @@ import Link from "next/link";
 import { ConversationInfo } from "@/types";
 import { getConversations } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-
-function getRelativeTime(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr.endsWith("Z") ? dateStr : dateStr + "Z");
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffMin < 1) return "방금 전";
-  if (diffMin < 60) return `${diffMin}분 전`;
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  if (diffDay < 30) return `${diffDay}일 전`;
-  return date.toLocaleDateString("ko-KR");
-}
+import { formatKstRelative } from "@/lib/datetime";
 
 export default function ConversationsPage() {
   const router = useRouter();
@@ -71,7 +57,7 @@ export default function ConversationsPage() {
                   )}
                 </div>
                 <span className="text-xs text-gray-400 shrink-0 ml-2">
-                  {getRelativeTime(conv.updatedAt)}
+                  {formatKstRelative(conv.updatedAt)}
                 </span>
               </div>
               <p className="text-sm text-gray-500 mt-1 truncate">

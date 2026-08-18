@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { getEventMode } from "@/lib/events/api";
 import type { EventModeResponse, Event } from "@/lib/events/types";
+import { parseKstWall } from "@/lib/datetime";
 
 interface EventModeContextType {
   mode: "ACTIVE" | "NONE";
@@ -30,7 +31,7 @@ export function EventModeProvider({ children }: { children: ReactNode }) {
   const applyMode = useCallback((res: EventModeResponse) => {
     setMode(res.mode);
     setEvent(res.event);
-    const serverDate = new Date(res.serverNow);
+    const serverDate = parseKstWall(res.serverNow) ?? new Date();
     offsetMsRef.current = serverDate.getTime() - Date.now();
     setNow(serverDate);
   }, []);

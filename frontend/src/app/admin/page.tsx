@@ -17,7 +17,7 @@ import {
   getAdminStats, getQuests,
   createAdminQuest, deleteAdminQuest,
   awardDrops, deductDrops,
-  adminListAnnouncements, adminCreateAnnouncement, adminActivateAnnouncement,
+  adminListAnnouncements, adminCreateAnnouncement, adminUpdateAnnouncement, adminActivateAnnouncement,
   adminDeactivateAllAnnouncements, adminDeleteAnnouncement,
   adminListPhrases, adminCreatePhrase, adminUpdatePhrase, adminDeletePhrase,
   adminListAllPrizes, adminCreatePrize, adminUpdatePrize, adminDeactivatePrize,
@@ -35,6 +35,7 @@ import EventAdminTab from "@/components/events/photobingo/admin/EventAdminTab";
 import DropHistoryPanel from "@/components/admin/DropHistoryPanel";
 import BirthMonthDaySelect from "@/components/BirthMonthDaySelect";
 import { formatBirthMonthDay } from "@/lib/birthMonthDay";
+import { formatKstDate, formatKstDateTime, toDatetimeLocalKst } from "@/lib/datetime";
 
 type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha" | "posts" | "events" | "survey-deliveries";
 
@@ -90,6 +91,13 @@ export default function AdminPage() {
   const [annType, setAnnType] = useState<"MANUAL" | "EVENT">("MANUAL");
   const [annUrl, setAnnUrl] = useState(""); const [annLabel, setAnnLabel] = useState(""); const [annExpires, setAnnExpires] = useState("");
   const [announcements, setAnnouncements] = useState<import("@/lib/api").AnnouncementItem[]>([]);
+  const [editingAnnId, setEditingAnnId] = useState<number | null>(null);
+  const [editAnnTitle, setEditAnnTitle] = useState("");
+  const [editAnnContent, setEditAnnContent] = useState("");
+  const [editAnnType, setEditAnnType] = useState<"MANUAL" | "EVENT">("MANUAL");
+  const [editAnnUrl, setEditAnnUrl] = useState("");
+  const [editAnnLabel, setEditAnnLabel] = useState("");
+  const [editAnnExpires, setEditAnnExpires] = useState("");
 
   // Attendance
   const [phrases, setPhrases] = useState<AttendancePhrase[]>([]);
@@ -678,13 +686,13 @@ export default function AdminPage() {
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          당첨일 {d.winDate} · 출석시각 {new Date(d.checkinAt).toLocaleString("ko-KR")}
-                          {d.winnerDrawnAt && <> · 추첨 {new Date(d.winnerDrawnAt).toLocaleString("ko-KR")}</>}
+                          당첨일 {d.winDate} · 출석시각 {formatKstDateTime(d.checkinAt)}
+                          {d.winnerDrawnAt && <> · 추첨 {formatKstDateTime(d.winnerDrawnAt)}</>}
                         </div>
                         {d.message && <div className="text-xs text-gray-600 mt-1">한마디: {d.message}</div>}
                         {d.deliveryStatus === "DELIVERED" && (
                           <div className="text-xs text-green-700 mt-1">
-                            전달완료 {d.deliveredAt && new Date(d.deliveredAt).toLocaleString("ko-KR")}
+                            전달완료 {d.deliveredAt && formatKstDateTime(d.deliveredAt)}
                             {d.deliveryMemo && <span className="ml-2 text-gray-500">메모: {d.deliveryMemo}</span>}
                           </div>
                         )}
@@ -899,7 +907,7 @@ export default function AdminPage() {
                             )}
                           </div>
                           <div className="text-xs text-gray-400 mt-0.5">
-                            {new Date(d.createdAt).toLocaleString("ko-KR")} · {d.prizeCashValue.toLocaleString()}원
+                            {formatKstDateTime(d.createdAt)} · {d.prizeCashValue.toLocaleString()}원
                             {d.deliveryMemo && <span className="ml-2 text-gray-500">메모: {d.deliveryMemo}</span>}
                           </div>
                         </div>
@@ -1230,7 +1238,7 @@ export default function AdminPage() {
                       <tbody>
                         {drawHistory.items.map((d) => (
                           <tr key={d.id} className={`border-t border-gray-100 ${d.isWinner ? "bg-yellow-50" : ""}`}>
-                            <td className="px-2 py-1.5 text-gray-500 whitespace-nowrap">{new Date(d.createdAt).toLocaleString("ko-KR")}</td>
+                            <td className="px-2 py-1.5 text-gray-500 whitespace-nowrap">{formatKstDateTime(d.createdAt)}</td>
                             <td className="px-2 py-1.5 font-medium">{d.userNickname}</td>
                             <td className="px-2 py-1.5 text-gray-700">{d.prizeName}</td>
                             <td className="px-2 py-1.5 text-right">{d.prizeCashValue.toLocaleString()}원</td>
@@ -1353,6 +1361,74 @@ export default function AdminPage() {
                   key={a.id}
                   className={`rounded-xl border-l-4 p-4 ${a.active ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"}`}
                 >
+                  {editingAnnId === a.id ? (
+                    <div className="space-y-2">
+                      {a.type !== "BIRTHDAY" && (
+                        <select
+                          value={editAnnType}
+                          onChange={(e) => setEditAnnType(e.target.value as "MANUAL" | "EVENT")}
+                          className="border rounded px-2 text-sm"
+                        >
+                          <option value="MANUAL">일반 공지</option>
+                          <option value="EVENT">이벤트 공지</option>
+                        </select>
+                      )}
+                      <input
+                        type="text"
+                        value={editAnnTitle}
+                        onChange={(e) => setEditAnnTitle(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <textarea
+                        value={editAnnContent}
+                        onChange={(e) => setEditAnnContent(e.target.value)}
+                        rows={6}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-y"
+                      />
+                      {a.type !== "BIRTHDAY" && editAnnType === "EVENT" && (
+                        <>
+                          <input value={editAnnUrl} onChange={(e) => setEditAnnUrl(e.target.value)} placeholder="/events/{id}" className="w-full px-3 py-2 border rounded-lg text-sm" />
+                          <input value={editAnnLabel} onChange={(e) => setEditAnnLabel(e.target.value)} placeholder="버튼 문구" className="w-full px-3 py-2 border rounded-lg text-sm" />
+                          <input type="datetime-local" value={editAnnExpires} onChange={(e) => setEditAnnExpires(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" />
+                        </>
+                      )}
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setEditingAnnId(null)}
+                          className="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 font-medium"
+                        >
+                          취소
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!editAnnTitle.trim() || !editAnnContent.trim()) return alert("제목과 내용은 필수입니다.");
+                            if (a.type !== "BIRTHDAY" && editAnnType === "EVENT" && (!editAnnUrl.startsWith("/events/") || !editAnnLabel.trim())) {
+                              return alert("이벤트 링크와 버튼 문구를 입력하세요.");
+                            }
+                            try {
+                              await adminUpdateAnnouncement(a.id, editAnnTitle.trim(), editAnnContent.trim(), {
+                                type: a.type === "BIRTHDAY" ? "BIRTHDAY" : editAnnType,
+                                relatedUrl: a.type !== "BIRTHDAY" && editAnnType === "EVENT" ? editAnnUrl : undefined,
+                                relatedLabel: a.type !== "BIRTHDAY" && editAnnType === "EVENT" ? editAnnLabel : undefined,
+                                expiresAt: a.type === "BIRTHDAY"
+                                  ? undefined
+                                  : editAnnType === "EVENT"
+                                    ? (editAnnExpires ? (editAnnExpires.length === 16 ? editAnnExpires + ":00" : editAnnExpires) : "")
+                                    : "",
+                              });
+                              setAnnouncements(await adminListAnnouncements());
+                              setEditingAnnId(null);
+                            } catch { alert("수정 실패"); }
+                          }}
+                          className="text-xs px-3 py-1.5 bg-forest-500 text-white rounded-lg hover:bg-forest-600 font-medium"
+                        >
+                          저장
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1362,11 +1438,26 @@ export default function AdminPage() {
                         <span className="font-semibold text-sm text-gray-800">{a.title}</span>
                         <span className="text-xs text-gray-500">{a.type}</span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{a.content}</p>
-                      <p className="text-xs text-gray-400 mt-1">{new Date(a.createdAt).toLocaleDateString("ko-KR")}</p>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2 whitespace-pre-wrap">{a.content}</p>
+                      <p className="text-xs text-gray-400 mt-1">{formatKstDate(a.createdAt)}</p>
                       {a.relatedUrl && <p className="text-xs text-forest-600">{a.relatedLabel} · {a.relatedUrl}</p>}
                     </div>
                     <div className="flex gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingAnnId(a.id);
+                          setEditAnnTitle(a.title);
+                          setEditAnnContent(a.content);
+                          setEditAnnType(a.type === "EVENT" ? "EVENT" : "MANUAL");
+                          setEditAnnUrl(a.relatedUrl ?? "");
+                          setEditAnnLabel(a.relatedLabel ?? "");
+                          setEditAnnExpires(a.expiresAt ? toDatetimeLocalKst(a.expiresAt) : "");
+                        }}
+                        className="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                      >
+                        수정
+                      </button>
                       {!a.active && (
                         <button
                           onClick={async () => {
@@ -1386,6 +1477,7 @@ export default function AdminPage() {
                           try {
                             await adminDeleteAnnouncement(a.id);
                             setAnnouncements(await adminListAnnouncements());
+                            if (editingAnnId === a.id) setEditingAnnId(null);
                           } catch { alert("삭제 실패"); }
                         }}
                         className="text-xs px-3 py-1.5 border border-red-300 text-red-500 rounded-lg hover:bg-red-50 font-medium"
@@ -1394,6 +1486,7 @@ export default function AdminPage() {
                       </button>
                     </div>
                   </div>
+                  )}
                 </div>
               ))}
               {announcements.length === 0 && (
@@ -1842,7 +1935,7 @@ function PostsPanel({ categories }: { categories: CategoryInfo[] }) {
                   </div>
                   <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{p.content}</p>
                   <div className="text-[11px] text-gray-400 mt-1">
-                    {p.authorNickname ?? "(삭제된 유저)"} {p.authorName && `(${p.authorName})`} · {new Date(p.createdAt).toLocaleString("ko-KR")}
+                    {p.authorNickname ?? "(삭제된 유저)"} {p.authorName && `(${p.authorName})`} · {formatKstDateTime(p.createdAt)}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1 shrink-0">
