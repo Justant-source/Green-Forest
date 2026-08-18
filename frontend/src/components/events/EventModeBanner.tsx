@@ -44,17 +44,26 @@ export default function EventModeBanner() {
   const endMs = new Date(deadline).getTime();
   const { days, hours, minutes, totalSec } = formatRemaining(endMs - now.getTime());
   const urgent = totalSec <= 3600;
-  const cta = phase === "VOTING" ? "투표하러 가기 →" : "이벤트 참여하기 →";
-  const label =
-    phase === "VOTING" ? "투표 마감까지" : exhibition ? "출품 마감까지" : "종료까지";
+  const voting = phase === "VOTING";
+  const cta = voting ? "투표하러 가기 →" : "이벤트 참여하기 →";
+  const label = voting ? "투표 마감까지" : exhibition ? "출품 마감까지" : "종료까지";
 
   return (
     <div
       className={`rounded-2xl p-5 border shadow-sm transition-colors ${
-        urgent ? "bg-red-500 border-red-600 text-white animate-pulse" : "bg-forest-500 border-forest-600 text-white"
+        urgent
+          ? "bg-red-500 border-red-600 text-white animate-pulse"
+          : voting
+            ? "bg-amber-500 border-amber-600 text-white"
+            : "bg-forest-500 border-forest-600 text-white"
       }`}
     >
-      <div className="text-sm font-semibold opacity-90">{event.title}</div>
+      <div className="text-sm font-semibold opacity-90">
+        {voting ? "사진전 투표" : event.title}
+      </div>
+      {voting && (
+        <p className="mt-1 text-center text-xs opacity-90">익명 작품 · 최대 3개 선택</p>
+      )}
       <div className="mt-1 text-center text-xs opacity-80">{label}</div>
       <div className="py-3">
         <div className="mx-auto flex max-w-xs items-start justify-center gap-1 font-mono sm:max-w-sm sm:gap-2">

@@ -30,6 +30,10 @@ interface Props {
 
 type Tab = "mine" | "others";
 
+function unescapeNewlines(text: string | null | undefined): string {
+  return (text || "").replace(/\\n/g, "\n");
+}
+
 export default function PhotoExhibitionPanel({ eventId, phase }: Props) {
   const router = useRouter();
   const editable = phase === "SUBMISSION";
@@ -235,11 +239,13 @@ export default function PhotoExhibitionPanel({ eventId, phase }: Props) {
   const detailModal = detail && (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-4">
-        <img
-          src={toMediaUrl(detail.images[0]?.imageUrl, "md")}
-          alt=""
-          className="w-full rounded-lg object-cover"
-        />
+        <div className="flex justify-center rounded-lg bg-gray-100">
+          <img
+            src={toMediaUrl(detail.images[0]?.imageUrl, "md")}
+            alt=""
+            className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain"
+          />
+        </div>
         {detail.images.length > 1 && (
           <div className="mt-3 grid grid-cols-3 gap-2">
             {detail.images.slice(1).map((image) => (
@@ -254,7 +260,9 @@ export default function PhotoExhibitionPanel({ eventId, phase }: Props) {
         )}
         <h3 className="mt-3 text-lg font-bold">{detail.title}</h3>
         <p className="mt-1 text-sm text-gray-500">익명 출품</p>
-        <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{detail.introduction}</p>
+        <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">
+          {unescapeNewlines(detail.introduction)}
+        </p>
         <div className="mt-4 flex justify-end gap-2">
           {voting && !detail.mine && (
             <button
@@ -288,14 +296,21 @@ export default function PhotoExhibitionPanel({ eventId, phase }: Props) {
       {works.map((work) => (
         <article key={work.id} className="overflow-hidden rounded-xl border bg-white">
           <button type="button" onClick={() => setDetail(work)} className="block w-full text-left">
-            <img
-              src={toMediaUrl(work.images[0]?.imageUrl, "md")}
-              alt=""
-              className="aspect-video w-full object-cover"
-            />
+            <div className="flex justify-center bg-gray-100">
+              <img
+                src={toMediaUrl(work.images[0]?.imageUrl, "md")}
+                alt=""
+                className="max-h-[28rem] w-auto max-w-full object-contain"
+              />
+            </div>
             <div className="p-3">
               <b className="text-gray-900">{work.title}</b>
               <p className="text-xs text-gray-500">익명 출품 · 사진 {work.images.length}장</p>
+              {work.introduction && (
+                <p className="mt-1 line-clamp-3 text-sm text-gray-700 whitespace-pre-wrap">
+                  {unescapeNewlines(work.introduction)}
+                </p>
+              )}
             </div>
           </button>
           {voting && (
