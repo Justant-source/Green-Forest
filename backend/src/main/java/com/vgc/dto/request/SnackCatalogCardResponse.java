@@ -6,6 +6,7 @@ public class SnackCatalogCardResponse {
     private String category;
     private String categoryLabel;
     private String imageUrl;
+    private String ssgUrl;
     private int pendingQty;
     private int myPendingQty;
     private Long myRequestId;
@@ -23,6 +24,8 @@ public class SnackCatalogCardResponse {
     public void setCategoryLabel(String categoryLabel) { this.categoryLabel = categoryLabel; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getSsgUrl() { return ssgUrl; }
+    public void setSsgUrl(String ssgUrl) { this.ssgUrl = ssgUrl; }
     public int getPendingQty() { return pendingQty; }
     public void setPendingQty(int pendingQty) { this.pendingQty = pendingQty; }
     public int getMyPendingQty() { return myPendingQty; }

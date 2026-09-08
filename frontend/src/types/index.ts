@@ -256,6 +256,7 @@ export interface SnackCatalogCard {
   category: SnackSsgCategory | null;
   categoryLabel: string | null;
   imageUrl: string | null;
+  ssgUrl: string;
   pendingQty: number;
   myPendingQty: number;
   myRequestId: number | null;
@@ -269,6 +270,7 @@ export interface SnackRequest {
   catalogItemId: number;
   name: string;
   imageUrl: string | null;
+  ssgUrl: string | null;
   quantity: number;
   status: RequestStatus;
   rejectReason: RequestRejectReason | null;
@@ -323,6 +325,7 @@ export interface AdminSnackHistoryItem {
   catalogItemId: number;
   name: string;
   imageUrl: string | null;
+  ssgUrl: string | null;
   quantity: number;
   status: RequestStatus;
   rejectReasonLabel: string | null;

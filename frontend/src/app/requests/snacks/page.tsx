@@ -124,6 +124,7 @@ export default function SnackRequestsPage() {
             id: r.id,
             title: r.name,
             imageUrl: r.imageUrl,
+            ssgUrl: r.ssgUrl,
             quantity: r.quantity,
             status: r.status,
             rejectReasonLabel: r.rejectReasonLabel,

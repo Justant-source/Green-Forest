@@ -63,6 +63,6 @@ last_updated: 2026-09-08
 | 관리 | `frontend/src/components/admin/DropHistoryPanel.tsx`, `RequestAdminPanel.tsx` |
 | 요청 | `frontend/src/components/requests/SnackCard.tsx`, `MyRequestList.tsx`, `SnackCategoryTabs.tsx` |
 
-`/requests/snacks`는 보이는 상품이 있는 SSG 분류 탭만 렌더한다. 관리자 카탈로그는 12분류를 모두 보여 숨김을 설정한다. 관리자 요청 탭은 **대기 / 이력**으로 구매·거절 기록을 본다.
+`/requests/snacks`는 보이는 상품이 있는 SSG 분류 탭만 렌더한다. 상품 사진은 `https://www.ssg.com/item/itemView.ssg?itemId={ssg_item_id}` 로 새 탭을 연다. 관리자 카탈로그는 12분류를 모두 보여 숨김을 설정한다. 관리자 요청 탭은 **대기 / 이력**으로 구매·거절 기록을 본다.
 
 API 클라이언트: `frontend/src/lib/api.ts`, `frontend/src/lib/events/api.ts`.

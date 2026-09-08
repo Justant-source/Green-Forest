@@ -59,6 +59,16 @@ class SsgSnackCatalogParserTest {
     }
 
     @Test
+    void json_유니코드_앰퍼샌드는_itemId_상품페이지로_정규화한다() {
+        String html = "{\"itemId\":\"1000036235321\",\"itemName\":\"예감\","
+                + "\"itemUrl\":\"https://m.ssg.com/item/itemView.ssg?itemId=1000036235321\\u0026siteNo=6001\\u0026salestrNo=2037\"}";
+        List<SsgParsedItem> items = parser.parse(html);
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).getSsgUrl())
+                .isEqualTo("https://www.ssg.com/item/itemView.ssg?itemId=1000036235321");
+    }
+
+    @Test
     void itemId_없는_블록은_건너뛴다() {
         String html = "{\"itemNm\":\"없는거\",\"itemLnkd\":\"/x\"}";
         assertThat(parser.parse(html)).isEmpty();

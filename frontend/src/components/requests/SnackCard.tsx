@@ -2,6 +2,7 @@
 
 import { SnackCatalogCard } from "@/types";
 import { toMediaUrl } from "@/lib/api";
+import SsgItemImageLink from "@/components/requests/SsgItemImageLink";
 
 interface Props {
   item: SnackCatalogCard;
@@ -16,13 +17,16 @@ export default function SnackCard({ item, busy, onRequest, onCancel }: Props) {
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-3 flex flex-col">
-      <div className="aspect-square w-full rounded-lg bg-gray-100 overflow-hidden mb-2">
+      <SsgItemImageLink
+        href={item.ssgUrl}
+        className="aspect-square w-full rounded-lg bg-gray-100 overflow-hidden mb-2 block"
+      >
         {img ? (
           <img src={img} alt={item.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-xs text-gray-300">이미지 없음</div>
         )}
-      </div>
+      </SsgItemImageLink>
       <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-[2.5rem]">{item.name}</h3>
       {item.pendingQty > 0 && (
         <p className="text-xs text-forest-500 mt-1">신청 {item.pendingQty}명</p>

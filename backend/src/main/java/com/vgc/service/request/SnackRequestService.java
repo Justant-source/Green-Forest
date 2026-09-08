@@ -245,7 +245,7 @@ public class SnackRequestService {
                 group.setCatalogItemId(item.getId());
                 group.setName(item.getName());
                 group.setImageUrl(item.getImageUrl());
-                group.setSsgUrl(item.getSsgUrl());
+                group.setSsgUrl(SsgSnackCatalogParser.itemViewUrl(item.getSsgItemId()));
                 group.setAvailable(item.isAvailable());
                 group.setHiddenFromUsers(item.isHiddenFromUsers());
                 byItem.put(item.getId(), group);
@@ -298,6 +298,7 @@ public class SnackRequestService {
         response.setCatalogItemId(item != null ? item.getId() : null);
         response.setName(item != null ? item.getName() : null);
         response.setImageUrl(item != null ? item.getImageUrl() : null);
+        response.setSsgUrl(item != null ? SsgSnackCatalogParser.itemViewUrl(item.getSsgItemId()) : null);
         response.setQuantity(request.getQuantity());
         response.setStatus(request.getStatus());
         response.setRejectReason(reason);
@@ -316,6 +317,7 @@ public class SnackRequestService {
         response.setCatalogItemId(base.getCatalogItemId());
         response.setName(base.getName());
         response.setImageUrl(base.getImageUrl());
+        response.setSsgUrl(base.getSsgUrl());
         response.setQuantity(base.getQuantity());
         response.setStatus(base.getStatus());
         response.setRejectReason(base.getRejectReason());
@@ -453,6 +455,7 @@ public class SnackRequestService {
         response.setId(item.getId());
         response.setName(item.getName());
         response.setImageUrl(item.getImageUrl());
+        response.setSsgUrl(SsgSnackCatalogParser.itemViewUrl(item.getSsgItemId()));
         if (item.getCategory() != null) {
             response.setCategory(item.getCategory().name());
             response.setCategoryLabel(item.getCategory().getLabel());
@@ -476,7 +479,7 @@ public class SnackRequestService {
         }
         response.setName(item.getName());
         response.setImageUrl(item.getImageUrl());
-        response.setSsgUrl(item.getSsgUrl());
+        response.setSsgUrl(SsgSnackCatalogParser.itemViewUrl(item.getSsgItemId()));
         response.setSsgImageUrl(item.getSsgImageUrl());
         response.setDisplayOrder(item.getDisplayOrder());
         response.setAvailable(item.isAvailable());

@@ -8,6 +8,7 @@ public class AdminSnackRequestResponse {
     private Long catalogItemId;
     private String name;
     private String imageUrl;
+    private String ssgUrl;
     private int quantity;
     private RequestStatus status;
     private RequestRejectReason rejectReason;
@@ -27,6 +28,8 @@ public class AdminSnackRequestResponse {
     public void setName(String name) { this.name = name; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getSsgUrl() { return ssgUrl; }
+    public void setSsgUrl(String ssgUrl) { this.ssgUrl = ssgUrl; }
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
     public RequestStatus getStatus() { return status; }

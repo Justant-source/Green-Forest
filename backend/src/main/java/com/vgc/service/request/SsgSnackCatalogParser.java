@@ -16,8 +16,6 @@ public class SsgSnackCatalogParser {
     private static final Pattern ITEM_ID = Pattern.compile("\"itemId\"\\s*:\\s*\"?(\\d+)\"?");
     private static final Pattern ITEM_NM = stringField("itemNm");
     private static final Pattern ITEM_NAME = stringField("itemName");
-    private static final Pattern ITEM_LNKD = stringField("itemLnkd");
-    private static final Pattern ITEM_URL = stringField("itemUrl");
     private static final Pattern ITEM_IMG_URL = stringField("itemImgUrl");
     private static final Pattern IMG_URL = stringField("imgUrl");
     private static final Pattern ITEM_IMG = stringField("itemImg");
@@ -38,12 +36,11 @@ public class SsgSnackCatalogParser {
             if (name == null || name.isBlank()) {
                 continue;
             }
-            String link = firstNonBlank(firstField(ITEM_LNKD, object), firstField(ITEM_URL, object));
             String image = firstNonBlank(
                     firstField(ITEM_IMG_URL, object),
                     firstField(IMG_URL, object),
                     firstField(ITEM_IMG, object));
-            String ssgUrl = desktopItemUrl(link, itemId);
+            String ssgUrl = itemViewUrl(itemId);
             byId.put(itemId, new SsgParsedItem(itemId, name, ssgUrl, absolutizeNullable(image)));
         }
         return new ArrayList<>(byId.values());
@@ -85,12 +82,8 @@ public class SsgSnackCatalogParser {
         return absolutize(url);
     }
 
-    private static String desktopItemUrl(String link, String itemId) {
-        if (link == null || link.isBlank()) {
-            return ORIGIN + "/item/itemView.ssg?itemId=" + itemId;
-        }
-        String absolute = absolutize(link);
-        return absolute.replace("https://m.ssg.com", ORIGIN).replace("http://m.ssg.com", ORIGIN);
+    static String itemViewUrl(String itemId) {
+        return ORIGIN + "/item/itemView.ssg?itemId=" + itemId;
     }
 
     private static String absolutize(String url) {
@@ -127,6 +120,19 @@ public class SsgSnackCatalogParser {
                     break;
                 case 't':
                     out.append('\t');
+                    break;
+                case 'u':
+                    if (i + 4 < raw.length()) {
+                        String hex = raw.substring(i + 1, i + 5);
+                        try {
+                            out.append((char) Integer.parseInt(hex, 16));
+                            i += 4;
+                            break;
+                        } catch (NumberFormatException ignored) {
+                            // fall through to append u
+                        }
+                    }
+                    out.append(n);
                     break;
                 default:
                     out.append(n);

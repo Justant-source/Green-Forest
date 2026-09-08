@@ -2,12 +2,14 @@
 
 import { RequestStatus } from "@/types";
 import { toMediaUrl } from "@/lib/api";
+import SsgItemImageLink from "@/components/requests/SsgItemImageLink";
 import { formatKstDateTime, formatKstMonthDay } from "@/lib/datetime";
 
 export interface MyRequestListItem {
   id: number;
   title: string;
   imageUrl?: string | null;
+  ssgUrl?: string | null;
   quantity: number;
   status: RequestStatus;
   rejectReasonLabel?: string | null;
@@ -62,13 +64,16 @@ export default function MyRequestList({
             className="flex items-center gap-3 px-3 py-3 bg-white rounded-lg border border-gray-100"
           >
             {item.imageUrl !== undefined && (
-              <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+              <SsgItemImageLink
+                href={item.ssgUrl}
+                className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0 block"
+              >
                 {img ? (
                   <img src={img} alt={item.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full" />
                 )}
-              </div>
+              </SsgItemImageLink>
             )}
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-gray-800 truncate">{item.title}</div>
