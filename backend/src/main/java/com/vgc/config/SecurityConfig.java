@@ -142,9 +142,10 @@ public class SecurityConfig {
                         // 9. 유저 프로필 업데이트 - 인증 필요
                         .requestMatchers("/api/users/**").authenticated()
 
-                        // 10. 카테고리 요청, 프로필, 관리자
+                        // 10. 카테고리 요청, 프로필, 요청 탭, 관리자
                         .requestMatchers(HttpMethod.POST, "/api/categories/request").authenticated()
                         .requestMatchers("/api/profile/**").authenticated()
+                        .requestMatchers("/api/requests/**").authenticated()
                         .requestMatchers("/api/admin/**").authenticated()
 
                         // 11. 그 외 모든 요청 - 인증 필요

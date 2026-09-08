@@ -1,11 +1,11 @@
 ---
 title: L3 — 컨트롤러 분류 · HTTP 매핑
-last_updated: 2026-08-31
+last_updated: 2026-09-08
 ---
 
 # backend/30-components/controller-structure
 
-> `@RestController` / `@Controller` 30개. HTTP 매핑 어노테이션 합계 **174** (2026-08-31 `rg` 실측).
+> `@RestController` / `@Controller` 개수와 HTTP 매핑 합계는 **코드가 정본**. 2026-09-08 `*Controller.java` 실측 32파일, HTTP 매핑 **197**.
 > 계획서 스냅샷의 199는 코드와 불일치 — **코드가 정본**.
 
 ---
@@ -14,12 +14,12 @@ last_updated: 2026-08-31
 
 | 메서드 | 건수 |
 |---|---|
-| GET | 83 |
-| POST | 41 |
+| GET | 92 |
+| POST | 50 |
 | PUT | 19 |
-| DELETE | 16 |
-| PATCH | 15 |
-| **합계** | **174** |
+| DELETE | 18 |
+| PATCH | 18 |
+| **합계** | **197** |
 
 `ChatMessageController`는 HTTP 매핑이 없고 STOMP `@MessageMapping`만 쓴다.
 
@@ -27,7 +27,7 @@ last_updated: 2026-08-31
 
 ## §2. 패키지별 컨트롤러
 
-<!-- last-verified: 2026-08-31 -->
+<!-- last-verified: 2026-09-08 -->
 <!-- code-ref: backend/src/main/java/com/vgc/controller/**/*.java -->
 
 ```mermaid
@@ -54,6 +54,7 @@ flowchart TB
     FileServeController
     BotController
     NotifyEventController
+    RequestController
   end
   subgraph admin["/api/admin"]
     AdminController
@@ -61,6 +62,7 @@ flowchart TB
     EventAdminController
     PhotoBingoAdminController
     PhotoExhibitionAdminController
+    AdminRequestController
   end
   subgraph event["/api/events"]
     EventController
@@ -99,17 +101,23 @@ flowchart TB
 | `FileServeController` | `/api/media` |
 | `BotController` | `/api/bot` |
 | `NotifyEventController` | `/api/notify` |
+| `RequestController` | `/api/requests` |
 | `AdminController` | `/api/admin` |
 | `AdminDropController` | `/api/admin/drop-transactions` |
 | `EventAdminController` | `/api/admin/events` |
 | `PhotoBingoAdminController` | `/api/admin/events/{eventId}` |
 | `PhotoExhibitionAdminController` | `/api/admin/events/{eventId}/photo-exhibition` |
+| `AdminRequestController` | `/api/admin/requests` |
 | `EventController` | `/api/events` |
 | `PhotoBingoController` | `/api/events/{eventId}/photo-bingo` |
 | `PhotoExhibitionController` | `/api/events/{eventId}/photo-exhibition` |
 | `ChatMessageController` | (없음) `/app/chat/{conversationId}` |
 
 경로 권위: 각 파일의 `@RequestMapping`.
+
+`RequestController` 카탈로그: `GET /api/requests/snacks/categories`(사용자에게 **보이는 상품이 있는 분류만**), `GET /api/requests/snacks/catalog?category=`.
+`AdminRequestController` 카탈로그: `GET /api/admin/requests/catalog/categories`(12분류 전부), `GET /api/admin/requests/catalog?category=`, `PATCH /api/admin/requests/catalog/{id}/visibility`, `PATCH /api/admin/requests/catalog/categories/{category}/visibility`, `POST /api/admin/requests/catalog/sync`(관리자 버튼만, 쿨다운 없음).
+이력: `GET /api/admin/requests/snacks/history`, `GET /api/admin/requests/supplies/history`.
 
 ---
 

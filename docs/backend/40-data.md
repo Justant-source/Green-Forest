@@ -1,11 +1,11 @@
 ---
 title: L4 Data — MySQL 스키마 · 마이그레이션
-last_updated: 2026-08-31
+last_updated: 2026-09-08
 ---
 
 # backend/40-data — MySQL 스키마 · 마이그레이션
 
-> 엔티티 43개. 스키마 생성은 **dev = JPA `ddl-auto=update`**, **prod = JPA `ddl-auto=validate` + 수작업 SQL**.
+> 엔티티 개수는 **코드가 정본**. 요청 도메인 테이블 4개가 추가됐다. 스키마 생성은 **dev = JPA `ddl-auto=update`**, **prod = JPA `ddl-auto=validate` + 수작업 SQL**.
 > `backend/src/main/resources/db/migration/V*.sql` 3개가 있으나 **Flyway 의존성이 `backend/build.gradle`에 없다.** 런타임에 Flyway가 적용되지 않는다.
 
 ---
@@ -24,9 +24,9 @@ compose는 `SPRING_PROFILES_ACTIVE: dev` / `prod`만 주입한다 (`docker-compo
 
 ## §2. ER (핵심 관계)
 
-전체 43테이블을 한 그림에 나열하지 않는다. 관계는 표, 분기는 아래 핵심 ER.
+전체 테이블을 한 그림에 나열하지 않는다. 관계는 표, 분기는 아래 핵심 ER.
 
-<!-- last-verified: 2026-08-31 -->
+<!-- last-verified: 2026-09-08 -->
 <!-- code-ref: backend/src/main/java/com/vgc/entity/Post.java, backend/src/main/java/com/vgc/entity/User.java, backend/src/main/java/com/vgc/entity/Comment.java, backend/src/main/java/com/vgc/entity/event/Event.java -->
 
 ```mermaid
@@ -38,6 +38,9 @@ erDiagram
   posts ||--o{ post_likes : has
   posts ||--o{ votes : has
   users ||--o{ notifications : receives
+  users ||--o{ snack_requests : requests
+  users ||--o{ supply_requests : requests
+  snack_catalog_items ||--o{ snack_requests : has
   events ||--o{ event_participations : has
   surveys ||--o{ survey_options : has
   survey_options ||--o{ survey_votes : has
@@ -90,6 +93,10 @@ erDiagram
 | DropTransaction | `drop_transactions` |
 | SystemSetting | `system_settings` |
 | BirthdayAcknowledgement | `birthday_acknowledgement` |
+| SnackCatalogItem | `snack_catalog_items` |
+| SnackRequest | `snack_requests` |
+| SupplyRequest | `supply_requests` |
+| CatalogSyncRun | `catalog_sync_runs` |
 
 ---
 
@@ -173,3 +180,22 @@ stateDiagram-v2
 |---|---|
 | `SurveyDeliveryStatus` | PENDING, SHIPPED, DELIVERED, CANCELED |
 | `AttendanceDeliveryStatus` | NONE, PENDING, DELIVERED |
+| `RequestStatus` | PENDING → PURCHASED \| REJECTED (취소는 행 DELETE) |
+
+---
+
+## §7. 요청 탭 테이블 (2026-09-08)
+
+`snack_catalog_items`: UNIQUE (ssg_item_id, category). `category` ENUM 문자열(`SnackSsgCategory`) — 과자/간식 하위 12분류. name, image_url, ssg_url, display_order, available, hidden_from_users, hidden_locked_by_admin, last_seen_at.
+
+`snack_requests`: user_id, catalog_item_id, quantity(1), status, reject_reason, reject_note, pending_owner_id (PENDING일 때만 user_id). UNIQUE (catalog_item_id, pending_owner_id).
+
+`supply_requests`: user_id, title(1–80), quantity(1–5), memo(0–300), status, reject_reason, reject_note.
+
+`catalog_sync_runs`: status RUNNING/SUCCESS/FAIL, started_at, finished_at, item_count, error_message, started_by.
+
+`notifications.type`는 VARCHAR(32) (`NotificationType`에 `REQUEST` 포함). `related_request_kind` ENUM('SNACK','SUPPLY') NULL.
+
+카탈로그 목록 갱신은 관리자 **목록 갱신 버튼만**. 쿨다운 없음.
+
+prod 수작업 SQL 파일명: `prod_2026_09_08_requests.sql`, `prod_2026_09_08_snack_catalog_categories.sql`, `prod_2026_09_08_notification_request_type.sql` (`backend/db-migrations/`). **실행하지 않음.**

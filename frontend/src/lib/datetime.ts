@@ -54,6 +54,21 @@ export function formatKstDate(value: string | Date | null | undefined): string {
   return d.toLocaleDateString("ko-KR", { timeZone: KST_TZ });
 }
 
+/** 요청자 상태 배지용. 예: 9/8 */
+export function formatKstMonthDay(value: string | Date | null | undefined): string {
+  const d = parseServerInstant(value);
+  if (!d) return "";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: KST_TZ,
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(d);
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+  if (!month || !day) return "";
+  return `${month}/${day}`;
+}
+
 export function formatKstTime(value: string | Date | null | undefined): string {
   const d = parseServerInstant(value);
   if (!d) return "";

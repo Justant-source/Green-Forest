@@ -1,11 +1,11 @@
 ---
 title: L3 — 페이지 · Context · 컴포넌트
-last_updated: 2026-08-31
+last_updated: 2026-09-08
 ---
 
 # frontend/30-components/component-tree
 
-> `frontend/src` TS/TSX 92파일, `frontend/src/components` TSX 47파일, `page.tsx` 23개 (2026-08-31).
+> `page.tsx` 목록은 아래 표가 정본. 요청 탭 라우트가 추가됐다.
 
 ---
 
@@ -36,8 +36,13 @@ last_updated: 2026-08-31
 | `/profile` | `frontend/src/app/profile/page.tsx` |
 | `/profile/birthday` | `frontend/src/app/profile/birthday/page.tsx` |
 | `/profile/shipping` | `frontend/src/app/profile/shipping/page.tsx` |
+| `/requests` | `frontend/src/app/requests/page.tsx` (→ `/requests/snacks`) |
+| `/requests/snacks` | `frontend/src/app/requests/snacks/page.tsx` |
+| `/requests/supplies` | `frontend/src/app/requests/supplies/page.tsx` |
 
-레이아웃: `frontend/src/app/layout.tsx`.
+레이아웃: `frontend/src/app/layout.tsx`. 요청 셸: `frontend/src/app/requests/layout.tsx`.
+
+`BottomNav` 로그인 후: 광장 / 출석 / 뽑기 / 요청(`/requests/snacks`) / 마이가든. `/ranking`은 하단에서 제거하고 마이가든 드롭 탭 링크만 둔다.
 
 ---
 
@@ -55,6 +60,9 @@ last_updated: 2026-08-31
 | 게시·설문 | `PostContent.tsx`, `PostDetail.tsx`, `CommentSection.tsx`, `SurveyView.tsx`, `SurveyCreateForm.tsx` |
 | 기능 | `GachaDrawModal.tsx`, `ChatRoom.tsx`, `AttendanceBoard.tsx`, `PlantGrowthBadge.tsx` |
 | 이벤트 | `frontend/src/components/events/` (photobingo, photoexhibition, `EventModeBanner.tsx`) |
-| 관리 | `frontend/src/components/admin/DropHistoryPanel.tsx` |
+| 관리 | `frontend/src/components/admin/DropHistoryPanel.tsx`, `RequestAdminPanel.tsx` |
+| 요청 | `frontend/src/components/requests/SnackCard.tsx`, `MyRequestList.tsx`, `SnackCategoryTabs.tsx` |
+
+`/requests/snacks`는 보이는 상품이 있는 SSG 분류 탭만 렌더한다. 관리자 카탈로그는 12분류를 모두 보여 숨김을 설정한다. 관리자 요청 탭은 **대기 / 이력**으로 구매·거절 기록을 본다.
 
 API 클라이언트: `frontend/src/lib/api.ts`, `frontend/src/lib/events/api.ts`.

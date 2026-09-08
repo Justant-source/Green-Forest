@@ -66,6 +66,7 @@ public class NotificationController {
         map.put("body", n.getBody());
         map.put("relatedPostId", n.getRelatedPostId());
         map.put("relatedQuestId", n.getRelatedQuestId());
+        map.put("relatedRequestKind", n.getRelatedRequestKind() != null ? n.getRelatedRequestKind().name() : null);
         map.put("isRead", n.isRead());
         map.put("createdAt", n.getCreatedAt().toString());
         return map;

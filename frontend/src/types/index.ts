@@ -208,8 +208,155 @@ export interface Notification {
   body: string;
   relatedPostId: number | null;
   relatedQuestId: number | null;
+  relatedRequestKind: "SNACK" | "SUPPLY" | null;
   isRead: boolean;
   createdAt: string;
+}
+
+export type RequestStatus = "PENDING" | "PURCHASED" | "REJECTED";
+export type RequestRejectReason = "OUT_OF_STOCK" | "POLICY" | "DUPLICATE" | "OTHER";
+
+export type SnackSsgCategory =
+  | "SNACK"
+  | "COOKIE"
+  | "SAND"
+  | "PIE"
+  | "BABY"
+  | "TRADITIONAL"
+  | "ANJU"
+  | "CANDY"
+  | "JELLY"
+  | "CHOCOLATE"
+  | "CEREAL"
+  | "ICE_CREAM";
+
+export interface SnackSsgCategoryInfo {
+  code: SnackSsgCategory;
+  label: string;
+}
+
+export const SNACK_SSG_CATEGORIES: SnackSsgCategoryInfo[] = [
+  { code: "SNACK", label: "스낵/과자" },
+  { code: "COOKIE", label: "쿠키/비스킷/크래커" },
+  { code: "SAND", label: "샌드/스틱과자" },
+  { code: "PIE", label: "파이/케익" },
+  { code: "BABY", label: "유아과자/시리얼" },
+  { code: "TRADITIONAL", label: "떡/한과/전통과자" },
+  { code: "ANJU", label: "소시지/원물/안주스낵" },
+  { code: "CANDY", label: "사탕/카라멜/껌" },
+  { code: "JELLY", label: "젤리/푸딩" },
+  { code: "CHOCOLATE", label: "초콜릿/초코바" },
+  { code: "CEREAL", label: "시리얼" },
+  { code: "ICE_CREAM", label: "아이스크림/빙수" },
+];
+
+export interface SnackCatalogCard {
+  id: number;
+  name: string;
+  category: SnackSsgCategory | null;
+  categoryLabel: string | null;
+  imageUrl: string | null;
+  pendingQty: number;
+  myPendingQty: number;
+  myRequestId: number | null;
+  available: boolean;
+  hiddenFromUsers: boolean;
+  canRequest: boolean;
+}
+
+export interface SnackRequest {
+  id: number;
+  catalogItemId: number;
+  name: string;
+  imageUrl: string | null;
+  quantity: number;
+  status: RequestStatus;
+  rejectReason: RequestRejectReason | null;
+  rejectReasonLabel: string | null;
+  rejectNote: string | null;
+  createdAt: string;
+  purchasedAt: string | null;
+  rejectedAt: string | null;
+}
+
+export interface SupplyRequest {
+  id: number;
+  title: string;
+  quantity: number;
+  memo: string | null;
+  status: RequestStatus;
+  rejectReason: RequestRejectReason | null;
+  rejectReasonLabel: string | null;
+  rejectNote: string | null;
+  createdAt: string;
+  purchasedAt: string | null;
+  rejectedAt: string | null;
+}
+
+export interface AdminSupplyRequest extends SupplyRequest {
+  userId: number;
+  nickname: string;
+}
+
+export interface SnackGroupedPendingLine {
+  id: number;
+  userId: number;
+  nickname: string;
+  quantity: number;
+  createdAt: string;
+}
+
+export interface SnackGroupedPending {
+  catalogItemId: number;
+  name: string;
+  imageUrl: string | null;
+  ssgUrl: string;
+  available: boolean;
+  hiddenFromUsers: boolean;
+  requesterCount: number;
+  totalQty: number;
+  lines: SnackGroupedPendingLine[];
+}
+
+export interface AdminSnackHistoryItem {
+  id: number;
+  catalogItemId: number;
+  name: string;
+  imageUrl: string | null;
+  quantity: number;
+  status: RequestStatus;
+  rejectReasonLabel: string | null;
+  rejectNote: string | null;
+  createdAt: string;
+  purchasedAt: string | null;
+  rejectedAt: string | null;
+  userId: number | null;
+  nickname: string | null;
+}
+
+export interface AdminSnackCatalogItem {
+  id: number;
+  ssgItemId: string;
+  category: SnackSsgCategory | null;
+  categoryLabel: string | null;
+  name: string;
+  imageUrl: string | null;
+  ssgUrl: string;
+  displayOrder: number;
+  available: boolean;
+  hiddenFromUsers: boolean;
+  hiddenLockedByAdmin: boolean;
+  lastSeenAt: string | null;
+  pendingQty: number;
+}
+
+export interface CatalogSyncStatusInfo {
+  running: boolean;
+  lastSuccessAt: string | null;
+  lastFailAt: string | null;
+  lastError: string | null;
+  cooldownUntil: string | null;
+  itemCount: number | null;
 }
 
 export interface LeaderboardEntry {

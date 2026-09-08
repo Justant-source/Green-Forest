@@ -1,6 +1,6 @@
 ---
 title: L1 Context — backend 경계 · 액터 · 외부 의존
-last_updated: 2026-08-31
+last_updated: 2026-09-08
 ---
 
 # backend/10-context — 비즈니스 도메인 · 외부 의존성 · 액터
@@ -11,7 +11,7 @@ last_updated: 2026-08-31
 
 ## §1. 이 모듈이 하는 일
 
-사내 커뮤니티 플랫폼 **그린 포레스트**의 서버. 게시판·댓글·설문·출석·가챠·퀘스트·정원(식물)·랭킹·실시간 채팅·사진전·포토빙고를 HTTP/WebSocket으로 제공한다.
+사내 커뮤니티 플랫폼 **그린 포레스트**의 서버. 게시판·댓글·설문·출석·가챠·퀘스트·정원(식물)·랭킹·요청(간식·사무용품)·실시간 채팅·사진전·포토빙고를 HTTP/WebSocket으로 제공한다.
 
 스택 (코드 기준): Spring Boot 3.2.5, Java 17 (`backend/build.gradle`), Spring Security 6 + JWT, MySQL 8.0, Spring Data JPA.
 
@@ -24,7 +24,7 @@ last_updated: 2026-08-31
 | 액터 | 진입 | 비고 |
 |---|---|---|
 | 임직원 사용자 | `/api/**` + JWT | 회원가입·피드·채팅 |
-| 관리자 | `/api/admin/**` | 카테고리·이벤트·가챠·드랍 |
+| 관리자 | `/api/admin/**` | 카테고리·이벤트·가챠·드랍·요청 |
 | Notify 폴러 | `/api/notify/**` | `NotifyTokenFilter` Bearer 토큰 |
 | STOMP 클라이언트 | `/ws` | JWT를 CONNECT 헤더로 전달 |
 
@@ -44,7 +44,7 @@ OAuth·결제·외부 LLM은 사용하지 않는다.
 
 ## §4. 인증
 
-JWT (`backend/src/main/java/com/vgc/security/JwtUtil.java`). 필터 체인: `backend/src/main/java/com/vgc/config/SecurityConfig.java`.
+JWT (`backend/src/main/java/com/vgc/security/JwtUtil.java`). 필터 체인: `backend/src/main/java/com/vgc/config/SecurityConfig.java`. `/api/requests/**` 는 인증 필수.
 
 ---
 

@@ -8,6 +8,9 @@ import {
   PlantGrowth, AdminCreatePrizeRequest, AdminUpdatePrizeRequest,
   Survey, SurveyOption, SurveyNotice, SurveyVoteDetail,
   AdminDrawHistoryPage, SecretDrawResult,
+  SnackCatalogCard, SnackRequest, SupplyRequest, AdminSupplyRequest,
+  SnackGroupedPending, AdminSnackCatalogItem, AdminSnackHistoryItem, CatalogSyncStatusInfo,
+  RequestRejectReason, SnackSsgCategory, SnackSsgCategoryInfo,
 } from "@/types";
 import { getToken, logout } from "@/lib/auth";
 
@@ -1460,4 +1463,361 @@ export async function closeSurvey(surveyId: number): Promise<void> {
     const msg = await res.text().catch(() => "투표 종료 실패");
     throw new Error(msg);
   }
+}
+
+// ========== 요청 (간식 · 사무용품) ==========
+
+export async function getSnackCategories(): Promise<SnackSsgCategoryInfo[]> {
+  const res = await fetch(`${BASE_URL}/requests/snacks/categories`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function getSnackCatalog(params?: {
+  q?: string;
+  requestedOnly?: boolean;
+  category?: SnackSsgCategory;
+  page?: number;
+  size?: number;
+}): Promise<PageResponse<SnackCatalogCard>> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  if (params?.requestedOnly) qs.set("requestedOnly", "true");
+  if (params?.category) qs.set("category", params.category);
+  if (params?.page !== undefined) qs.set("page", String(params.page));
+  if (params?.size !== undefined) qs.set("size", String(params.size));
+  const res = await fetch(`${BASE_URL}/requests/snacks/catalog?${qs.toString()}`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function getMySnackRequests(): Promise<SnackRequest[]> {
+  const res = await fetch(`${BASE_URL}/requests/snacks/mine`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function createSnackRequest(catalogItemId: number, quantity: number): Promise<SnackRequest> {
+  const res = await fetch(`${BASE_URL}/requests/snacks`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ catalogItemId, quantity }),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function updateSnackRequest(id: number, quantity: number): Promise<SnackRequest> {
+  const res = await fetch(`${BASE_URL}/requests/snacks/${id}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ quantity }),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function cancelSnackRequest(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/requests/snacks/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+}
+
+export async function getMySupplyRequests(): Promise<SupplyRequest[]> {
+  const res = await fetch(`${BASE_URL}/requests/supplies/mine`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function createSupplyRequest(body: {
+  title: string;
+  quantity: number;
+  memo?: string | null;
+}): Promise<SupplyRequest> {
+  const res = await fetch(`${BASE_URL}/requests/supplies`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function updateSupplyRequest(
+  id: number,
+  body: { title?: string; quantity?: number; memo?: string | null }
+): Promise<SupplyRequest> {
+  const res = await fetch(`${BASE_URL}/requests/supplies/${id}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function cancelSupplyRequest(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/requests/supplies/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+}
+
+export async function adminGetGroupedSnackRequests(): Promise<SnackGroupedPending[]> {
+  const res = await fetch(`${BASE_URL}/admin/requests/snacks/grouped`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function adminListSnackHistory(): Promise<AdminSnackHistoryItem[]> {
+  const res = await fetch(`${BASE_URL}/admin/requests/snacks/history`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function adminPurchaseSnackItem(catalogItemId: number): Promise<{ updated: number }> {
+  const res = await fetch(`${BASE_URL}/admin/requests/snacks/items/${catalogItemId}/purchase`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function adminPurchaseSnackRequest(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/requests/snacks/${id}/purchase`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+}
+
+export async function adminRejectSnackItem(
+  catalogItemId: number,
+  reason: RequestRejectReason,
+  note?: string
+): Promise<{ updated: number }> {
+  const res = await fetch(`${BASE_URL}/admin/requests/snacks/items/${catalogItemId}/reject`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ reason, note }),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function adminRejectSnackRequest(
+  id: number,
+  reason: RequestRejectReason,
+  note?: string
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/requests/snacks/${id}/reject`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ reason, note }),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+}
+
+export async function adminListSupplyRequests(status?: string): Promise<AdminSupplyRequest[]> {
+  const qs = new URLSearchParams();
+  if (status) qs.set("status", status);
+  const res = await fetch(`${BASE_URL}/admin/requests/supplies?${qs.toString()}`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function adminListSupplyHistory(): Promise<AdminSupplyRequest[]> {
+  const res = await fetch(`${BASE_URL}/admin/requests/supplies/history`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function adminPurchaseSupplyRequest(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/requests/supplies/${id}/purchase`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+}
+
+export async function adminRejectSupplyRequest(
+  id: number,
+  reason: RequestRejectReason,
+  note?: string
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/requests/supplies/${id}/reject`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ reason, note }),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+}
+
+export async function adminListSnackCatalog(params?: {
+  q?: string;
+  includeUnavailable?: boolean;
+  category?: SnackSsgCategory;
+  page?: number;
+  size?: number;
+}): Promise<PageResponse<AdminSnackCatalogItem>> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  if (params?.includeUnavailable !== undefined) {
+    qs.set("includeUnavailable", String(params.includeUnavailable));
+  }
+  if (params?.category) qs.set("category", params.category);
+  if (params?.page !== undefined) qs.set("page", String(params.page));
+  if (params?.size !== undefined) qs.set("size", String(params.size));
+  const res = await fetch(`${BASE_URL}/admin/requests/catalog?${qs.toString()}`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function adminSetSnackVisibility(id: number, hiddenFromUsers: boolean): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/requests/catalog/${id}/visibility`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ hiddenFromUsers }),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+}
+
+export async function adminSetSnackCategoryVisibility(
+  category: SnackSsgCategory,
+  hiddenFromUsers: boolean
+): Promise<void> {
+  const res = await fetch(
+    `${BASE_URL}/admin/requests/catalog/categories/${category}/visibility`,
+    {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ hiddenFromUsers }),
+    }
+  );
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+}
+
+export async function adminSyncSnackCatalog(): Promise<unknown> {
+  const res = await fetch(`${BASE_URL}/admin/requests/catalog/sync`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  if (res.status === 204) return null;
+  return res.json().catch(() => null);
+}
+
+export async function adminGetCatalogSyncStatus(): Promise<CatalogSyncStatusInfo> {
+  const res = await fetch(`${BASE_URL}/admin/requests/catalog/sync/status`, {
+    headers: authHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+  return res.json();
 }

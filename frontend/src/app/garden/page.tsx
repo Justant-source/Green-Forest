@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { logout } from "@/lib/auth";
 import { getMe, getMyPosts, getMyBookmarks, getMyDropHistory, updateMyProfile, changePassword, getMyPlantGrowth, getMyAttendanceWins, getGachaHistory } from "@/lib/api";
@@ -541,7 +542,13 @@ export default function GardenPage() {
         )
       ) : activeTab === "drops" ? (
         // 물방울 내역
-        tabLoading && drops.length === 0 ? (
+        <>
+        <div className="mb-4">
+          <Link href="/ranking" className="text-sm font-medium text-forest-500">
+            파티 랭킹 보기
+          </Link>
+        </div>
+        {tabLoading && drops.length === 0 ? (
           <div className="flex justify-center py-20">
             <div className="w-10 h-10 border-4 border-gray-300 border-t-forest-500 rounded-full animate-spin" />
           </div>
@@ -575,7 +582,8 @@ export default function GardenPage() {
               </div>
             )}
           </div>
-        )
+        )}
+        </>
       ) : (
         // 글/북마크 그리드
         tabLoading && posts.length === 0 ? (

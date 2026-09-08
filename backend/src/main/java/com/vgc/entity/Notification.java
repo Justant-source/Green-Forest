@@ -19,7 +19,7 @@ public class Notification {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(32)")
     private NotificationType type;
 
     @Column(nullable = false, length = 200)
@@ -33,6 +33,10 @@ public class Notification {
 
     @Column(name = "related_quest_id")
     private Long relatedQuestId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "related_request_kind")
+    private RequestKind relatedRequestKind;
 
     @Column(name = "is_read", nullable = false)
     private boolean read = false;
@@ -60,6 +64,8 @@ public class Notification {
     public void setRelatedPostId(Long relatedPostId) { this.relatedPostId = relatedPostId; }
     public Long getRelatedQuestId() { return relatedQuestId; }
     public void setRelatedQuestId(Long relatedQuestId) { this.relatedQuestId = relatedQuestId; }
+    public RequestKind getRelatedRequestKind() { return relatedRequestKind; }
+    public void setRelatedRequestKind(RequestKind relatedRequestKind) { this.relatedRequestKind = relatedRequestKind; }
     public boolean isRead() { return read; }
     public void setRead(boolean read) { this.read = read; }
     public LocalDateTime getCreatedAt() { return createdAt; }

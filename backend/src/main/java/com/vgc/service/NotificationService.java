@@ -2,6 +2,7 @@ package com.vgc.service;
 
 import com.vgc.entity.Notification;
 import com.vgc.entity.NotificationType;
+import com.vgc.entity.RequestKind;
 import com.vgc.entity.User;
 import com.vgc.repository.NotificationRepository;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,11 @@ public class NotificationService {
 
     public void createNotification(User user, NotificationType type, String title, String body,
                                    Long relatedPostId, Long relatedQuestId) {
+        createNotification(user, type, title, body, relatedPostId, relatedQuestId, null);
+    }
+
+    public void createNotification(User user, NotificationType type, String title, String body,
+                                   Long relatedPostId, Long relatedQuestId, RequestKind relatedRequestKind) {
         Notification notification = new Notification();
         notification.setUser(user);
         notification.setType(type);
@@ -27,6 +33,7 @@ public class NotificationService {
         notification.setBody(body);
         notification.setRelatedPostId(relatedPostId);
         notification.setRelatedQuestId(relatedQuestId);
+        notification.setRelatedRequestKind(relatedRequestKind);
         notificationRepository.save(notification);
     }
 

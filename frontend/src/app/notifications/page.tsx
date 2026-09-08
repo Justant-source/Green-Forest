@@ -53,7 +53,11 @@ export default function NotificationsPage() {
         prev.map((n) => n.id === notification.id ? { ...n, isRead: true } : n)
       );
     }
-    if (notification.relatedPostId) {
+    if (notification.relatedRequestKind === "SNACK") {
+      router.push("/requests/snacks");
+    } else if (notification.relatedRequestKind === "SUPPLY") {
+      router.push("/requests/supplies");
+    } else if (notification.relatedPostId) {
       router.push(`/posts/${notification.relatedPostId}`);
     } else if (notification.relatedQuestId) {
       router.push("/quests");

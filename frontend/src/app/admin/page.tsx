@@ -33,11 +33,12 @@ import {
 } from "@/lib/api";
 import EventAdminTab from "@/components/events/photobingo/admin/EventAdminTab";
 import DropHistoryPanel from "@/components/admin/DropHistoryPanel";
+import RequestAdminPanel from "@/components/admin/RequestAdminPanel";
 import BirthMonthDaySelect from "@/components/BirthMonthDaySelect";
 import { formatBirthMonthDay } from "@/lib/birthMonthDay";
 import { formatKstDate, formatKstDateTime, toDatetimeLocalKst } from "@/lib/datetime";
 
-type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha" | "posts" | "events" | "survey-deliveries";
+type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "categories" | "announce" | "attendance" | "gacha" | "posts" | "events" | "survey-deliveries" | "requests";
 
 const PLANT_OPTIONS = [
   { value: "TABLE_PALM", label: "테이블야자" },
@@ -225,6 +226,7 @@ export default function AdminPage() {
     { key: "attendance", label: "출석" },
     { key: "gacha", label: "뽑기" },
     { key: "survey-deliveries", label: "설문배송" },
+    { key: "requests", label: "요청" },
     { key: "announce", label: "공지" },
   ];
 
@@ -1507,6 +1509,8 @@ export default function AdminPage() {
 
       {/* 설문 배송 */}
       {tab === "survey-deliveries" && <SurveyDeliveryPanel />}
+
+      {tab === "requests" && <RequestAdminPanel />}
     </div>
   );
 }
