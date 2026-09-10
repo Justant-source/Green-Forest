@@ -1,6 +1,6 @@
 ---
 title: L3 — 페이지 · Context · 컴포넌트
-last_updated: 2026-09-08
+last_updated: 2026-09-10
 ---
 
 # frontend/30-components/component-tree
@@ -64,5 +64,7 @@ last_updated: 2026-09-08
 | 요청 | `frontend/src/components/requests/SnackCard.tsx`, `MyRequestList.tsx`, `SnackCategoryTabs.tsx` |
 
 `/requests/snacks`는 보이는 상품이 있는 SSG 분류 탭만 렌더한다. 상품 사진은 `https://www.ssg.com/item/itemView.ssg?itemId={ssg_item_id}` 로 새 탭을 연다. 관리자 카탈로그는 12분류를 모두 보여 숨김을 설정한다. 관리자 요청 탭은 **대기 / 이력**으로 구매·거절 기록을 본다.
+
+`/posts/new` 카테고리 선택: 퀘스트 타일은 숨긴다. **투표**(`survey`) 타일은 로그인 회원 전원에게 보이며 `SurveyCreateForm`으로 이어진다. 공지 배너·상품 배송·참여자 항목 추가는 관리자 폼에만 있다. 작성자는 투표를 수정·강제 종료할 수 있다. `/posts/[id]/survey-edit`는 작성자 또는 관리자. 종료 시각은 입력값을 그대로 저장·표시한다(UTC 변환 없음).
 
 API 클라이언트: `frontend/src/lib/api.ts`, `frontend/src/lib/events/api.ts`.

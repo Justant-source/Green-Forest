@@ -115,3 +115,24 @@ export function toDatetimeLocalKst(value: string | Date | null | undefined): str
   if (!d) return "";
   return new Intl.DateTimeFormat("sv-SE", KST_DT).format(d).replace(" ", "T").slice(0, 16);
 }
+
+/** datetime-local 값을 서버 LocalDateTime(벽시계)으로. UTC 변환하지 않는다. */
+export function datetimeLocalToNaive(value: string): string {
+  const s = value.trim();
+  if (!s) return s;
+  const withT = s.includes("T") ? s : s.replace(" ", "T");
+  if (withT.length === 16) return `${withT}:00`;
+  return withT.slice(0, 19);
+}
+
+/** 서버 naive LocalDateTime을 datetime-local 값으로. TZ 변환 없음. */
+export function naiveToDatetimeLocal(value: string | null | undefined): string {
+  if (!value) return "";
+  return toIsoCandidate(value).slice(0, 16);
+}
+
+/** 서버 naive LocalDateTime 표시. TZ 변환 없음. */
+export function formatNaiveDateTime(value: string | null | undefined): string {
+  if (!value) return "";
+  return toIsoCandidate(value).replace("T", " ").slice(0, 16);
+}

@@ -162,16 +162,26 @@ function NewPostPageInner() {
   const getRewardHint = (catName: string): string => {
     if (catName === "긍정문구") return "+10 물방울 / 일 1회";
     if (catName === "동료칭찬") return "+30 물방울, 본인 + 태그 동료 / 주 1회";
-    if (catName === "퀘스트") return "가변 보상";
     return "";
   };
 
   const getDescription = (catName: string): string => {
     if (catName === "긍정문구") return "팀원에게 전하는 긍정의 한마디";
     if (catName === "동료칭찬") return "동료의 좋은 점을 공개적으로 칭찬";
-    if (catName === "퀘스트") return "퀘스트 완료 인증";
+    if (catName === "survey") return "팀원에게 묻는 투표";
     return "";
   };
+
+  const pickerCategories: CategoryInfo[] = [
+    ...categories.filter(
+      (cat) =>
+        cat.name !== "이벤트" &&
+        cat.name !== "퀘스트" &&
+        cat.name !== "survey" &&
+        (!cat.adminOnly || isAdmin)
+    ),
+    { id: -1, name: "survey", label: "투표", color: "indigo" },
+  ];
 
   const categoryColor = (color: string | undefined): string => {
     if (!color || color === "white") return "bg-gray-100 border-gray-300";
@@ -212,35 +222,23 @@ function NewPostPageInner() {
           <div>
             <h2 className="text-lg font-semibold text-gray-800 mb-4">어떤 글을 작성하시겠어요?</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {categories
-                .filter((cat) => cat.name !== "이벤트")
-                .filter((cat) => !cat.adminOnly || isAdmin)
-                .map((cat) => {
-                const disabled = cat.name === "퀘스트";
-                return (
+              {pickerCategories.map((cat) => (
                   <button
                     key={cat.name}
-                    disabled={disabled}
                     onClick={() => {
                       setCategory(cat.name);
                       setCategorySelected(true);
                     }}
-                    className={`p-6 rounded-lg border-2 transition-all text-left ${
-                      disabled
-                        ? "bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed"
-                        : `${categoryColor(cat.color)} hover:shadow-md active:scale-95`
-                    }`}
+                    className={`p-6 rounded-lg border-2 transition-all text-left ${categoryColor(cat.color)} hover:shadow-md active:scale-95`}
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-3 h-3 rounded-full ${disabled ? "bg-gray-300" : categoryBgColor(cat.color)}`} />
+                      <div className={`w-3 h-3 rounded-full ${categoryBgColor(cat.color)}`} />
                       <h3 className="text-base font-bold text-gray-900">{cat.label}</h3>
-                      {disabled && <span className="text-[10px] text-gray-400 font-medium">준비중</span>}
                     </div>
                     <p className="text-xs text-gray-600 mb-3">{getDescription(cat.name)}</p>
                     <p className="text-xs font-medium text-gray-700">{getRewardHint(cat.name)}</p>
                   </button>
-                );
-              })}
+              ))}
             </div>
           </div>
         </div>
@@ -251,7 +249,9 @@ function NewPostPageInner() {
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-medium text-gray-700">
               선택됨: <span className="text-forest-600 font-semibold">
-                {categories.find((c) => c.name === category)?.label}
+                {category === "survey"
+                  ? "투표"
+                  : categories.find((c) => c.name === category)?.label}
               </span>
             </span>
             <button

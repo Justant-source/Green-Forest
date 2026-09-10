@@ -1,6 +1,6 @@
 ---
 title: L3 — 엔티티 · enum · 관계
-last_updated: 2026-09-08
+last_updated: 2026-09-10
 ---
 
 # backend/30-components/entity-and-enum
@@ -34,6 +34,8 @@ last_updated: 2026-09-08
 - `SnackCatalogItem` ← `SnackRequest`
 - `Event` ← 참여·빙고·사진전 엔티티
 - `Survey` ← `SurveyOption` ← `SurveyVote`
+
+`SurveyOption.description`은 항목 설명(최대 300자, nullable). `text_content`는 항목 제목.
 
 ---
 

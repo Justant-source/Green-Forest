@@ -35,10 +35,10 @@ public class SurveyController {
     }
 
     /**
-     * 설문 + 게시글 생성 (관리자 전용).
+     * 설문 + 게시글 생성 (로그인 회원). 공지/배송/참여자추가는 관리자만 서버에서 반영.
      * multipart/form-data:
      *   title, closesAt (ISO datetime), anonymous, allowOptionAddByUser, allowMultiSelect, notice: boolean
-     *   options: JSON array of {type, text}
+     *   options: JSON array of {type, text, description}
      *   optionImage_0, optionImage_1, ...: MultipartFile (IMAGE_ONLY / TEXT_AND_IMAGE 옵션용)
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -54,7 +54,7 @@ public class SurveyController {
             MultipartHttpServletRequest mreq,
             Authentication authentication) throws IOException {
 
-        User admin = currentAdmin(authentication);
+        User actor = currentUser(authentication);
 
         List<SurveyOptionInput> inputs = surveyService.parseOptionsJson(optionsJson);
         for (int i = 0; i < inputs.size(); i++) {
@@ -62,14 +62,14 @@ public class SurveyController {
         }
 
         SurveyCreateRequest req = new SurveyCreateRequest();
-        req.setClosesAt(LocalDateTime.parse(closesAtIso));
+        req.setClosesAt(parseClosesAt(closesAtIso));
         req.setAnonymous(anonymous);
         req.setAllowOptionAddByUser(allowOptionAddByUser);
         req.setAllowMultiSelect(allowMultiSelect);
         req.setNotice(notice);
         req.setRequiresShipping(requiresShipping);
 
-        Survey created = surveyService.createSurveyWithPost(admin, title, req, inputs);
+        Survey created = surveyService.createSurveyWithPost(actor, title, req, inputs);
 
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("postId", created.getPost().getId());
@@ -116,30 +116,30 @@ public class SurveyController {
         ));
     }
 
-    /** 게시글 ID로 설문 즉시 종료 (관리자 전용). */
+    /** 게시글 ID로 설문 즉시 종료 (작성자 또는 관리자). */
     @PatchMapping("/close-by-post/{postId}")
     public ResponseEntity<Void> closeSurveyByPost(@PathVariable Long postId, Authentication auth) {
-        surveyService.closeSurveyByPost(postId, currentAdmin(auth));
+        surveyService.closeSurveyByPost(postId, currentUser(auth));
         return ResponseEntity.noContent().build();
     }
 
-    /** 옵션 삭제 (관리자 전용). */
+    /** 옵션 삭제 (작성자 또는 관리자). */
     @DeleteMapping("/{surveyId}/options/{optionId}")
     public ResponseEntity<Void> deleteOption(@PathVariable Long surveyId,
                                               @PathVariable Long optionId,
                                               Authentication auth) {
-        surveyService.deleteOption(surveyId, optionId, currentAdmin(auth));
+        surveyService.deleteOption(surveyId, optionId, currentUser(auth));
         return ResponseEntity.noContent().build();
     }
 
-    /** 관리자가 기존 설문에 옵션 추가 (multipart). */
+    /** 작성자 또는 관리자가 기존 설문에 옵션 추가 (multipart). */
     @PostMapping(value = "/{surveyId}/admin-options", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> addAdminOption(
             @PathVariable Long surveyId,
             @RequestParam(value = "text", required = false) String text,
             @RequestParam(value = "image", required = false) MultipartFile image,
             Authentication auth) throws IOException {
-        SurveyOption opt = surveyService.addAdminOption(surveyId, currentAdmin(auth), text, image);
+        SurveyOption opt = surveyService.addAdminOption(surveyId, currentUser(auth), text, image);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
             "id", opt.getId(),
             "type", opt.getOptionType().name(),
@@ -151,49 +151,59 @@ public class SurveyController {
         ));
     }
 
-    /** 설문 제목/종료일/배송여부 수정 (관리자 전용). */
+    /** 설문 제목/종료일/배송여부 수정 (작성자 또는 관리자. 배송여부는 관리자만 반영). */
     @PatchMapping("/{surveyId}/meta")
     public ResponseEntity<Void> updateMeta(
             @PathVariable Long surveyId,
             @RequestBody Map<String, String> body,
             Authentication auth) {
-        User admin = currentAdmin(auth);
+        User actor = currentUser(auth);
         String title = body.get("title");
         String closesAtStr = body.get("closesAt");
-        LocalDateTime closesAt = closesAtStr != null ? LocalDateTime.parse(closesAtStr) : null;
+        LocalDateTime closesAt = closesAtStr != null && !closesAtStr.isBlank()
+            ? parseClosesAt(closesAtStr) : null;
         Boolean requiresShipping = body.containsKey("requiresShipping")
             ? Boolean.parseBoolean(body.get("requiresShipping")) : null;
-        surveyService.updateSurveyMeta(surveyId, admin, title, closesAt, requiresShipping);
+        surveyService.updateSurveyMeta(surveyId, actor, title, closesAt, requiresShipping);
         return ResponseEntity.noContent().build();
     }
 
-    /** 옵션 텍스트/이미지 수정 (관리자 전용, multipart). */
+    /** 옵션 텍스트/이미지/설명 수정 (작성자 또는 관리자, multipart). */
     @PatchMapping(value = "/{surveyId}/options/{optionId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Void> updateOption(
             @PathVariable Long surveyId,
             @PathVariable Long optionId,
             @RequestParam(value = "text", required = false) String text,
             @RequestParam(value = "image", required = false) MultipartFile image,
+            @RequestParam(value = "description", required = false) String description,
             Authentication auth) throws IOException {
-        surveyService.updateSurveyOption(surveyId, optionId, currentAdmin(auth), text, image);
+        surveyService.updateSurveyOption(surveyId, optionId, currentUser(auth), text, image, description);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{surveyId}/close")
     public ResponseEntity<Void> closeSurvey(@PathVariable Long surveyId, Authentication auth) {
-        surveyService.closeSurvey(surveyId, currentAdmin(auth));
+        surveyService.closeSurvey(surveyId, currentUser(auth));
         return ResponseEntity.noContent().build();
     }
 
-    /** 관리자 전용 — 옵션별 투표자 목록. */
+    /** 관리자, 또는 비익명 설문의 작성자 — 옵션별 투표자 목록. */
     @GetMapping("/{surveyId}/votes")
     public List<Map<String, Object>> getVotes(@PathVariable Long surveyId, Authentication auth) {
-        return surveyService.getVoteDetails(surveyId, currentAdmin(auth));
+        return surveyService.getVoteDetails(surveyId, currentUser(auth));
     }
 
     @GetMapping("/notices")
     public List<Map<String, Object>> notices() {
         return surveyService.getActiveNoticeBanners();
+    }
+
+    private static LocalDateTime parseClosesAt(String raw) {
+        String s = raw.trim().replace("Z", "");
+        int dot = s.indexOf('.');
+        if (dot > 0) s = s.substring(0, dot);
+        if (s.length() == 16) s = s + ":00";
+        return LocalDateTime.parse(s);
     }
 
     private User currentAdmin(Authentication auth) {

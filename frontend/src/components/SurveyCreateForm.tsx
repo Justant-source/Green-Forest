@@ -4,26 +4,29 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { compressImage } from "@/lib/imageCompression";
 import { createSurvey } from "@/lib/api";
-import { SurveyOptionType } from "@/types";
+import { useAuth } from "@/context/AuthContext";
+import { datetimeLocalToNaive } from "@/lib/datetime";
 
 const MAX_OPTIONS = 15;
+const MAX_DESCRIPTION = 300;
 
 interface OptionDraft {
-  type: SurveyOptionType;
   text: string;
+  description: string;
   imageFile: File | null;
   imagePreview: string | null;
 }
 
 const newOption = (): OptionDraft => ({
-  type: "TEXT_ONLY",
   text: "",
+  description: "",
   imageFile: null,
   imagePreview: null,
 });
 
 export default function SurveyCreateForm({ onCancel }: { onCancel: () => void }) {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const [title, setTitle] = useState("");
   const [closesAt, setClosesAt] = useState("");
   const [anonymous, setAnonymous] = useState(false);
@@ -59,26 +62,16 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
     updateOption(i, { imageFile: compressed, imagePreview: preview });
   };
 
-  const handleTypeChange = (i: number, type: SurveyOptionType) => {
-    updateOption(i, {
-      type,
-      text: type === "IMAGE_ONLY" ? "" : options[i].text,
-      imageFile: type === "TEXT_ONLY" ? null : options[i].imageFile,
-      imagePreview: type === "TEXT_ONLY" ? null : options[i].imagePreview,
-    });
-  };
-
   const validate = (): string | null => {
     if (!title.trim()) return "제목을 입력하세요.";
     if (!closesAt) return "종료일을 입력하세요.";
     if (new Date(closesAt) <= new Date()) return "종료일은 미래여야 합니다.";
-    if (options.length < 2) return "옵션은 최소 2개 필요합니다.";
+    if (options.length < 2) return "항목은 최소 2개 필요합니다.";
     for (let i = 0; i < options.length; i++) {
       const o = options[i];
-      if (o.type !== "IMAGE_ONLY" && !o.text.trim())
-        return `${i + 1}번 옵션의 텍스트를 입력하세요.`;
-      if (o.type !== "TEXT_ONLY" && !o.imageFile)
-        return `${i + 1}번 옵션의 이미지를 첨부하세요.`;
+      if (!o.text.trim()) return `${i + 1}번 항목의 제목을 입력하세요.`;
+      if (o.description.length > MAX_DESCRIPTION)
+        return `${i + 1}번 항목의 설명은 ${MAX_DESCRIPTION}자 이하여야 합니다.`;
     }
     return null;
   };
@@ -96,16 +89,16 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
     try {
       const fd = new FormData();
       fd.append("title", title.trim());
-      // ISO datetime without timezone suffix for LocalDateTime.parse
-      fd.append("closesAt", new Date(closesAt).toISOString().replace("Z", ""));
+      fd.append("closesAt", datetimeLocalToNaive(closesAt));
       fd.append("anonymous", String(anonymous));
-      fd.append("allowOptionAddByUser", String(allowOptionAddByUser));
-      fd.append("allowMultiSelect", requiresShipping ? "false" : String(allowMultiSelect));
-      fd.append("notice", String(notice));
-      fd.append("requiresShipping", String(requiresShipping));
+      fd.append("allowOptionAddByUser", String(isAdmin && allowOptionAddByUser));
+      fd.append("allowMultiSelect", isAdmin && requiresShipping ? "false" : String(allowMultiSelect));
+      fd.append("notice", String(isAdmin && notice));
+      fd.append("requiresShipping", String(isAdmin && requiresShipping));
       const optionsJson = options.map((o) => ({
-        type: o.type,
-        text: o.type === "IMAGE_ONLY" ? null : o.text.trim(),
+        type: o.imageFile ? "TEXT_AND_IMAGE" : "TEXT_ONLY",
+        text: o.text.trim(),
+        description: o.description.trim() || null,
       }));
       fd.append("options", JSON.stringify(optionsJson));
       options.forEach((o, i) => {
@@ -116,7 +109,7 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
       sessionStorage.removeItem("gridFeedCache");
       router.push(`/posts/${postId}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "설문 생성에 실패했습니다.");
+      setError(err instanceof Error ? err.message : "투표 생성에 실패했습니다.");
     } finally {
       setSubmitting(false);
     }
@@ -125,28 +118,26 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">설문 만들기</h2>
+        <h2 className="text-lg font-semibold text-gray-800">투표 만들기</h2>
         <button type="button" onClick={onCancel} className="text-xs text-forest-600 underline">
           카테고리 변경
         </button>
       </div>
 
-      {/* 제목 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="설문 제목을 입력하세요"
+          placeholder="투표 제목을 입력하세요"
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500"
           required
         />
       </div>
 
-      {/* 종료일 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">참여 종료일</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">종료일 및 시간</label>
         <input
           type="datetime-local"
           value={closesAt}
@@ -156,7 +147,6 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
         />
       </div>
 
-      {/* 옵션 리스트 */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-gray-700">
@@ -176,7 +166,7 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
           {options.map((o, i) => (
             <div key={i} className="border border-gray-200 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-500">옵션 {i + 1}</span>
+                <span className="text-xs font-semibold text-gray-500">항목 {i + 1}</span>
                 <button
                   type="button"
                   onClick={() => removeOption(i)}
@@ -187,65 +177,68 @@ export default function SurveyCreateForm({ onCancel }: { onCancel: () => void })
                 </button>
               </div>
 
-              <select
-                value={o.type}
-                onChange={(e) => handleTypeChange(i, e.target.value as SurveyOptionType)}
+              <input
+                type="text"
+                value={o.text}
+                onChange={(e) => updateOption(i, { text: e.target.value })}
+                placeholder="항목 제목 (50자 이내)"
+                maxLength={50}
                 className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="TEXT_ONLY">텍스트만</option>
-                <option value="IMAGE_ONLY">사진만</option>
-                <option value="TEXT_AND_IMAGE">텍스트 + 사진</option>
-              </select>
+              />
 
-              {o.type !== "IMAGE_ONLY" && (
+              <textarea
+                value={o.description}
+                onChange={(e) => updateOption(i, { description: e.target.value })}
+                placeholder="설명 (선택, 300자 이내)"
+                maxLength={MAX_DESCRIPTION}
+                rows={2}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm resize-none"
+              />
+
+              <div>
                 <input
-                  type="text"
-                  value={o.text}
-                  onChange={(e) => updateOption(i, { text: e.target.value })}
-                  placeholder="옵션 텍스트 (50자 이내)"
-                  maxLength={50}
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+                  type="file"
+                  accept=".png,.jpg,.jpeg"
+                  onChange={(e) => handleImageChange(i, e.target.files?.[0] || null)}
+                  className="text-xs"
                 />
-              )}
-
-              {o.type !== "TEXT_ONLY" && (
-                <div>
-                  <input
-                    type="file"
-                    accept=".png,.jpg,.jpeg"
-                    onChange={(e) => handleImageChange(i, e.target.files?.[0] || null)}
-                    className="text-xs"
-                  />
-                  {o.imagePreview && (
+                {o.imagePreview && (
+                  <div className="mt-2 flex items-start gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={o.imagePreview}
                       alt=""
-                      className="mt-2 w-24 h-24 object-cover rounded-md"
+                      className="w-24 h-24 object-cover rounded-md"
                     />
-                  )}
-                </div>
-              )}
+                    <button
+                      type="button"
+                      onClick={() => handleImageChange(i, null)}
+                      className="text-xs text-gray-500 underline"
+                    >
+                      사진 제거
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* 설정 토글 */}
       <div className="space-y-2 bg-gray-50 rounded-lg p-3">
         <Toggle label="익명 투표" checked={anonymous} onChange={setAnonymous} />
-        <Toggle label="참여자 항목 추가 허용" checked={allowOptionAddByUser} onChange={setAllowOptionAddByUser} />
-        <Toggle
-          label="복수 선택 허용"
-          checked={allowMultiSelect}
-          onChange={setAllowMultiSelect}
-          disabled={requiresShipping}
-        />
-        <Toggle label="공지로 등록 (상단 배너 노출)" checked={notice} onChange={setNotice} />
-        <Toggle
-          label="상품 배송 대상 설문"
-          checked={requiresShipping}
-          onChange={(v) => { setRequiresShipping(v); if (v) setAllowMultiSelect(false); }}
-        />
+        <Toggle label="복수 항목 선택 허용" checked={allowMultiSelect} onChange={setAllowMultiSelect} disabled={isAdmin && requiresShipping} />
+        {isAdmin && (
+          <>
+            <Toggle label="참여자 항목 추가 허용" checked={allowOptionAddByUser} onChange={setAllowOptionAddByUser} />
+            <Toggle label="공지로 등록 (상단 배너 노출)" checked={notice} onChange={setNotice} />
+            <Toggle
+              label="상품 배송 대상 설문"
+              checked={requiresShipping}
+              onChange={(v) => { setRequiresShipping(v); if (v) setAllowMultiSelect(false); }}
+            />
+          </>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}

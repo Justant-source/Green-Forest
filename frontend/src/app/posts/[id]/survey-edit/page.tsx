@@ -13,7 +13,7 @@ import {
 } from "@/lib/api";
 import { toMediaUrl } from "@/lib/api";
 import { Survey, SurveyOption } from "@/types";
-import { toDatetimeLocalKst } from "@/lib/datetime";
+import { datetimeLocalToNaive, naiveToDatetimeLocal } from "@/lib/datetime";
 
 export default function SurveyEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +25,7 @@ export default function SurveyEditPage() {
   const [title, setTitle] = useState("");
   const [closesAt, setClosesAt] = useState("");
   const [optionTexts, setOptionTexts] = useState<Record<number, string>>({});
+  const [optionDescriptions, setOptionDescriptions] = useState<Record<number, string>>({});
   const [optionImages, setOptionImages] = useState<Record<number, File>>({});
   const [optionPreviews, setOptionPreviews] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
@@ -39,7 +40,7 @@ export default function SurveyEditPage() {
   const loadData = async (preserveEdits = false) => {
     const [post, sv] = await Promise.all([getPost(postId), getSurveyByPost(postId)]);
     setTitle((prev) => (preserveEdits ? prev : post.title));
-    const newClosesAt = toDatetimeLocalKst(sv.closesAt);
+    const newClosesAt = naiveToDatetimeLocal(sv.closesAt);
     setClosesAt((prev) => (preserveEdits ? prev : newClosesAt));
     setSurvey(sv);
 
@@ -53,6 +54,13 @@ export default function SurveyEditPage() {
         });
         return merged;
       });
+      setOptionDescriptions((prev) => {
+        const merged: Record<number, string> = {};
+        sv.options.forEach((o) => {
+          merged[o.id] = o.id in prev ? prev[o.id] : (o.description ?? "");
+        });
+        return merged;
+      });
       setOptionImages((prev) =>
         Object.fromEntries(Object.entries(prev).filter(([k]) => validIds.has(Number(k))))
       );
@@ -61,17 +69,32 @@ export default function SurveyEditPage() {
       );
     } else {
       const texts: Record<number, string> = {};
-      sv.options.forEach((o) => { texts[o.id] = o.text ?? ""; });
+      const descs: Record<number, string> = {};
+      sv.options.forEach((o) => {
+        texts[o.id] = o.text ?? "";
+        descs[o.id] = o.description ?? "";
+      });
       setOptionTexts(texts);
+      setOptionDescriptions(descs);
     }
   };
 
   useEffect(() => {
     if (!authLoaded) return;
-    if (!isAdmin) { router.replace(`/posts/${postId}`); return; }
-    loadData()
-      .catch(() => router.replace(`/posts/${postId}`))
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        const sv = await getSurveyByPost(postId);
+        if (!isAdmin && !sv.isAuthor) {
+          router.replace(`/posts/${postId}`);
+          return;
+        }
+        await loadData();
+      } catch {
+        router.replace(`/posts/${postId}`);
+      } finally {
+        setLoading(false);
+      }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoaded, isAdmin, postId]);
 
@@ -113,16 +136,17 @@ export default function SurveyEditPage() {
     }
     setSaving(true);
     try {
-      const closesAtIso = new Date(closesAt).toISOString().slice(0, 19);
+      const closesAtIso = datetimeLocalToNaive(closesAt);
       await updateSurveyMeta(survey.id, title, closesAtIso);
 
       const adminOptions = survey.options.filter((o) => !o.addedByUser);
       await Promise.all(
         adminOptions.map((o) => {
           const newTextVal = o.type !== "IMAGE_ONLY" ? (optionTexts[o.id] ?? o.text ?? "") : null;
+          const newDesc = optionDescriptions[o.id] ?? o.description ?? "";
           const newImg = optionImages[o.id] ?? null;
-          if (newTextVal === (o.text ?? "") && !newImg) return Promise.resolve();
-          return updateSurveyOption(survey.id, o.id, newTextVal, newImg);
+          if (newTextVal === (o.text ?? "") && newDesc === (o.description ?? "") && !newImg) return Promise.resolve();
+          return updateSurveyOption(survey.id, o.id, newTextVal, newImg, newDesc);
         })
       );
 
@@ -148,7 +172,7 @@ export default function SurveyEditPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-12">
-      <h1 className="text-xl font-bold">설문 수정</h1>
+      <h1 className="text-xl font-bold">투표 수정</h1>
 
       {/* 제목 */}
       <div className="space-y-1">
@@ -163,7 +187,7 @@ export default function SurveyEditPage() {
 
       {/* 종료일 */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700">종료일</label>
+        <label className="text-sm font-medium text-gray-700">종료일 및 시간</label>
         <input
           type="datetime-local"
           value={closesAt}
@@ -171,7 +195,7 @@ export default function SurveyEditPage() {
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
         {survey.closed && (
-          <p className="text-xs text-red-500">종료된 설문입니다. 종료일을 미래로 변경하면 재개됩니다.</p>
+          <p className="text-xs text-red-500">종료된 투표입니다. 종료일을 미래로 변경하면 재개됩니다.</p>
         )}
       </div>
 
@@ -184,8 +208,10 @@ export default function SurveyEditPage() {
             index={i}
             option={o}
             text={optionTexts[o.id] ?? o.text ?? ""}
+            description={optionDescriptions[o.id] ?? o.description ?? ""}
             preview={optionPreviews[o.id]}
             onTextChange={(v) => setOptionTexts((prev) => ({ ...prev, [o.id]: v }))}
+            onDescriptionChange={(v) => setOptionDescriptions((prev) => ({ ...prev, [o.id]: v }))}
             onImageChange={(f) => handleImageChange(o.id, f)}
             onDelete={() => handleDelete(o.id)}
           />
@@ -284,16 +310,20 @@ function OptionEditor({
   index,
   option,
   text,
+  description,
   preview,
   onTextChange,
+  onDescriptionChange,
   onImageChange,
   onDelete,
 }: {
   index: number;
   option: SurveyOption;
   text: string;
+  description: string;
   preview?: string;
   onTextChange: (v: string) => void;
+  onDescriptionChange: (v: string) => void;
   onImageChange: (f: File) => void;
   onDelete: () => void;
 }) {
@@ -323,6 +353,14 @@ function OptionEditor({
           placeholder="옵션 텍스트 (50자 이내)"
         />
       )}
+      <textarea
+        value={description}
+        maxLength={300}
+        onChange={(e) => onDescriptionChange(e.target.value)}
+        rows={2}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none"
+        placeholder="설명 (선택, 300자 이내)"
+      />
       {hasImage && (
         <div className="flex items-center gap-3">
           {currentImage && (

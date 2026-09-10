@@ -1,6 +1,6 @@
 ---
 title: L4 Data — MySQL 스키마 · 마이그레이션
-last_updated: 2026-09-08
+last_updated: 2026-09-10
 ---
 
 # backend/40-data — MySQL 스키마 · 마이그레이션
@@ -112,7 +112,7 @@ erDiagram
 
 ---
 
-## §4. 수작업 SQL 14개 — Flyway 미관리
+## §4. 수작업 SQL 15개 — Flyway 미관리
 
 경로: `backend/db-migrations/` (git 추적됨).
 
@@ -127,6 +127,7 @@ erDiagram
 | `backend/db-migrations/add_survey.sql` |
 | `backend/db-migrations/add_survey_delivery.sql` |
 | `backend/db-migrations/add_survey_requires_shipping.sql` |
+| `backend/db-migrations/add_survey_option_description.sql` |
 | `backend/db-migrations/add_user_shipping.sql` |
 | `backend/db-migrations/add_weekly_reports.sql` |
 | `backend/db-migrations/birth_month_day_and_registration.sql` |
@@ -193,6 +194,8 @@ stateDiagram-v2
 `supply_requests`: user_id, title(1–80), quantity(1–5), memo(0–300), status, reject_reason, reject_note.
 
 `catalog_sync_runs`: status RUNNING/SUCCESS/FAIL, started_at, finished_at, item_count, error_message, started_by.
+
+`survey_options.description`: VARCHAR(300) NULL. 항목 설명. prod SQL `add_survey_option_description.sql`.
 
 `notifications.type`는 VARCHAR(32) (`NotificationType`에 `REQUEST` 포함). `related_request_kind` ENUM('SNACK','SUPPLY') NULL.
 

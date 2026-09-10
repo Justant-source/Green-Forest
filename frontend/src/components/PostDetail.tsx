@@ -177,7 +177,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
                   </Link>
                 );
               })()}
-              {isAdmin && post.category === "survey" && (
+              {(isAdmin || post.isAuthor) && post.category === "survey" && (
                 <button
                   onClick={async () => {
                     if (!confirm("투표를 지금 종료하시겠습니까?")) return;

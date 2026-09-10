@@ -28,7 +28,7 @@ export default function GridItem({ post, onBookmarkChange }: GridItemProps) {
       "동료칭찬": "칭",
       "퀘스트": "퀘",
       "이벤트": "이",
-      "survey": "설",
+      "survey": "투",
     };
 
     const colorMap: Record<string, string> = {

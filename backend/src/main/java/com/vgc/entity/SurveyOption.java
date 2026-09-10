@@ -21,6 +21,9 @@ public class SurveyOption {
     @Column(name = "text_content", length = 100)
     private String textContent;
 
+    @Column(name = "description", length = 300)
+    private String description;
+
     @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
@@ -47,6 +50,8 @@ public class SurveyOption {
     public void setOptionType(SurveyOptionType optionType) { this.optionType = optionType; }
     public String getTextContent() { return textContent; }
     public void setTextContent(String textContent) { this.textContent = textContent; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public int getDisplayOrder() { return displayOrder; }

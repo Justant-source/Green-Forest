@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -70,17 +71,90 @@ class SurveyServiceTest {
         option.setTextContent("옵션A");
     }
 
-    // 1. 비관리자가 설문 생성 시도 → 거부
+    // 1. 일반 회원도 투표 생성 가능
     @Test
-    void createSurveyWithPost_일반유저_거부() {
+    void createSurveyWithPost_일반유저_허용() throws IOException {
         SurveyCreateRequest req = new SurveyCreateRequest();
         req.setClosesAt(LocalDateTime.now().plusDays(7));
-        SurveyOptionInput o1 = textOption("옵션1");
-        SurveyOptionInput o2 = textOption("옵션2");
+        when(postRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(surveyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(optionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThatThrownBy(() -> sut.createSurveyWithPost(user, "제목", req, List.of(o1, o2)))
+        Survey created = sut.createSurveyWithPost(user, "제목", req, List.of(textOption("옵션1"), textOption("옵션2")));
+
+        assertThat(created).isNotNull();
+        verify(postRepository).save(any(Post.class));
+        verify(surveyRepository).save(any(Survey.class));
+    }
+
+    @Test
+    void createSurveyWithPost_일반유저_공지배송항목추가_무시() throws IOException {
+        SurveyCreateRequest req = new SurveyCreateRequest();
+        req.setClosesAt(LocalDateTime.now().plusDays(7));
+        req.setNotice(true);
+        req.setRequiresShipping(true);
+        req.setAllowOptionAddByUser(true);
+        req.setAllowMultiSelect(true);
+        when(postRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(surveyRepository.save(any())).thenAnswer(inv -> {
+            Survey s = inv.getArgument(0);
+            assertThat(s.isNotice()).isFalse();
+            assertThat(s.isRequiresShipping()).isFalse();
+            assertThat(s.isAllowOptionAddByUser()).isFalse();
+            assertThat(s.isAllowMultiSelect()).isTrue();
+            return s;
+        });
+        when(optionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        sut.createSurveyWithPost(user, "제목", req, List.of(textOption("옵션1"), textOption("옵션2")));
+    }
+
+    @Test
+    void closeSurvey_작성자_허용() {
+        survey.getPost().setAuthor(user);
+        when(surveyRepository.findById(100L)).thenReturn(Optional.of(survey));
+        when(surveyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        sut.closeSurvey(100L, user);
+
+        verify(surveyRepository).save(survey);
+    }
+
+    @Test
+    void closeSurvey_타인_거부() {
+        survey.getPost().setAuthor(user);
+        User other = new User();
+        other.setId(9L);
+        other.setRole("USER");
+        when(surveyRepository.findById(100L)).thenReturn(Optional.of(survey));
+
+        assertThatThrownBy(() -> sut.closeSurvey(100L, other))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("관리자만");
+            .hasMessageContaining("작성자 또는 관리자");
+    }
+
+    @Test
+    void getVoteDetails_익명_작성자_거부() {
+        survey.setAnonymous(true);
+        survey.getPost().setAuthor(user);
+        when(surveyRepository.findById(100L)).thenReturn(Optional.of(survey));
+
+        assertThatThrownBy(() -> sut.getVoteDetails(100L, user))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("익명");
+    }
+
+    @Test
+    void getVoteDetails_비익명_작성자_허용() {
+        survey.setAnonymous(false);
+        survey.getPost().setAuthor(user);
+        when(surveyRepository.findById(100L)).thenReturn(Optional.of(survey));
+        when(optionRepository.findBySurveyIdOrderByDisplayOrderAscIdAsc(100L)).thenReturn(List.of(option));
+        when(voteRepository.findBySurveyId(100L)).thenReturn(List.of());
+
+        var details = sut.getVoteDetails(100L, user);
+
+        assertThat(details).hasSize(1);
     }
 
     // 2. 옵션이 1개 → 거부
@@ -91,7 +165,6 @@ class SurveyServiceTest {
 
         Post post = new Post();
         post.setId(10L);
-        when(postRepository.save(any())).thenReturn(post);
 
         assertThatThrownBy(() -> sut.createSurvey(post, req, List.of(textOption("옵션1"))))
             .isInstanceOf(IllegalArgumentException.class)
@@ -185,6 +258,32 @@ class SurveyServiceTest {
         assertThatThrownBy(() -> sut.addUserOption(100L, user, "새 옵션"))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("허용되지 않습니다");
+    }
+
+    @Test
+    void updateSurveyMeta_작성자_허용() {
+        survey.getPost().setAuthor(user);
+        when(surveyRepository.findById(100L)).thenReturn(Optional.of(survey));
+        when(surveyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(postRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        sut.updateSurveyMeta(100L, user, "새 제목", LocalDateTime.now().plusDays(3), null);
+
+        assertThat(survey.getPost().getTitle()).isEqualTo("새 제목");
+        verify(surveyRepository).save(survey);
+    }
+
+    @Test
+    void updateSurveyMeta_타인_거부() {
+        survey.getPost().setAuthor(user);
+        User other = new User();
+        other.setId(9L);
+        other.setRole("USER");
+        when(surveyRepository.findById(100L)).thenReturn(Optional.of(survey));
+
+        assertThatThrownBy(() -> sut.updateSurveyMeta(100L, other, "해킹", null, null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("작성자 또는 관리자");
     }
 
     private SurveyOptionInput textOption(String text) {

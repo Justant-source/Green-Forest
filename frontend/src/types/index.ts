@@ -13,6 +13,7 @@ export interface SurveyOption {
   id: number;
   type: SurveyOptionType;
   text: string | null;
+  description: string | null;
   imageUrl: string | null;
   voteCount: number;
   voted: boolean;
@@ -29,6 +30,7 @@ export interface Survey {
   notice: boolean;
   closed: boolean;
   requiresShipping: boolean;
+  isAuthor?: boolean;
   totalVotes: number;
   options: SurveyOption[];
   hasVoted: boolean;

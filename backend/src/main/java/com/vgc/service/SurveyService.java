@@ -25,6 +25,7 @@ public class SurveyService {
     private static final int MAX_TOTAL_OPTIONS = 30;
     private static final int MAX_USER_OPTIONS_PER_USER = 3;
     private static final int MAX_TEXT_LENGTH = 50;
+    private static final int MAX_DESCRIPTION_LENGTH = 300;
     private static final int MAX_THUMBNAIL_IMAGES = 9;
 
     private final SurveyRepository surveyRepository;
@@ -54,19 +55,22 @@ public class SurveyService {
         this.surveyDeliveryService = surveyDeliveryService;
     }
 
-    /** 설문 + 게시글을 한 번에 생성 (관리자 전용). */
+    /** 설문 + 게시글 생성. 일반 회원도 가능. 공지/배송/참여자추가는 관리자만. */
     @Transactional
-    public Survey createSurveyWithPost(User admin, String title,
+    public Survey createSurveyWithPost(User author, String title,
                                        SurveyCreateRequest req,
                                        List<SurveyOptionInput> inputs) throws IOException {
-        if (!"ADMIN".equals(admin.getRole()))
-            throw new IllegalArgumentException("관리자만 설문을 생성할 수 있습니다.");
+        if (!isAdmin(author)) {
+            req.setNotice(false);
+            req.setRequiresShipping(false);
+            req.setAllowOptionAddByUser(false);
+        }
 
         Post post = new Post();
         post.setTitle(title);
         post.setContent("");
         post.setCategory("survey");
-        post.setAuthor(admin);
+        post.setAuthor(author);
         post.setAnonymous(false);
         postRepository.save(post);
 
@@ -112,6 +116,9 @@ public class SurveyService {
             if (in.getType() != SurveyOptionType.IMAGE_ONLY) {
                 opt.setTextContent(in.getText());
             }
+            if (in.getDescription() != null && !in.getDescription().isBlank()) {
+                opt.setDescription(in.getDescription().trim());
+            }
             if (in.getType() != SurveyOptionType.TEXT_ONLY && in.getImage() != null && !in.getImage().isEmpty()) {
                 String url = imageStorageService.upload(in.getImage());
                 opt.setImageUrl(url);
@@ -137,6 +144,8 @@ public class SurveyService {
     }
 
     private void validateOptionInput(SurveyOptionInput in) {
+        if (in.getDescription() != null && in.getDescription().length() > MAX_DESCRIPTION_LENGTH)
+            throw new IllegalArgumentException("옵션 설명은 " + MAX_DESCRIPTION_LENGTH + "자 이하여야 합니다.");
         switch (in.getType()) {
             case TEXT_ONLY -> {
                 if (in.getText() == null || in.getText().isBlank())
@@ -271,12 +280,17 @@ public class SurveyService {
                 m.put("id", o.getId());
                 m.put("type", o.getOptionType().name());
                 m.put("text", o.getTextContent());
+                m.put("description", o.getDescription());
                 m.put("imageUrl", o.getImageUrl());
                 m.put("voteCount", count);
                 m.put("voted", myVotedOptionIds.contains(o.getId()));
                 m.put("addedByUser", o.getAddedByUser() != null);
                 return m;
             }).toList();
+
+        boolean isAuthor = currentUser != null
+            && survey.getPost().getAuthor() != null
+            && survey.getPost().getAuthor().getId().equals(currentUser.getId());
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", survey.getId());
@@ -288,20 +302,19 @@ public class SurveyService {
         result.put("notice", survey.isNotice());
         result.put("closed", AppTime.nowKst().isAfter(survey.getClosesAt()));
         result.put("requiresShipping", survey.isRequiresShipping());
+        result.put("isAuthor", isAuthor);
         result.put("totalVotes", totalVotes);
         result.put("options", options);
         result.put("hasVoted", !myVotedOptionIds.isEmpty());
         return result;
     }
 
-    /** 관리자가 옵션 삭제. 해당 옵션의 투표도 함께 삭제. 최소 2개 유지. */
+    /** 작성자 또는 관리자가 옵션 삭제. 해당 옵션의 투표도 함께 삭제. 최소 2개 유지. */
     @Transactional
-    public void deleteOption(Long surveyId, Long optionId, User admin) {
-        if (!"ADMIN".equals(admin.getRole()))
-            throw new IllegalArgumentException("관리자만 삭제할 수 있습니다.");
-
+    public void deleteOption(Long surveyId, Long optionId, User actor) {
         Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
+        assertAuthorOrAdmin(survey, actor);
 
         SurveyOption opt = optionRepository.findById(optionId)
             .orElseThrow(() -> new IllegalArgumentException("옵션을 찾을 수 없습니다."));
@@ -327,15 +340,13 @@ public class SurveyService {
         }
     }
 
-    /** 관리자가 기존 설문에 새 옵션 추가. */
+    /** 작성자 또는 관리자가 기존 설문에 새 옵션 추가. */
     @Transactional
-    public SurveyOption addAdminOption(Long surveyId, User admin,
+    public SurveyOption addAdminOption(Long surveyId, User actor,
                                        String text, org.springframework.web.multipart.MultipartFile image) throws IOException {
-        if (!"ADMIN".equals(admin.getRole()))
-            throw new IllegalArgumentException("관리자만 옵션을 추가할 수 있습니다.");
-
         Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
+        assertAuthorOrAdmin(survey, actor);
 
         boolean hasText = text != null && !text.isBlank();
         boolean hasImage = image != null && !image.isEmpty();
@@ -369,28 +380,26 @@ public class SurveyService {
         return optionRepository.save(opt);
     }
 
-    /** 관리자가 게시글 ID로 설문 즉시 종료. */
+    /** 작성자 또는 관리자가 게시글 ID로 설문 즉시 종료. */
     @Transactional
-    public void closeSurveyByPost(Long postId, User admin) {
-        if (!"ADMIN".equals(admin.getRole()))
-            throw new IllegalArgumentException("관리자만 종료할 수 있습니다.");
+    public void closeSurveyByPost(Long postId, User actor) {
         Survey survey = surveyRepository.findByPostId(postId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
+        assertCanClose(survey, actor);
         if (AppTime.nowKst().isAfter(survey.getClosesAt()))
             throw new IllegalArgumentException("이미 종료된 설문입니다.");
         survey.setClosesAt(AppTime.nowKst().minusSeconds(1));
         surveyRepository.save(survey);
     }
 
-    /** 관리자가 설문 옵션의 텍스트/이미지를 수정. */
+    /** 작성자 또는 관리자가 옵션 텍스트/이미지/설명을 수정. */
     @Transactional
-    public void updateSurveyOption(Long surveyId, Long optionId, User admin,
-                                   String text, org.springframework.web.multipart.MultipartFile image) throws IOException {
-        if (!"ADMIN".equals(admin.getRole()))
-            throw new IllegalArgumentException("관리자만 수정할 수 있습니다.");
-
+    public void updateSurveyOption(Long surveyId, Long optionId, User actor,
+                                   String text, org.springframework.web.multipart.MultipartFile image,
+                                   String description) throws IOException {
         Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
+        assertAuthorOrAdmin(survey, actor);
 
         SurveyOption opt = optionRepository.findById(optionId)
             .orElseThrow(() -> new IllegalArgumentException("옵션을 찾을 수 없습니다."));
@@ -402,6 +411,12 @@ public class SurveyService {
             if (text.length() > MAX_TEXT_LENGTH)
                 throw new IllegalArgumentException("옵션 텍스트는 " + MAX_TEXT_LENGTH + "자 이하여야 합니다.");
             opt.setTextContent(text.isBlank() ? null : text.trim());
+        }
+
+        if (description != null) {
+            if (description.length() > MAX_DESCRIPTION_LENGTH)
+                throw new IllegalArgumentException("옵션 설명은 " + MAX_DESCRIPTION_LENGTH + "자 이하여야 합니다.");
+            opt.setDescription(description.isBlank() ? null : description.trim());
         }
 
         if (image != null && !image.isEmpty() && opt.getOptionType() != SurveyOptionType.TEXT_ONLY) {
@@ -423,15 +438,13 @@ public class SurveyService {
         optionRepository.save(opt);
     }
 
-    /** 관리자가 설문 제목/종료일/배송여부를 수정. */
+    /** 작성자 또는 관리자가 설문 제목/종료일을 수정. 배송여부는 관리자만. */
     @Transactional
-    public void updateSurveyMeta(Long surveyId, User admin, String title,
+    public void updateSurveyMeta(Long surveyId, User actor, String title,
                                   LocalDateTime closesAt, Boolean requiresShipping) {
-        if (!"ADMIN".equals(admin.getRole()))
-            throw new IllegalArgumentException("관리자만 수정할 수 있습니다.");
-
         Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
+        assertAuthorOrAdmin(survey, actor);
 
         if (title != null && !title.isBlank()) {
             survey.getPost().setTitle(title.trim());
@@ -440,34 +453,37 @@ public class SurveyService {
         if (closesAt != null && closesAt.isAfter(AppTime.nowKst())) {
             survey.setClosesAt(closesAt);
         }
-        if (requiresShipping != null) {
+        if (requiresShipping != null && isAdmin(actor)) {
             survey.setRequiresShipping(requiresShipping);
             if (requiresShipping) survey.setAllowMultiSelect(false);
         }
         surveyRepository.save(survey);
     }
 
-    /** 관리자가 설문을 즉시 종료. closes_at 을 현재 시각으로 당긴다. */
+    /** 작성자 또는 관리자가 설문을 즉시 종료. closes_at 을 현재 시각으로 당긴다. */
     @Transactional
-    public void closeSurvey(Long surveyId, User admin) {
-        if (!"ADMIN".equals(admin.getRole()))
-            throw new IllegalArgumentException("관리자만 설문을 종료할 수 있습니다.");
+    public void closeSurvey(Long surveyId, User actor) {
         Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
+        assertCanClose(survey, actor);
         if (AppTime.nowKst().isAfter(survey.getClosesAt()))
             throw new IllegalArgumentException("이미 종료된 설문입니다.");
         survey.setClosesAt(AppTime.nowKst().minusSeconds(1));
         surveyRepository.save(survey);
     }
 
-    /** 관리자 전용 — 설문 ID 기준 옵션별 투표자 목록 조회. */
+    /** 관리자, 또는 비익명 설문의 작성자 — 옵션별 투표자 목록. */
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getVoteDetails(Long surveyId, User admin) {
-        if (!"ADMIN".equals(admin.getRole()))
-            throw new IllegalArgumentException("관리자만 조회할 수 있습니다.");
-
-        surveyRepository.findById(surveyId)
+    public List<Map<String, Object>> getVoteDetails(Long surveyId, User viewer) {
+        Survey survey = surveyRepository.findById(surveyId)
             .orElseThrow(() -> new IllegalArgumentException("설문을 찾을 수 없습니다."));
+        boolean author = isAuthor(survey, viewer);
+        if (!isAdmin(viewer)) {
+            if (!author)
+                throw new IllegalArgumentException("투표 현황을 조회할 권한이 없습니다.");
+            if (survey.isAnonymous())
+                throw new IllegalArgumentException("익명 투표의 투표자 목록은 조회할 수 없습니다.");
+        }
 
         List<SurveyOption> options = optionRepository.findBySurveyIdOrderByDisplayOrderAscIdAsc(surveyId);
 
@@ -518,8 +534,31 @@ public class SurveyService {
             SurveyOptionInput in = new SurveyOptionInput();
             in.setType(SurveyOptionType.valueOf(node.get("type").asText()));
             in.setText(node.has("text") && !node.get("text").isNull() ? node.get("text").asText(null) : null);
+            in.setDescription(node.has("description") && !node.get("description").isNull()
+                ? node.get("description").asText(null) : null);
             inputs.add(in);
         }
         return inputs;
+    }
+
+    private static boolean isAdmin(User user) {
+        return user != null && "ADMIN".equals(user.getRole());
+    }
+
+    private static boolean isAuthor(Survey survey, User user) {
+        if (user == null || survey.getPost() == null || survey.getPost().getAuthor() == null) {
+            return false;
+        }
+        return survey.getPost().getAuthor().getId().equals(user.getId());
+    }
+
+    private static void assertCanClose(Survey survey, User actor) {
+        if (isAdmin(actor) || isAuthor(survey, actor)) return;
+        throw new IllegalArgumentException("작성자 또는 관리자만 종료할 수 있습니다.");
+    }
+
+    private static void assertAuthorOrAdmin(Survey survey, User actor) {
+        if (isAdmin(actor) || isAuthor(survey, actor)) return;
+        throw new IllegalArgumentException("작성자 또는 관리자만 수정할 수 있습니다.");
     }
 }

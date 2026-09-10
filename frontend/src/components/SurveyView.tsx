@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { SurveyVoteDetail } from "@/types";
 import SurveyShippingConfirmModal from "./SurveyShippingConfirmModal";
 import { useRouter } from "next/navigation";
-import { formatKstDateTime } from "@/lib/datetime";
+import { formatNaiveDateTime } from "@/lib/datetime";
 
 export default function SurveyView({ postId, onImageSelect }: { postId: number; onImageSelect?: (url: string) => void }) {
   const { isLoggedIn, isAdmin, authLoaded } = useAuth();
@@ -166,7 +166,7 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
           {survey.requiresShipping && <Badge color="green">상품 배송</Badge>}
         </div>
         <div className="flex items-center gap-2">
-          {authLoaded && isAdmin && !survey.closed && (
+          {authLoaded && (isAdmin || survey.isAuthor) && !survey.closed && (
             <button
               onClick={handleClose}
               className="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
@@ -175,13 +175,13 @@ export default function SurveyView({ postId, onImageSelect }: { postId: number; 
             </button>
           )}
           <span>
-            {survey.closed ? "종료됨" : `~ ${formatKstDateTime(survey.closesAt)}`}
+            {survey.closed ? "종료됨" : `~ ${formatNaiveDateTime(survey.closesAt)}`}
           </span>
         </div>
       </div>
 
-      {/* 관리자 — 투표 현황 */}
-      {authLoaded && isAdmin && (
+      {/* 작성자(비익명) 또는 관리자 — 투표 현황 */}
+      {authLoaded && (isAdmin || (survey.isAuthor && !survey.anonymous)) && (
         <div>
           <button
             onClick={handleToggleVotes}
@@ -308,12 +308,15 @@ function OptionRow({
             />
           )}
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-gray-800 truncate">
+            <div className="text-sm font-medium text-gray-800">
               {option.text || "(이미지 옵션)"}
               {option.addedByUser && (
                 <span className="ml-1 text-[10px] text-gray-400">추가됨</span>
               )}
             </div>
+            {option.description && (
+              <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap">{option.description}</p>
+            )}
           </div>
           <div className="text-xs font-semibold text-gray-600 shrink-0">
             {option.voteCount}표 · {pct.toFixed(0)}%

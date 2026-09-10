@@ -1,6 +1,6 @@
 ---
 title: docs — 문서 지도 & Doc-Sync 트리거 맵
-last_updated: 2026-08-31
+last_updated: 2026-09-10
 ---
 
 # docs/_index.md — 문서 지도 & Doc-Sync 트리거 맵

@@ -1437,11 +1437,13 @@ export async function updateSurveyOption(
   surveyId: number,
   optionId: number,
   text: string | null,
-  image: File | null
+  image: File | null,
+  description?: string | null
 ): Promise<void> {
   const fd = new FormData();
   if (text !== null) fd.append("text", text);
   if (image) fd.append("image", image);
+  if (description !== undefined && description !== null) fd.append("description", description);
   const token = getToken();
   const res = await fetch(`${BASE_URL}/surveys/${surveyId}/options/${optionId}`, {
     method: "PATCH",

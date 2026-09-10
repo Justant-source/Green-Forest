@@ -49,6 +49,27 @@ public class DataInitializer implements CommandLineRunner {
         createCategoryIfNotExists("긍정문구", "긍정 문구", "green", false);
         createCategoryIfNotExists("동료칭찬", "동료 칭찬", "blue", false);
         createCategoryIfNotExists("퀘스트", "퀘스트", "orange", true);
+        ensureSurveyCategory();
+    }
+
+    /** 투표는 일반 회원도 작성. 기존 admin_only=1 / 라벨 '설문' 행을 맞춘다. */
+    private void ensureSurveyCategory() {
+        categoryRepository.findByName("survey").ifPresentOrElse(cat -> {
+            cat.setLabel("투표");
+            cat.setAdminOnly(false);
+            if (cat.getColor() == null || cat.getColor().isBlank()) {
+                cat.setColor("indigo");
+            }
+            categoryRepository.save(cat);
+        }, () -> {
+            Category category = new Category();
+            category.setName("survey");
+            category.setLabel("투표");
+            category.setColor("indigo");
+            category.setHasStatus(false);
+            category.setAdminOnly(false);
+            categoryRepository.save(category);
+        });
     }
 
     private void createCategoryIfNotExists(String name, String label, String color, boolean hasStatus) {
