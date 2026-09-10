@@ -61,7 +61,7 @@ public class RequestController {
     public Page<SnackCatalogCardResponse> listSnackCatalog(
             @RequestParam(defaultValue = "") String q,
             @RequestParam(defaultValue = "false") boolean requestedOnly,
-            @RequestParam(defaultValue = "SNACK") String category,
+            @RequestParam(defaultValue = "") String category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "40") int size,
             Authentication authentication) {
@@ -148,9 +148,10 @@ public class RequestController {
         return PageRequest.of(pageNumber, pageSize);
     }
 
+    /** 비어 있으면 전체 분류. */
     private static SnackSsgCategory parseCategory(String category) {
-        if (category == null || category.isBlank()) {
-            return SnackSsgCategory.SNACK;
+        if (category == null || category.isBlank() || "ALL".equalsIgnoreCase(category)) {
+            return null;
         }
         try {
             return SnackSsgCategory.valueOf(category);

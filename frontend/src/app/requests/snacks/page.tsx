@@ -4,54 +4,42 @@ import { useCallback, useEffect, useState } from "react";
 import {
   cancelSnackRequest,
   createSnackRequest,
-  getMySnackRequests,
   getSnackCatalog,
   getSnackCategories,
 } from "@/lib/api";
-import { SnackCatalogCard, SnackRequest, SnackSsgCategory, SnackSsgCategoryInfo } from "@/types";
+import { SnackCatalogCard, SnackSsgCategoryInfo } from "@/types";
 import SnackCard from "@/components/requests/SnackCard";
-import MyRequestList from "@/components/requests/MyRequestList";
-import SnackCategoryTabs from "@/components/requests/SnackCategoryTabs";
+import SnackCategoryTabs, { SnackCatalogTab } from "@/components/requests/SnackCategoryTabs";
 
 export default function SnackRequestsPage() {
-  const [mine, setMine] = useState<SnackRequest[]>([]);
   const [items, setItems] = useState<SnackCatalogCard[]>([]);
   const [tabs, setTabs] = useState<SnackSsgCategoryInfo[]>([]);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [requestedOnly, setRequestedOnly] = useState(false);
-  const [category, setCategory] = useState<SnackSsgCategory | null>(null);
+  const [category, setCategory] = useState<SnackCatalogTab>("ALL");
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [busyId, setBusyId] = useState<number | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 300);
     return () => clearTimeout(t);
   }, [q]);
 
-  const loadMine = useCallback(async () => {
-    try {
-      setMine(await getMySnackRequests());
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
   const loadTabs = useCallback(async () => {
     try {
       const next = await getSnackCategories();
       setTabs(next);
       setCategory((current) => {
-        if (next.length === 0) {
-          return null;
+        if (current === "ALL") {
+          return "ALL";
         }
         if (current && next.some((t) => t.code === current)) {
           return current;
         }
-        return next[0].code;
+        return "ALL";
       });
     } catch (e) {
       console.error(e);
@@ -70,9 +58,9 @@ export default function SnackRequestsPage() {
       setLoading(true);
       try {
         const data = await getSnackCatalog({
-          q: debouncedQ,
-          requestedOnly,
-          category,
+          q: category === "ALL" ? debouncedQ : "",
+          requestedOnly: category === "ALL" && requestedOnly,
+          category: category === "ALL" ? undefined : category,
           page: pageNum,
           size: 40,
         });
@@ -90,16 +78,15 @@ export default function SnackRequestsPage() {
   );
 
   useEffect(() => {
-    loadMine();
     loadTabs();
-  }, [loadMine, loadTabs]);
+  }, [loadTabs]);
 
   useEffect(() => {
     loadCatalog(0, false);
   }, [loadCatalog]);
 
   const refresh = async () => {
-    await Promise.all([loadMine(), loadTabs(), loadCatalog(0, false)]);
+    await Promise.all([loadTabs(), loadCatalog(0, false)]);
   };
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -111,62 +98,47 @@ export default function SnackRequestsPage() {
       alert(e instanceof Error ? e.message : "실패했습니다.");
     } finally {
       setBusy(false);
-      setBusyId(null);
     }
   };
 
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">내 요청</h2>
-        <MyRequestList
-          items={mine.map((r) => ({
-            id: r.id,
-            title: r.name,
-            imageUrl: r.imageUrl,
-            ssgUrl: r.ssgUrl,
-            quantity: r.quantity,
-            status: r.status,
-            rejectReasonLabel: r.rejectReasonLabel,
-            rejectNote: r.rejectNote,
-            createdAt: r.createdAt,
-            purchasedAt: r.purchasedAt,
-            rejectedAt: r.rejectedAt,
-          }))}
-          emptyText="요청한 간식이 없습니다."
-          showQuantity={false}
-          busyId={busyId}
-          onCancel={(id) => {
-            setBusyId(id);
-            run(() => cancelSnackRequest(id));
-          }}
-        />
-      </section>
-
-      <section>
-        {tabs.length > 0 && category && (
-          <div className="mb-3">
-            <SnackCategoryTabs value={category} onChange={setCategory} categories={tabs} />
+        <div className="mb-3">
+          <SnackCategoryTabs
+            value={category}
+            onChange={(next) => {
+              setCategory(next);
+              if (next !== "ALL") {
+                setQ("");
+                setDebouncedQ("");
+                setRequestedOnly(false);
+              }
+            }}
+            categories={tabs}
+            showAllTab
+          />
+        </div>
+        {category === "ALL" && (
+          <div className="flex items-center gap-3 mb-3">
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="상품 이름 검색"
+              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm"
+            />
+            <label className="flex items-center gap-1.5 text-sm text-gray-600 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={requestedOnly}
+                onChange={(e) => setRequestedOnly(e.target.checked)}
+                className="rounded border-gray-300 text-forest-500"
+              />
+              신청된 것만
+            </label>
           </div>
         )}
-        <div className="flex items-center gap-3 mb-3">
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="상품 이름 검색"
-            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm"
-          />
-          <label className="flex items-center gap-1.5 text-sm text-gray-600 whitespace-nowrap">
-            <input
-              type="checkbox"
-              checked={requestedOnly}
-              onChange={(e) => setRequestedOnly(e.target.checked)}
-              className="rounded border-gray-300 text-forest-500"
-            />
-            신청된 것만
-          </label>
-        </div>
 
         {loading && items.length === 0 ? (
           <div className="flex justify-center py-20">

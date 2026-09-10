@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { logout } from "@/lib/auth";
 import { getMe, getMyPosts, getMyBookmarks, getMyDropHistory, updateMyProfile, changePassword, getMyPlantGrowth, getMyAttendanceWins, getGachaHistory } from "@/lib/api";
@@ -26,10 +25,10 @@ type RewardItem = {
 };
 
 const PLANT_TYPES = [
-  { value: "TABLE_PALM", label: "테이블야자", job: "탱커(Guardian)", element: "땅", difficulty: "쉬움" },
-  { value: "SPATHIPHYLLUM", label: "스파티필럼", job: "힐러(Healer)", element: "물", difficulty: "쉬움" },
-  { value: "HONG_KONG_PALM", label: "홍콩야자", job: "버퍼(Enchanter)", element: "바람", difficulty: "보통" },
-  { value: "ORANGE_JASMINE", label: "오렌지자스민", job: "딜러(Striker)", element: "불", difficulty: "어려움" },
+  { value: "TABLE_PALM", label: "테이블야자" },
+  { value: "SPATHIPHYLLUM", label: "스파티필름" },
+  { value: "HONG_KONG_PALM", label: "무늬홍콩야자" },
+  { value: "ORANGE_JASMINE", label: "오렌지자스민" },
 ];
 
 type Tab = "posts" | "bookmarks" | "drops" | "rewards";
@@ -189,17 +188,17 @@ export default function GardenPage() {
 
   if (!user) return null;
 
-  const plantInfo = PLANT_TYPES.find((p) => p.value === user.plantType);
+  const plantTypeLabel = user.plantTypeLabel || PLANT_TYPES.find((p) => p.value === user.plantType)?.label;
 
   return (
     <div className="max-w-3xl mx-auto">
       {/* 프로필 카드 */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{user.nickname}</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 shrink-0">
             <button
               onClick={() => {
                 setShowBirthEdit((v) => !v);
@@ -346,56 +345,53 @@ export default function GardenPage() {
           </div>
         )}
 
-        {/* 식물 정보 */}
-        {user.plantType ? (
-          <div className="bg-forest-50 rounded-xl p-4 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowLevelGuide(true)}
-                    aria-label="레벨 가이드 보기"
-                    className="rounded-md hover:bg-forest-100 focus:outline-none focus:ring-2 focus:ring-forest-400 transition-colors"
-                  >
-                    <PlantGrowthBadge growth={growth} showDetails={true} />
-                  </button>
-                  <span className="text-lg font-semibold text-forest-600">
-                    {user.plantName || plantInfo?.label}
-                  </span>
-                  <span className="text-xs text-gray-400">({plantInfo?.label})</span>
-                </div>
-                <div className="text-xs text-gray-500 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                  <span><span className="text-gray-400">직업</span> {user.jobClassLabel}</span>
-                  <span className="text-gray-300">·</span>
-                  <span><span className="text-gray-400">속성</span> {user.elementLabel}</span>
-                  <span className="text-gray-300">·</span>
-                  <span><span className="text-gray-400">난도</span> {user.difficultyLabel}</span>
-                  <span className="text-gray-300">·</span>
-                  <span><span className="text-gray-400">EXP</span> ×{user.expMultiplier}</span>
+        {/* 식물 정보 + 물방울 */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {user.plantType ? (
+            <div className="bg-forest-50 rounded-xl p-3 min-w-0 flex items-center justify-between gap-1">
+              <div className="min-w-0 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLevelGuide(true)}
+                  aria-label="레벨 가이드 보기"
+                  className="shrink-0 rounded-md hover:bg-forest-100 focus:outline-none focus:ring-2 focus:ring-forest-400 transition-colors"
+                >
+                  <PlantGrowthBadge growth={growth} showDetails={true} />
+                </button>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-forest-600 truncate">
+                    {user.plantName || plantTypeLabel}
+                  </div>
+                  {user.plantName && plantTypeLabel && user.plantName !== plantTypeLabel && (
+                    <div className="text-xs text-gray-400 truncate">({plantTypeLabel})</div>
+                  )}
                 </div>
               </div>
               {!user.plantLocked && (
                 <button
                   onClick={() => setEditing(true)}
-                  className="text-xs text-forest-500 hover:text-forest-600 px-3 py-1.5 rounded-lg hover:bg-forest-100 transition-colors"
+                  className="shrink-0 text-xs text-forest-500 hover:text-forest-600 px-2 py-1 rounded-lg hover:bg-forest-100 transition-colors"
                 >
                   편집
                 </button>
               )}
             </div>
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 min-w-0 flex flex-col justify-center">
+              <p className="text-xs text-yellow-700 mb-1">아직 식물을 선택하지 않았습니다.</p>
+              <button
+                onClick={() => setEditing(true)}
+                className="text-sm text-forest-500 font-medium hover:underline text-left"
+              >
+                식물 선택하기
+              </button>
+            </div>
+          )}
+          <div className="text-center p-3 bg-accent/5 rounded-xl flex flex-col items-center justify-center min-w-0">
+            <div className="text-2xl font-bold text-accent">{user.totalDrops.toLocaleString()}</div>
+            <div className="text-xs text-gray-400">물방울</div>
           </div>
-        ) : (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
-            <p className="text-sm text-yellow-700 mb-2">아직 식물을 선택하지 않았습니다.</p>
-            <button
-              onClick={() => setEditing(true)}
-              className="text-sm text-forest-500 font-medium hover:underline"
-            >
-              식물 선택하기
-            </button>
-          </div>
-        )}
+        </div>
 
         {/* 프로필 편집 모달 */}
         {editing && (
@@ -425,7 +421,6 @@ export default function GardenPage() {
                     }`}
                   >
                     <div className="font-medium text-gray-900">{pt.label}</div>
-                    <div className="text-xs text-gray-400">{pt.job} | {pt.element} | {pt.difficulty}</div>
                   </button>
                 ))}
               </div>
@@ -447,22 +442,6 @@ export default function GardenPage() {
             </div>
           </div>
         )}
-
-        {/* 물방울 & 파티 요약 */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-accent/5 rounded-xl">
-            <div className="text-2xl font-bold text-accent">{user.totalDrops.toLocaleString()}</div>
-            <div className="text-xs text-gray-400">물방울</div>
-          </div>
-          <div className="text-center p-3 bg-forest-50 rounded-xl">
-            <div className="text-2xl font-bold text-forest-500 truncate">{user.partyName || "-"}</div>
-            <div className="text-xs text-gray-400">파티</div>
-          </div>
-          <div className="text-center p-3 bg-gray-50 rounded-xl">
-            <div className="text-2xl font-bold text-gray-700 truncate">{user.jobClassLabel || "-"}</div>
-            <div className="text-xs text-gray-400">직업군</div>
-          </div>
-        </div>
       </div>
 
       {/* 탭 */}
@@ -543,11 +522,6 @@ export default function GardenPage() {
       ) : activeTab === "drops" ? (
         // 물방울 내역
         <>
-        <div className="mb-4">
-          <Link href="/ranking" className="text-sm font-medium text-forest-500">
-            파티 랭킹 보기
-          </Link>
-        </div>
         {tabLoading && drops.length === 0 ? (
           <div className="flex justify-center py-20">
             <div className="w-10 h-10 border-4 border-gray-300 border-t-forest-500 rounded-full animate-spin" />

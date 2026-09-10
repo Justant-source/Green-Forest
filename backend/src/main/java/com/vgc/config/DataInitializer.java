@@ -13,7 +13,6 @@ import java.util.List;
 @Component
 public class DataInitializer implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
-    private final PartyRepository partyRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AttendancePhraseRepository attendancePhraseRepository;
@@ -23,13 +22,11 @@ public class DataInitializer implements CommandLineRunner {
     private String adminPassword;
 
     public DataInitializer(CategoryRepository categoryRepository,
-                           PartyRepository partyRepository,
                            UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            AttendancePhraseRepository attendancePhraseRepository,
                            GachaPrizeRepository gachaPrizeRepository) {
         this.categoryRepository = categoryRepository;
-        this.partyRepository = partyRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.attendancePhraseRepository = attendancePhraseRepository;
@@ -39,7 +36,6 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         initCategories();
-        initParties();
         initAdminUser();
         initAttendancePhrases();
         initGachaPrizes();
@@ -80,17 +76,6 @@ public class DataInitializer implements CommandLineRunner {
             category.setColor(color);
             category.setHasStatus(hasStatus);
             categoryRepository.save(category);
-        }
-    }
-
-    private void initParties() {
-        String[] partyNames = {"TG1", "TG2", "TG3", "TG4", "TG5"};
-        for (String name : partyNames) {
-            if (!partyRepository.existsByName(name)) {
-                Party party = new Party();
-                party.setName(name);
-                partyRepository.save(party);
-            }
         }
     }
 

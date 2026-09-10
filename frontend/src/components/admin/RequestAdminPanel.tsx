@@ -467,7 +467,9 @@ export default function RequestAdminPanel() {
           </div>
           <SnackCategoryTabs
             value={catalogCategory}
-            onChange={setCatalogCategory}
+            onChange={(code) => {
+              if (code !== "ALL") setCatalogCategory(code);
+            }}
             categories={SNACK_SSG_CATEGORIES}
           />
           <div className="flex flex-wrap gap-2">

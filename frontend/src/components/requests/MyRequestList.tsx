@@ -26,14 +26,14 @@ interface Props {
   showQuantity?: boolean;
   busyId?: number | null;
   onQuantityChange?: (id: number, quantity: number) => void;
-  onCancel: (id: number) => void;
+  onCancel?: (id: number) => void;
 }
 
 function statusBadge(item: MyRequestListItem) {
   if (item.status === "PENDING") return { label: "대기", cls: "bg-forest-50 text-forest-600" };
   if (item.status === "PURCHASED") {
     const md = formatKstMonthDay(item.purchasedAt || item.createdAt);
-    return { label: md ? `${md} 구매 완료` : "구매 완료", cls: "bg-gray-100 text-gray-600" };
+    return { label: md ? `${md} 구매 완료` : "구매 완료", cls: "bg-forest-500 text-white" };
   }
   const md = formatKstMonthDay(item.rejectedAt || item.createdAt);
   return { label: md ? `${md} 거절` : "거절", cls: "bg-red-50 text-red-500" };
@@ -112,7 +112,7 @@ export default function MyRequestList({
                 </button>
               </div>
             )}
-            {pending && (
+            {pending && onCancel && (
               <button
                 type="button"
                 disabled={busyId === item.id}

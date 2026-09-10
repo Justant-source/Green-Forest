@@ -42,8 +42,8 @@ type AdminTab = "dashboard" | "users" | "parties" | "quests" | "drops" | "catego
 
 const PLANT_OPTIONS = [
   { value: "TABLE_PALM", label: "테이블야자" },
-  { value: "SPATHIPHYLLUM", label: "스파티필럼" },
-  { value: "HONG_KONG_PALM", label: "홍콩야자" },
+  { value: "SPATHIPHYLLUM", label: "스파티필름" },
+  { value: "HONG_KONG_PALM", label: "무늬홍콩야자" },
   { value: "ORANGE_JASMINE", label: "오렌지자스민" },
 ];
 

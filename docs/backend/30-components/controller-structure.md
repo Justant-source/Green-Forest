@@ -117,7 +117,7 @@ flowchart TB
 
 `SurveyController` `/api/surveys`: 생성(`POST /`)은 로그인 회원. `PATCH .../close`, `PATCH .../close-by-post/{postId}`는 작성자 또는 관리자. `GET /{id}/votes`는 관리자, 또는 비익명 설문의 작성자. `PATCH /{id}/meta`, `PATCH /{id}/options/{optionId}`, `DELETE .../options/{optionId}`, `POST /{id}/admin-options`는 작성자 또는 관리자. 배송여부 변경은 관리자만 반영. 일반 회원이 보낸 공지/배송/참여자추가 플래그는 서버에서 무시한다. `closesAt`은 타임존 없는 벽시계(서울 시각)로 저장·비교한다.
 
-`RequestController` 카탈로그: `GET /api/requests/snacks/categories`(사용자에게 **보이는 상품이 있는 분류만**), `GET /api/requests/snacks/catalog?category=`.
+`RequestController` 카탈로그: `GET /api/requests/snacks/categories`(사용자에게 **보이는 상품이 있는 분류만**), `GET /api/requests/snacks/catalog?category=`(`category` 생략·공백·`ALL`이면 전체 분류).
 `AdminRequestController` 카탈로그: `GET /api/admin/requests/catalog/categories`(12분류 전부), `GET /api/admin/requests/catalog?category=`, `PATCH /api/admin/requests/catalog/{id}/visibility`, `PATCH /api/admin/requests/catalog/categories/{category}/visibility`, `POST /api/admin/requests/catalog/sync`(관리자 버튼만, 쿨다운 없음).
 이력: `GET /api/admin/requests/snacks/history`, `GET /api/admin/requests/supplies/history`.
 

@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 const tabs = [
   { href: "/requests/snacks", label: "간식" },
   { href: "/requests/supplies", label: "사무용품" },
+  { href: "/requests/mine", label: "내 요청" },
 ];
 
 export default function RequestsLayout({ children }: { children: React.ReactNode }) {
