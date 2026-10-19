@@ -1,6 +1,6 @@
 ---
 title: L6 Runtime — 스케줄 · WebSocket · 배포 루프
-last_updated: 2026-08-31
+last_updated: 2026-10-19
 ---
 
 # backend/60-runtime — 자동화 작업 · WebSocket · 운영
@@ -17,7 +17,7 @@ last_updated: 2026-08-31
 
 | 클래스 | cron | 목적 |
 |---|---|---|
-| `AttendanceScheduler` | `0 0 11 * * MON-FRI` | 평일 11:00 출석 추첨 |
+| `AttendanceScheduler` | `0 0 11 * * MON-FRI` | 평일 11:00 출석 추첨 (법정 공휴일은 건너뜀, `util/KoreanHolidays`) |
 | `EventScheduler` | `0 * * * * *` | 매 분 이벤트 시작/종료 |
 | `BirthdayAnnouncementScheduler` | `0 0 9 * * *` | 매일 09:00 생일 공지 |
 | `WeeklyReportScheduler` | `0 5 0 * * MON` | 월요일 00:05 주간 리포트 |

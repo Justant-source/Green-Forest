@@ -5,6 +5,7 @@ import com.vgc.repository.AttendanceCheckinRepository;
 import com.vgc.repository.AttendancePhraseRepository;
 import com.vgc.repository.PlantGrowthRepository;
 import com.vgc.repository.UserRepository;
+import com.vgc.util.KoreanHolidays;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -67,6 +68,11 @@ public class AttendanceService {
             if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
                 activityLogService.logAttendanceDenied(user.getId(), user.getNickname(), "주말");
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "주말은 출석하지 않아요");
+            }
+            // 법정 공휴일 거절
+            if (KoreanHolidays.isHoliday(today)) {
+                activityLogService.logAttendanceDenied(user.getId(), user.getNickname(), "공휴일");
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "공휴일은 출석하지 않아요");
             }
             // 시간 범위 검증 (06:00 <= now < 11:00)
             if (currentTime.isBefore(LocalTime.of(6, 0)) || !currentTime.isBefore(LocalTime.of(11, 0))) {

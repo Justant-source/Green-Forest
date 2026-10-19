@@ -1,5 +1,6 @@
 package com.vgc.service;
 
+import com.vgc.util.KoreanHolidays;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,9 @@ public class AttendanceScheduler {
     @Scheduled(cron = "0 0 11 * * MON-FRI", zone = "Asia/Seoul")
     public void drawDailyWinner() {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        if (KoreanHolidays.isHoliday(today)) {
+            return;
+        }
         coordinator.draw(today);
     }
 }
