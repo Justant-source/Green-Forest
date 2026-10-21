@@ -11,6 +11,7 @@ import {
   adminPurchaseSnackItem,
   adminPurchaseSnackRequest,
   adminPurchaseSupplyRequest,
+  adminRejectPurchasedSnackRequest,
   adminRejectSnackItem,
   adminRejectSnackRequest,
   adminRejectSupplyRequest,
@@ -45,6 +46,7 @@ type QueueView = "pending" | "history";
 type RejectTarget =
   | { kind: "snack"; id: number }
   | { kind: "snackAll"; catalogItemId: number }
+  | { kind: "snackPurchased"; id: number }
   | { kind: "supply"; id: number }
   | null;
 
@@ -158,6 +160,8 @@ export default function RequestAdminPanel() {
     await run(async () => {
       if (rejectTarget.kind === "snack") {
         await adminRejectSnackRequest(rejectTarget.id, rejectReason, note);
+      } else if (rejectTarget.kind === "snackPurchased") {
+        await adminRejectPurchasedSnackRequest(rejectTarget.id, rejectReason, note);
       } else if (rejectTarget.kind === "snackAll") {
         await adminRejectSnackItem(rejectTarget.catalogItemId, rejectReason, note);
       } else {
@@ -326,7 +330,8 @@ export default function RequestAdminPanel() {
                   <th className="py-2 pr-2">상태</th>
                   <th className="py-2 pr-2">닉네임</th>
                   <th className="py-2 pr-2">상품</th>
-                  <th className="py-2">사유</th>
+                  <th className="py-2 pr-2">사유</th>
+                  <th className="py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -340,10 +345,22 @@ export default function RequestAdminPanel() {
                     </td>
                     <td className="py-2 pr-2">{row.nickname}</td>
                     <td className="py-2 pr-2">{row.name}</td>
-                    <td className="py-2 text-xs text-gray-500">
+                    <td className="py-2 pr-2 text-xs text-gray-500">
                       {row.status === "REJECTED"
                         ? `${row.rejectReasonLabel || ""}${row.rejectNote ? ` · ${row.rejectNote}` : ""}`
                         : "—"}
+                    </td>
+                    <td className="py-2 whitespace-nowrap">
+                      {row.status === "PURCHASED" && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setRejectTarget({ kind: "snackPurchased", id: row.id })}
+                          className="text-xs text-red-500"
+                        >
+                          거절로 변경
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -563,7 +580,9 @@ export default function RequestAdminPanel() {
       {rejectTarget && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-xl p-4 w-full max-w-sm space-y-3">
-            <h3 className="font-semibold">거절 사유</h3>
+            <h3 className="font-semibold">
+              {rejectTarget.kind === "snackPurchased" ? "구매 완료를 거절로 변경" : "거절 사유"}
+            </h3>
             <div className="flex flex-wrap gap-2">
               {REJECT_CHIPS.map((c) => (
                 <button

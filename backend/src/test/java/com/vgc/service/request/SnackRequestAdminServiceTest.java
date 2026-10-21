@@ -90,6 +90,37 @@ class SnackRequestAdminServiceTest {
     }
 
     @Test
+    void 구매_완료_요청을_사유와_함께_거절로_변경한다() {
+        SnackRequest purchased = pendingRequest(1L, user, 1);
+        purchased.setStatus(RequestStatus.PURCHASED);
+        purchased.setPurchasedAt(java.time.LocalDateTime.now());
+        when(requestRepo.findById(1L)).thenReturn(Optional.of(purchased));
+        when(requestRepo.save(any(SnackRequest.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        sut.rejectPurchased(1L, RequestRejectReason.OTHER, " 잘못 처리 ");
+
+        assertThat(purchased.getStatus()).isEqualTo(RequestStatus.REJECTED);
+        assertThat(purchased.getRejectReason()).isEqualTo(RequestRejectReason.OTHER);
+        assertThat(purchased.getRejectNote()).isEqualTo("잘못 처리");
+        assertThat(purchased.getPurchasedAt()).isNull();
+        assertThat(purchased.getRejectedAt()).isNotNull();
+        verify(notificationService).createNotification(
+                eq(user), eq(NotificationType.REQUEST), anyString(), anyString(),
+                isNull(), isNull(), eq(RequestKind.SNACK));
+    }
+
+    @Test
+    void 구매_완료가_아니면_거절_변경_불가() {
+        SnackRequest pending = pendingRequest(1L, user, 1);
+        when(requestRepo.findById(1L)).thenReturn(Optional.of(pending));
+
+        assertThatThrownBy(() -> sut.rejectPurchased(1L, RequestRejectReason.POLICY, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
     void 묶음_구매시_PENDING_2건_알림_2() {
         SnackRequest first = pendingRequest(1L, user, 1);
         SnackRequest second = pendingRequest(2L, other, 2);

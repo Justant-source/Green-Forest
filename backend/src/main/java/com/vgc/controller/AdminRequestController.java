@@ -81,6 +81,16 @@ public class AdminRequestController {
         snackRequestService.purchaseOne(id);
     }
 
+    @PostMapping("/snacks/{id}/reject-purchased")
+    public void rejectPurchasedSnackRequest(
+            @PathVariable Long id,
+            @RequestBody RejectRequestBody body,
+            Authentication authentication) {
+        requireAdmin(authentication);
+        RequestRejectReason reason = requireReason(body);
+        snackRequestService.rejectPurchased(id, reason, body.getNote());
+    }
+
     @PostMapping("/snacks/items/{catalogItemId}/reject")
     public PurchaseCountResponse rejectSnackItem(
             @PathVariable Long catalogItemId,

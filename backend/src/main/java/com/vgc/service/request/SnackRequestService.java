@@ -210,6 +210,24 @@ public class SnackRequestService {
     }
 
     @Transactional
+    public void rejectPurchased(Long requestId, RequestRejectReason reason, String note) {
+        SnackRequest request = snackRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "요청을 찾을 수 없습니다."));
+        if (request.getStatus() != RequestStatus.PURCHASED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "구매 완료 상태의 요청만 거절로 변경할 수 있습니다.");
+        }
+        String storedNote = resolveRejectNote(reason, note);
+        request.setStatus(RequestStatus.REJECTED);
+        request.setRejectReason(reason);
+        request.setRejectNote(storedNote);
+        request.setRejectedAt(LocalDateTime.now());
+        request.setPurchasedAt(null);
+        request.setPendingOwnerId(null);
+        snackRequestRepository.save(request);
+        notifyRejected(request);
+    }
+
+    @Transactional
     public int rejectAllPendingForItem(Long catalogItemId, RequestRejectReason reason, String note) {
         String storedNote = resolveRejectNote(reason, note);
         List<SnackRequest> pending = snackRequestRepository

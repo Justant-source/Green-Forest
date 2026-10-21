@@ -1690,6 +1690,22 @@ export async function adminRejectSnackRequest(
   }
 }
 
+export async function adminRejectPurchasedSnackRequest(
+  id: number,
+  reason: RequestRejectReason,
+  note?: string
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}/admin/requests/snacks/${id}/reject-purchased`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ reason, note }),
+  });
+  if (!res.ok) {
+    handleUnauthorized(res);
+    throw new Error(await res.text());
+  }
+}
+
 export async function adminListSupplyRequests(status?: string): Promise<AdminSupplyRequest[]> {
   const qs = new URLSearchParams();
   if (status) qs.set("status", status);

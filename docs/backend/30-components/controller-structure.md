@@ -1,6 +1,6 @@
 ---
 title: L3 — 컨트롤러 분류 · HTTP 매핑
-last_updated: 2026-09-10
+last_updated: 2026-10-21
 ---
 
 # backend/30-components/controller-structure
@@ -120,6 +120,7 @@ flowchart TB
 `RequestController` 카탈로그: `GET /api/requests/snacks/categories`(사용자에게 **보이는 상품이 있는 분류만**), `GET /api/requests/snacks/catalog?category=`(`category` 생략·공백·`ALL`이면 전체 분류).
 `AdminRequestController` 카탈로그: `GET /api/admin/requests/catalog/categories`(12분류 전부), `GET /api/admin/requests/catalog?category=`, `PATCH /api/admin/requests/catalog/{id}/visibility`, `PATCH /api/admin/requests/catalog/categories/{category}/visibility`, `POST /api/admin/requests/catalog/sync`(관리자 버튼만, 쿨다운 없음).
 이력: `GET /api/admin/requests/snacks/history`, `GET /api/admin/requests/supplies/history`.
+구매 완료 → 거절 변경: `POST /api/admin/requests/snacks/{id}/reject-purchased` (body: `reason`, `note`; PURCHASED만 허용, 사용자에게 거절 알림).
 
 ---
 
