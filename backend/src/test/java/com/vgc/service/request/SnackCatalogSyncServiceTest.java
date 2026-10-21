@@ -99,6 +99,32 @@ class SnackCatalogSyncServiceTest {
     }
 
     @Test
+    void 목록에서_사라진_상품은_판매불가와_함께_숨김_처리한다() {
+        stubSyncStart();
+        SnackCatalogItem gone = new SnackCatalogItem();
+        gone.setSsgItemId("100009");
+        gone.setCategory(SnackSsgCategory.SNACK);
+        gone.setName("사라진 과자");
+        gone.setSsgUrl("https://www.ssg.com/gone");
+        gone.setAvailable(true);
+        gone.setHiddenFromUsers(false);
+        gone.setHiddenLockedByAdmin(true);
+
+        when(client.fetchAllPages()).thenReturn(List.of(
+                new SsgParsedItem("100001", "새우깡",
+                        "https://www.ssg.com/item/itemView.ssg?itemId=100001", null)));
+        when(catalogItemRepository.findBySsgItemIdAndCategory("100001", SnackSsgCategory.SNACK))
+                .thenReturn(Optional.empty());
+        when(catalogItemRepository.findByCategory(SnackSsgCategory.SNACK)).thenReturn(List.of(gone));
+        when(catalogItemRepository.save(any(SnackCatalogItem.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        sut.sync(admin);
+
+        assertThat(gone.isAvailable()).isFalse();
+        assertThat(gone.isHiddenFromUsers()).isTrue();
+    }
+
+    @Test
     void 잠금_없으면_아이스크림_이름은_숨긴다() {
         stubSyncStart();
         when(client.fetchAllPages()).thenReturn(List.of(

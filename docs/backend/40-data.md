@@ -1,6 +1,6 @@
 ---
 title: L4 Data — MySQL 스키마 · 마이그레이션
-last_updated: 2026-09-10
+last_updated: 2026-10-21
 ---
 
 # backend/40-data — MySQL 스키마 · 마이그레이션
@@ -201,4 +201,4 @@ stateDiagram-v2
 
 카탈로그 목록 갱신은 관리자 **목록 갱신 버튼만**. 쿨다운 없음.
 
-prod 수작업 SQL 파일명: `prod_2026_09_08_requests.sql`, `prod_2026_09_08_snack_catalog_categories.sql`, `prod_2026_09_08_notification_request_type.sql` (`backend/db-migrations/`). **실행하지 않음.**
+prod 수작업 SQL 파일명: `prod_2026_09_08_requests.sql`, `prod_2026_09_08_snack_catalog_categories.sql`, `prod_2026_09_08_notification_request_type.sql`, `prod_2026_10_21_hide_unavailable_snacks.sql` (`backend/db-migrations/`). **실행하지 않음.**

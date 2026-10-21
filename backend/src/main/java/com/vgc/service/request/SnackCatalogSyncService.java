@@ -87,6 +87,7 @@ public class SnackCatalogSyncService {
             for (SnackCatalogItem existing : catalogItemRepository.findByCategory(entry.getKey())) {
                 if (!entry.getValue().contains(existing.getSsgItemId())) {
                     existing.setAvailable(false);
+                    existing.setHiddenFromUsers(true);
                     catalogItemRepository.save(existing);
                 }
             }
